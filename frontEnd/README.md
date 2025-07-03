@@ -1,54 +1,185 @@
-# React + TypeScript + Vite
+-- Cria o banco de dados se ele não existir
+CREATE DATABASE IF NOT EXISTS labstore;
+USE labstore;
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+-- Tabela de Usuários (Administradores, Analistas)
+CREATE TABLE Usuario (
+    id_usuario INT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    senha_hash VARCHAR(255) NOT NULL,
+    tipo_perfil ENUM('admin', 'analista') NOT NULL,
+    data_cadastro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo'
+);
 
-Currently, two official plugins are available:
+-- Tabela de Clientes
+CREATE TABLE Cliente (
+    id_cliente INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    senha_hash VARCHAR(255) NOT NULL,
+    cpf_cnpj VARCHAR(20) NOT NULL UNIQUE,
+    endereco VARCHAR(255),
+    telefone VARCHAR(20),
+    data_cadastro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo'
+);
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+-- Tabela de Categorias de Produtos
+CREATE TABLE Categoria (
+    id_categoria INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(100) NOT NULL UNIQUE,
+    descricao TEXT
+);
 
-## Expanding the ESLint configuration
+-- Tabela de Produtos
+CREATE TABLE Produto (
+    id_produto INT PRIMARY KEY AUTO_INCREMENT,
+    id_categoria INT NOT NULL,
+    nome VARCHAR(100) NOT NULL,
+    descricao TEXT NOT NULL,
+    preco DECIMAL(10,2) NOT NULL,
+    marca VARCHAR(50),
+    modelo VARCHAR(50),
+    estoque INT NOT NULL DEFAULT 0,
+    status ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
+    imagemUrl VARCHAR(255) NULL,
+    compatibilidade TEXT NULL,
+    cor VARCHAR(50) NULL,
+    ano_fabricacao INT NULL,
+    FOREIGN KEY (id_categoria) REFERENCES Categoria(id_categoria)
+);
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+-- Tabela de Pedidos
+CREATE TABLE Pedido (
+    id_pedido INT PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INT NOT NULL,
+    data_pedido DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('aguardando_pagamento', 'processando', 'enviado', 'entregue', 'cancelado', 'concluido') NOT NULL DEFAULT 'aguardando_pagamento',
+    metodo_pagamento ENUM('pix', 'cartao_credito', 'boleto') NOT NULL,
+    endereco_entrega VARCHAR(255) NULL,
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente)
+);
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+-- Tabela de Itens de um Pedido
+CREATE TABLE ItemPedido (
+    id_item_pedido INT PRIMARY KEY AUTO_INCREMENT,
+    id_pedido INT NOT NULL,
+    id_produto INT NOT NULL,
+    quantidade INT NOT NULL,
+    preco_unitario DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (id_pedido) REFERENCES Pedido(id_pedido) ON DELETE CASCADE,
+    FOREIGN KEY (id_produto) REFERENCES Produto(id_produto)
+);
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+-- Tabela de Solicitações de Serviço Técnico
+CREATE TABLE SolicitacaoServico (
+    id_solicitacao INT PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INT NOT NULL,
+    tipo_equipamento ENUM('notebook', 'desktop', 'tablet', 'outros') NOT NULL,
+    marca VARCHAR(50) NOT NULL,
+    modelo VARCHAR(50) NOT NULL,
+    descricao_problema TEXT NOT NULL,
+    fotoUrl VARCHAR(255) NULL,
+    forma_envio VARCHAR(50) NULL,
+    data_solicitacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('solicitado', 'em_analise', 'aguardando_aprovacao', 'aprovado', 'rejeitado', 'em_execucao', 'cancelado', 'aguardando_pagamento', 'concluido') NOT NULL DEFAULT 'solicitado',
+    data_aprovacao_orcamento DATETIME NULL,
+    data_conclusao_servico DATETIME NULL,
+    motivo_recusa_orcamento TEXT NULL,
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente)
+);
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+-- Tabela de Orçamentos para Solicitações de Serviço
+CREATE TABLE Orcamento (
+    id_orcamento INT PRIMARY KEY AUTO_INCREMENT,
+    id_solicitacao INT NOT NULL UNIQUE,
+    id_analista INT NOT NULL,
+    diagnostico TEXT NOT NULL,
+    valor_pecas DECIMAL(10,2) NULL,
+    valor_mao_obra DECIMAL(10,2) NOT NULL,
+    prazo_entrega_dias INT NULL,
+    observacoes_tecnicas TEXT NULL,
+    status_aprovacao ENUM('pendente', 'aprovado', 'recusado') NOT NULL DEFAULT 'pendente',
+    data_criacao_orcamento DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Adicionado
+    FOREIGN KEY (id_solicitacao) REFERENCES SolicitacaoServico(id_solicitacao) ON DELETE CASCADE,
+    FOREIGN KEY (id_analista) REFERENCES Usuario(id_usuario)
+);
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+-- Tabela de Chamados de Suporte (Help Desk)
+CREATE TABLE ChamadoSuporte (
+    id_chamado INT PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INT NOT NULL,
+    assunto VARCHAR(100) NOT NULL,
+    descricao TEXT NOT NULL,
+    categoria VARCHAR(100) NULL,
+    data_abertura DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('aberto', 'em_andamento', 'respondido', 'encerrado', 'resolvido') NOT NULL DEFAULT 'aberto',
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente)
+);
+
+-- Tabela de Logs de Auditoria
+CREATE TABLE LogAuditoria (
+    id_log INT PRIMARY KEY AUTO_INCREMENT,
+    id_usuario INT NULL,
+    id_cliente INT NULL,
+    tipo_acao VARCHAR(50) NOT NULL,
+    detalhes_acao TEXT NOT NULL,
+    data_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resultado ENUM('sucesso', 'falha') NOT NULL,
+    ip_address VARCHAR(45) NULL,
+    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario) ON DELETE SET NULL,
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente) ON DELETE SET NULL
+);
+
+-- Tabela de Termos de Consentimento (LGPD)
+CREATE TABLE TermoConsentimento (
+    id_termo INT PRIMARY KEY AUTO_INCREMENT,
+    conteudo TEXT NOT NULL,
+    versao VARCHAR(20) NOT NULL UNIQUE,
+    data_efetiva DATE NOT NULL
+);
+
+-- Tabela de Consentimento dos Usuários aos Termos (LGPD)
+CREATE TABLE ConsentimentoUsuario (
+    id_consentimento INT PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INT NOT NULL,
+    id_termo INT NOT NULL,
+    data_aceite DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    data_revogacao DATETIME NULL,
+    ip_address_aceite VARCHAR(45) NULL,
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente) ON DELETE CASCADE,
+    FOREIGN KEY (id_termo) REFERENCES TermoConsentimento(id_termo)
+);
+
+-- Tabela de Carrinho de Compras
+CREATE TABLE Carrinho (
+    id_carrinho INT PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INT NOT NULL UNIQUE,
+    data_criacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    data_ultima_modificacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente) ON DELETE CASCADE
+);
+
+-- Tabela de Itens do Carrinho de Compras
+CREATE TABLE ItemCarrinho (
+    id_item_carrinho INT PRIMARY KEY AUTO_INCREMENT,
+    id_carrinho INT NOT NULL,
+    id_produto INT NOT NULL,
+    quantidade INT NOT NULL,
+    preco_unitario_no_momento_adicao DECIMAL(10,2) NOT NULL,
+    data_adicao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_carrinho) REFERENCES Carrinho(id_carrinho) ON DELETE CASCADE,
+    FOREIGN KEY (id_produto) REFERENCES Produto(id_produto) ON DELETE CASCADE,
+    UNIQUE KEY (id_carrinho, id_produto)
+);
+
+-- Dados de Exemplo (senhas 'admin123' e 'cliente123')
+-- Bcrypt hash para 'admin123': $2a$08$kEn/J8s5k0YqkHHYTAA0.uX096ecvy2k1/SLQFxGWzCHYn7SiKI5K
+-- Bcrypt hash para 'cliente123': $2a$08$m0gL9T.9Xb0hQz9s7JdJhe0N08N1sX60lK7b8gQ8wYh7I.t6dZ6gG
+INSERT INTO Usuario (email, senha_hash, tipo_perfil, status) VALUES 
+('admin@unifafibe.com', '$2a$08$kEn/J8s5k0YqkHHYTAA0.uX096ecvy2k1/SLQFxGWzCHYn7SiKI5K', 'admin', 'ativo'),
+('analista@unifafibe.com', '$2a$08$kEn/J8s5k0YqkHHYTAA0.uX096ecvy2k1/SLQFxGWzCHYn7SiKI5K', 'analista', 'ativo');
+
+INSERT INTO Cliente (nome, email, senha_hash, cpf_cnpj, endereco, telefone, status) VALUES 
+('João Silva Exemplo', 'joao@email.com', '$2a$08$m0gL9T.9Xb0hQz9s7JdJhe0N08N1sX60lK7b8gQ8wYh7I.t6dZ6gG', '123.456.789-00', 'Rua Exemplo, 123, Cidade Exemplo, EX', '(11) 99999-8888', 'ativo');
