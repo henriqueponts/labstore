@@ -175,9 +175,10 @@ CREATE TABLE ItemCarrinho (
     UNIQUE KEY (id_carrinho, id_produto)
 );
 
-
---SENHA ADMIN É 123
+--admin@gmail.com
+--analista@gmail.com
+--SENHA É 123
 
 INSERT INTO Usuario (email, senha_hash, tipo_perfil, status) VALUES 
-('admin@gmail.com', '$10$Rslrf6oSMi.IfCTxhUHiAOTWo7BdKrXfcGaAWSg45ZGur8cxxBObi', 'admin', 'ativo'),
-('analista@gmail.com', '$10$Rslrf6oSMi.IfCTxhUHiAOTWo7BdKrXfcGaAWSg45ZGur8cxxBObi', 'analista', 'ativo');
+('admin@gmail.com', '$2b$10$be0jgPSIoDkVMjyNHLAsF.ABFs/dZUVapI8/AhT.M3sHSwhWUl4YK', 'admin', 'ativo'),
+('analista@gmail.com', '$2b$10$be0jgPSIoDkVMjyNHLAsF.ABFs/dZUVapI8/AhT.M3sHSwhWUl4YK', 'analista', 'ativo');

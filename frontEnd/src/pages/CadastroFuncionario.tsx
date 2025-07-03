@@ -30,10 +30,10 @@ const CadastroFuncionario: React.FC = () => {
             return false;
         }
 
-        // if (values.senha.length < 6) {
-        //     setError('A senha deve ter pelo menos 6 caracteres.');
-        //     return false;
-        // }
+        if (values.senha.length < 6) {
+            setError('A senha deve ter pelo menos 6 caracteres.');
+            return false;
+        }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(values.email)) {
