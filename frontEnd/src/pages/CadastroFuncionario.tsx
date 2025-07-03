@@ -30,10 +30,10 @@ const CadastroFuncionario: React.FC = () => {
             return false;
         }
 
-        if (values.senha.length < 6) {
-            setError('A senha deve ter pelo menos 6 caracteres.');
-            return false;
-        }
+        // if (values.senha.length < 6) {
+        //     setError('A senha deve ter pelo menos 6 caracteres.');
+        //     return false;
+        // }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(values.email)) {
@@ -54,7 +54,9 @@ const CadastroFuncionario: React.FC = () => {
         setLoading(true);
         
         try {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { confirmarSenha, ...submitData } = values;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const response = await axios.post('http://localhost:3000/auth/registro/funcionario', submitData);
             
             alert('Funcionário cadastrado com sucesso! Você pode fazer login agora.');

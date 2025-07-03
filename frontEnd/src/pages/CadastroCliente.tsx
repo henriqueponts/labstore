@@ -57,7 +57,9 @@ const CadastroCliente: React.FC = () => {
         setLoading(true);
         
         try {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { confirmarSenha, ...submitData } = values;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const response = await axios.post('http://localhost:3000/auth/registro/cliente', submitData);
             
             alert('Cliente cadastrado com sucesso! Você pode fazer login agora.');

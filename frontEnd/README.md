@@ -1,4 +1,5 @@
 -- Cria o banco de dados se ele não existir
+
 CREATE DATABASE IF NOT EXISTS labstore;
 USE labstore;
 
@@ -174,12 +175,9 @@ CREATE TABLE ItemCarrinho (
     UNIQUE KEY (id_carrinho, id_produto)
 );
 
--- Dados de Exemplo (senhas 'admin123' e 'cliente123')
--- Bcrypt hash para 'admin123': $2a$08$kEn/J8s5k0YqkHHYTAA0.uX096ecvy2k1/SLQFxGWzCHYn7SiKI5K
--- Bcrypt hash para 'cliente123': $2a$08$m0gL9T.9Xb0hQz9s7JdJhe0N08N1sX60lK7b8gQ8wYh7I.t6dZ6gG
-INSERT INTO Usuario (email, senha_hash, tipo_perfil, status) VALUES 
-('admin@unifafibe.com', '$2a$08$kEn/J8s5k0YqkHHYTAA0.uX096ecvy2k1/SLQFxGWzCHYn7SiKI5K', 'admin', 'ativo'),
-('analista@unifafibe.com', '$2a$08$kEn/J8s5k0YqkHHYTAA0.uX096ecvy2k1/SLQFxGWzCHYn7SiKI5K', 'analista', 'ativo');
 
-INSERT INTO Cliente (nome, email, senha_hash, cpf_cnpj, endereco, telefone, status) VALUES 
-('João Silva Exemplo', 'joao@email.com', '$2a$08$m0gL9T.9Xb0hQz9s7JdJhe0N08N1sX60lK7b8gQ8wYh7I.t6dZ6gG', '123.456.789-00', 'Rua Exemplo, 123, Cidade Exemplo, EX', '(11) 99999-8888', 'ativo');
+--SENHA ADMIN É 123
+
+INSERT INTO Usuario (email, senha_hash, tipo_perfil, status) VALUES 
+('admin@gmail.com', '$10$Rslrf6oSMi.IfCTxhUHiAOTWo7BdKrXfcGaAWSg45ZGur8cxxBObi', 'admin', 'ativo'),
+('analista@gmail.com', '$10$Rslrf6oSMi.IfCTxhUHiAOTWo7BdKrXfcGaAWSg45ZGur8cxxBObi', 'analista', 'ativo');
