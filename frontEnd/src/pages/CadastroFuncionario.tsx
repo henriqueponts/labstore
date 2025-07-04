@@ -1,8 +1,10 @@
 import axios from 'axios';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Layout from '../components/Layout';
 
 const CadastroFuncionario: React.FC = () => {
+    
     const [values, setValues] = useState({
         email: '',
         senha: '',
@@ -76,6 +78,7 @@ const CadastroFuncionario: React.FC = () => {
     }
 
     return (
+        <Layout>
         <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
             <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
                 <div className="text-center mb-6">
@@ -198,6 +201,7 @@ const CadastroFuncionario: React.FC = () => {
                 </form>
             </div>
         </div>
+        </Layout>
     );
 };
 

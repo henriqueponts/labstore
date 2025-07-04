@@ -5,18 +5,15 @@ import {
   User, 
   Search, 
   Menu, 
-//   Phone, 
-//   Mail,
+  Wrench,
+  CircleQuestionMark,
+  Scale,
+  Users,
   LogOut,
   Package,
-  Settings,
   BarChart3,
   Headphones,
   Monitor,
-  Smartphone,
-  Tablet,
-  Cpu,
-  HardDrive,
   X
 } from 'lucide-react';
 
@@ -142,12 +139,12 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
               Produtos
             </a>
             <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
-              <Smartphone size={16} className="mr-1" />
-              Suporte Técnico
+              <Wrench size={16} className="mr-1" />
+              Assistência Técnica
             </a>
             <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
-              <Tablet size={16} className="mr-1" />
-              Central de Ajuda
+              <CircleQuestionMark size={16} className="mr-1" />
+              Ajuda
             </a>
            
             {/* Menu administrativo */}
@@ -160,8 +157,8 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 </a>
 
                 <a href="#" className="flex items-center text-green-700 hover:text-green-600 transition-colors">
-                  <Package size={16} className="mr-1" />
-                  Solicitações Técnicas
+                  <Wrench size={16} className="mr-1" />
+                  Solicitações
                 </a>
 
                 <a href="#" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors">
@@ -172,12 +169,16 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
 
                                 {usuario.tipo_perfil === 'admin' && (
                   <>
-                    <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
-                      <Settings size={16} className="mr-1" />
+                    <a href="/gestao/usuarios" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
+                      <Users size={16} className="mr-1" />
                       Usuários
                     </a>
-                    <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
+                                        <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
                       <BarChart3 size={16} className="mr-1" />
+                      Relatórios
+                    </a>
+                    <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
+                      <Scale size={16} className="mr-1" />
                       LGPD
                     </a>
                   </>
@@ -197,23 +198,15 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
               <h4 className="font-semibold text-gray-800 text-sm">Categorias</h4>
               <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
                 <Monitor size={16} className="mr-2" />
-                Notebooks
+                Produtos
               </a>
               <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
-                <Smartphone size={16} className="mr-2" />
-                Smartphones
+                <Wrench size={16} className="mr-2" />
+                Assistência Técnica
               </a>
               <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
-                <Tablet size={16} className="mr-2" />
-                Tablets
-              </a>
-              <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
-                <Cpu size={16} className="mr-2" />
-                Componentes
-              </a>
-              <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
-                <HardDrive size={16} className="mr-2" />
-                Armazenamento
+                <CircleQuestionMark size={16} className="mr-2" />
+                Ajuda
               </a>
             </div>
             
@@ -223,24 +216,35 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 <h4 className="font-semibold text-gray-800 text-sm">Administração</h4>
                 <a href="#" className="flex items-center text-green-700 hover:text-green-600 transition-colors py-2">
                   <Package size={16} className="mr-2" />
-                  Pedidos
+                  Gerenciar Produtos
                 </a>
-                {usuario.tipo_perfil === 'admin' && (
+
+                <a href="#" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2">
+                  <Wrench size={16} className="mr-2" />
+                  Solicitações
+                </a>
+
+                                <a href="#" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2">
+                  <Headphones size={16} className="mr-2" />
+                  Chamados
+                </a>
+                                {usuario.tipo_perfil === 'admin' && (
                   <>
                     <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2">
-                      <Settings size={16} className="mr-2" />
-                      Gestão
+                      <Users size={16} className="mr-2" />
+                      Usuários
                     </a>
                     <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2">
                       <BarChart3 size={16} className="mr-2" />
                       Relatórios
                     </a>
+                    
+                    <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2">
+                      <Scale size={16} className="mr-2" />
+                      LGPD
+                    </a>
                   </>
                 )}
-                <a href="#" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2">
-                  <Headphones size={16} className="mr-2" />
-                  Suporte
-                </a>
               </div>
             )}
           </div>

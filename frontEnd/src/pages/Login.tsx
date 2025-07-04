@@ -53,11 +53,11 @@ const Login: React.FC = () => {
         <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
             <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
                 <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">
-                        Entrar no Sistema
-                    </h2>
+                    <a href="/"><h2 className="text-2xl font-bold text-gray-800">
+                        LAB Store
+                    </h2></a>
                     <p className="text-gray-600 text-sm mt-2">
-                        Acesso para clientes e funcionários
+                        Acesse sua conta
                     </p>
                 </div>
                 
@@ -80,7 +80,7 @@ const Login: React.FC = () => {
                             name="email"
                             value={values.email}
                             onChange={handleChanges}
-                            placeholder="seu@email.com"
+                            placeholder="Digite seu email"
                             className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                         />
