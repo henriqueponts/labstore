@@ -1,6 +1,8 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import Header from '../components/Header';
+import { useNavigate } from 'react-router-dom';
+
 interface UsuarioData {
   id_cliente?: number;
   id_usuario?: number;
@@ -11,8 +13,10 @@ interface UsuarioData {
 }
 
 const Home: React.FC = () => {
+
   const [usuario, setUsuario] = useState<UsuarioData | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
 
   // Verificar se há usuário logado (opcional)
   const checkUser = async () => {
@@ -43,7 +47,9 @@ const Home: React.FC = () => {
     localStorage.removeItem('usuario');
     setUsuario(null);
     delete axios.defaults.headers.common['Authorization'];
-  };
+    
+    // Redireciona para a página inicial
+    navigate('/');}
 
   return (
     <div className="min-h-screen bg-gray-50">

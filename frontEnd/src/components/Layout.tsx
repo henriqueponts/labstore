@@ -5,6 +5,8 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import Header from './Header';
+import { useNavigate } from 'react-router-dom';
+
 
 interface UsuarioData {
   id_cliente?: number;
@@ -28,6 +30,7 @@ const Layout: React.FC<LayoutProps> = ({
   backgroundColor = "bg-gray-50",
   showLoading = true 
 }) => {
+  const navigate = useNavigate();
   const [usuario, setUsuario] = useState<UsuarioData | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -62,6 +65,9 @@ const Layout: React.FC<LayoutProps> = ({
     localStorage.removeItem('usuario');
     setUsuario(null);
     delete axios.defaults.headers.common['Authorization'];
+    
+    // Redireciona para a página inicial
+    navigate('/');
   };
 
   if (loading && showLoading) {

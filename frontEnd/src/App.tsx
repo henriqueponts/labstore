@@ -3,6 +3,7 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import CadastroCliente from './pages/CadastroCliente.tsx'
 import CadastroFuncionario from './pages/CadastroFuncionario.tsx'
+import GestaoUsuarios from './pages/GestaoUsuarios.tsx'
 
 function App() {
   return (
@@ -12,9 +13,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro/cliente" element={<CadastroCliente />} />
         <Route path="/cadastro/funcionario" element={<CadastroFuncionario />} />
-        
-        {/* Rotas de compatibilidade com o sistema antigo */}
-        <Route path="/registro" element={<CadastroFuncionario />} />
+        <Route path="/gestao/usuarios" element={<GestaoUsuarios />} />
       </Routes>
     </BrowserRouter>
   )
