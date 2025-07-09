@@ -4,6 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
 import gestaoRoutes from './routes/gestaoRoutes.js';
+import recuperacaoSenhaRoutes from './routes/recuperacaoSenha.js';
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.get('/', (req, res) => {
 console.log('🔗 Registrando rotas...');
 app.use('/auth', authRoutes);
 app.use('/gestao', gestaoRoutes);
+app.use('/auth', recuperacaoSenhaRoutes);
 console.log('✅ Rotas registradas!');
 
 const PORT = process.env.PORT || 3000;

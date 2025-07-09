@@ -124,6 +124,13 @@ const Login: React.FC = () => {
                             </span>
                             <a href="/cadastro/cliente"> Registre-se </a>
                         </div>
+
+                        <div className="text-center mb-3">
+                            <a href="/esqueceu-senha">
+                                Esqueceu sua senha?
+                            </a>
+                        </div>
+
                     </div>
                 </form>
             </div>
