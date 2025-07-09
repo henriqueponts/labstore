@@ -6,6 +6,7 @@ USE labstore;
 -- Tabela de Usuários (Administradores, Analistas)
 CREATE TABLE Usuario (
     id_usuario INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     senha_hash VARCHAR(255) NOT NULL,
     tipo_perfil ENUM('admin', 'analista') NOT NULL,

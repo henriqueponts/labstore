@@ -2,10 +2,11 @@ import axios from 'axios';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { Mail, Lock, Briefcase, UserPlus, ArrowLeft } from 'lucide-react'; // Added UserPlus and ArrowLeft for consistency
+import { UserPlus, ArrowLeft, User } from 'lucide-react'; // Added UserPlus and ArrowLeft for consistency
 
 const CadastroFuncionario: React.FC = () => {
     const [values, setValues] = useState({
+        nome: '',
         email: '',
         senha: '',
         confirmarSenha: '',
@@ -24,7 +25,7 @@ const CadastroFuncionario: React.FC = () => {
     }
 
     const validateForm = (): boolean => {
-        if (!values.email || !values.senha || !values.tipo_perfil) {
+        if (!values.nome || !values.email || !values.senha || !values.tipo_perfil) {
             setError('Por favor, preencha todos os campos obrigatórios.');
             return false;
         }
@@ -48,6 +49,8 @@ const CadastroFuncionario: React.FC = () => {
         return true;
     }
 
+
+    
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
         e.preventDefault();
         
@@ -78,6 +81,7 @@ const CadastroFuncionario: React.FC = () => {
             
             setSuccess(response.data.message || 'Funcionário cadastrado com sucesso!');
             setValues({ // Clear form after successful submission
+                nome: '',
                 email: '',
                 senha: '',
                 confirmarSenha: '',
@@ -134,6 +138,24 @@ const CadastroFuncionario: React.FC = () => {
                             </div>
                         )}
                         
+                        {/* Nome */}
+                        <div className="mb-4">
+                            <label htmlFor="nome" className="block text-sm font-medium text-gray-700 mb-1">
+                                <User className="inline-block w-4 h-4 mr-1" />
+                                Nome Completo *
+                            </label>
+                            <input
+                                type="text"
+                                id="nome"
+                                name="nome"
+                                value={values.nome}
+                                onChange={handleChanges}
+                                placeholder="Nome do funcionário"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                required
+                            />
+                        </div>
+
                         {/* Email */}
                         <div className="mb-4">
                             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">

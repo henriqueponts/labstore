@@ -17,6 +17,7 @@ import {
 
 interface Usuario {
   id_usuario: number;
+  nome: string;
   email: string;
   tipo_perfil: 'admin' | 'analista';
   data_cadastro: string;
@@ -263,6 +264,9 @@ const GestaoUsuarios: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Nome
+                  </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -282,6 +286,9 @@ const GestaoUsuarios: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {usuarios.map((usuario) => (
                     <tr key={usuario.id_usuario} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{usuario.nome}</div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <Mail size={16} className="text-gray-400 mr-2" />

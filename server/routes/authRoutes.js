@@ -33,6 +33,7 @@ router.post('/login', async (req, res) => {
                 token: token,
                 usuario: {
                     id: funcionario.id_usuario,
+                    nome: funcionario.nome, // Adicionar nome
                     email: funcionario.email,
                     tipo_perfil: funcionario.tipo_perfil,
                     tipo: 'funcionario'
@@ -110,7 +111,7 @@ router.post('/registro/cliente', async (req, res) => {
 
 // Cadastro de Funcionário (Admin/Técnico)
 router.post('/registro/funcionario', async (req, res) => {
-    const { email, senha, tipo_perfil } = req.body;
+    const { nome, email, senha, tipo_perfil } = req.body;
     
     // Validar tipo de perfil
     if (!['admin', 'analista'].includes(tipo_perfil)) {
@@ -128,8 +129,8 @@ router.post('/registro/funcionario', async (req, res) => {
 
         const hashPassword = await bcrypt.hash(senha, 10)
         await db.query(
-            'INSERT INTO Usuario (email, senha_hash, tipo_perfil) VALUES (?, ?, ?)', 
-            [email, hashPassword, tipo_perfil]
+            'INSERT INTO Usuario (nome, email, senha_hash, tipo_perfil) VALUES (?, ?, ?, ?)', 
+            [nome, email, hashPassword, tipo_perfil]
         )
         
         res.status(201).json({ message: 'Funcionário registrado com sucesso!' })
@@ -173,7 +174,7 @@ router.get('/me', verifyToken, async (req, res) => {
                 tipo: 'cliente' 
             })
         } else if (req.userType === 'funcionario') {
-            const [rows] = await db.query('SELECT id_usuario, email, tipo_perfil FROM Usuario WHERE id_usuario = ?', [req.userId])
+            const [rows] = await db.query('SELECT id_usuario, nome, email, tipo_perfil FROM Usuario WHERE id_usuario = ?', [req.userId])
             if (rows.length === 0) {
                 return res.status(404).json({ message: 'Funcionário não encontrado!' })
             }

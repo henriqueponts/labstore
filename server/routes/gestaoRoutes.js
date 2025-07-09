@@ -46,7 +46,7 @@ router.get('/usuarios', verifyAdmin, async (req, res) => {
     try {
         const db = await connectToDatabase();
         const [usuarios] = await db.query(`
-            SELECT id_usuario, email, tipo_perfil, data_cadastro, status 
+            SELECT id_usuario, nome, email, tipo_perfil, data_cadastro, status 
             FROM Usuario 
             ORDER BY data_cadastro DESC
         `);
