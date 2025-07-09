@@ -7,6 +7,8 @@ import GestaoUsuarios from './pages/GestaoUsuarios.tsx'
 import EsqueceuSenha from './pages/EsqueceuSenha';
 import RedefinirSenha from './pages/RedefinirSenha';
 import AlterarSenha from './pages/AlterarSenha';
+import CentralAjudaPage from './pages/CentralAjudaPage.tsx'
+import AdminChamadosPage from './pages/AdminChamadosPage.tsx'
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
         <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
         <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         <Route path="/alterar-senha" element={<AlterarSenha />} />
+        <Route path="/central-ajuda" element={<CentralAjudaPage />} />
+        <Route path="/gestao/chamados" element={<AdminChamadosPage />} />
       </Routes>
     </BrowserRouter>
   )

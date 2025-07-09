@@ -5,6 +5,7 @@ import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
 import gestaoRoutes from './routes/gestaoRoutes.js';
 import recuperacaoSenhaRoutes from './routes/recuperacaoSenha.js';
+import chamadosRoutes from './routes/chamadosRoutes.js';
 
 const app = express();
 
@@ -21,7 +22,17 @@ app.get('/', (req, res) => {
         version: '1.0.0',
         routes: {
             auth: ['/auth/login', '/auth/me', '/auth/registro/cliente', '/auth/registro/funcionario'],
-            gestao: ['/gestao/usuarios', '/gestao/clientes']
+            gestao: ['/gestao/usuarios', '/gestao/clientes'], 
+            chamados: [
+                '/chamados/meus-chamados', 
+                '/chamados/criar', 
+                '/chamados/:id/encerrar', 
+                '/chamados/todos',
+                '/chamados/:id',
+                '/chamados/:id/status',
+                '/chamados/:id/responder',
+                '/chamados/stats/dashboard'
+            ]
         },
         status: 'online'
     });
@@ -32,6 +43,7 @@ console.log('🔗 Registrando rotas...');
 app.use('/auth', authRoutes);
 app.use('/gestao', gestaoRoutes);
 app.use('/auth', recuperacaoSenhaRoutes);
+app.use('/chamados', chamadosRoutes);
 console.log('✅ Rotas registradas!');
 
 const PORT = process.env.PORT || 3000;
@@ -50,6 +62,11 @@ app.listen(PORT, () => {
     console.log('  - PUT  /gestao/usuarios/:id/perfil');
     console.log('  - PUT  /gestao/usuarios/:id/inativar');
     console.log('  - PUT  /gestao/clientes/:id/inativar');
+    console.log('  - GET  /chamados/meus-chamados');
+    console.log('  - POST /chamados/criar');
+    console.log('  - PUT  /chamados/:id/encerrar');
+    console.log('  - GET  /chamados/todos');
+    console.log('  - PUT  /chamados/:id/status');
     console.log('');
     console.log('🗄️  Conecte ao banco MySQL e configure JWT_SECRET no .env');
 });

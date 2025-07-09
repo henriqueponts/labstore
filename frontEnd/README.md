@@ -175,6 +175,64 @@ CREATE TABLE ItemCarrinho (
     UNIQUE KEY (id_carrinho, id_produto)
 );
 
+CREATE TABLE IF NOT EXISTS reset_senha (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  token VARCHAR(255) NOT NULL,
+  expira_em TIMESTAMP NOT NULL,
+  tipo_usuario ENUM('cliente', 'funcionario') NOT NULL,
+  data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY email_unico (email)
+);
+
+-- Tabela de Chamados de Suporte (Help Desk)
+CREATE TABLE ChamadoSuporte (
+    id_chamado INT PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INT NOT NULL,
+    assunto VARCHAR(100) NOT NULL,
+    descricao TEXT NOT NULL,
+    categoria VARCHAR(100) NULL,
+    funcionario_responsavel INT NULL,
+    ultima_resposta TEXT NULL,
+    proximo_responder ENUM('cliente', 'funcionario') DEFAULT 'funcionario',
+    total_respostas INT DEFAULT 0,
+    ultima_atividade TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    data_ultima_resposta TIMESTAMP,
+    data_abertura DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('aberto', 'em_andamento', 'respondido', 'aguardando_cliente', 'aguardando_funcionario', 'resolvido', 'encerrado') NOT NULL DEFAULT 'aberto',
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente),
+    FOREIGN KEY (funcionario_responsavel) REFERENCES Usuario(id_usuario) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS RespostaChamado (
+    id_resposta INT AUTO_INCREMENT PRIMARY KEY,
+    id_chamado INT NOT NULL,
+    id_funcionario INT NULL,
+    id_cliente INT NULL,
+    resposta TEXT NOT NULL,
+    data_resposta TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    tipo_usuario ENUM('cliente', 'funcionario') NOT NULL,
+    FOREIGN KEY (id_chamado) REFERENCES ChamadoSuporte(id_chamado) ON DELETE CASCADE,
+    FOREIGN KEY (id_funcionario) REFERENCES Usuario(id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente) ON DELETE CASCADE,
+    INDEX idx_chamado (id_chamado),
+    INDEX idx_funcionario (id_funcionario),
+    INDEX idx_data (data_resposta)
+);
+
+DELIMITER //
+CREATE TRIGGER update_chamado_stats 
+AFTER INSERT ON RespostaChamado
+FOR EACH ROW
+BEGIN
+    UPDATE ChamadoSuporte 
+    SET total_respostas = total_respostas + 1,
+        ultima_atividade = NOW()
+    WHERE id_chamado = NEW.id_chamado;
+END//
+DELIMITER ;
+
+
 --admin@gmail.com
 --analista@gmail.com
 --SENHA É 123

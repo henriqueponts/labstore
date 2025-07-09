@@ -142,7 +142,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
               <Wrench size={16} className="mr-1" />
               Assistência Técnica
             </a>
-            <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
+            <a href="/central-ajuda" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
               <CircleQuestionMark size={16} className="mr-1" />
               Ajuda
             </a>
@@ -161,7 +161,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   Solicitações
                 </a>
 
-                <a href="#" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors">
+                <a href="/gestao/chamados" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors">
                   <Headphones size={16} className="mr-1" />
                   Chamados
                 </a>
