@@ -8,12 +8,9 @@ import Layout from "../components/Layout"
 import {
   ArrowLeft,
   Search,
-  Phone,
-  Mail,
   ChevronDown,
   ChevronUp,
   Package,
-  ChevronRight,
   Plus,
   X,
   AlertCircle,
@@ -34,14 +31,7 @@ interface Chamado {
   assunto: string
   descricao: string
   categoria: string | null
-  status:
-    | "aberto"
-    | "em_andamento"
-    | "respondido"
-    | "aguardando_cliente"
-    | "aguardando_funcionario"
-    | "resolvido"
-    | "encerrado"
+  status: "aberto" | "aguardando_cliente" | "aguardando_funcionario" | "resolvido" | "encerrado"
   data_abertura: string
   proximo_responder?: "cliente" | "funcionario"
   total_respostas?: number
@@ -120,7 +110,7 @@ const faqsEstaticas: FAQ[] = [
 
 const CentralAjudaPage: React.FC = () => {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<"faq" | "contact">("faq")
+  // Remover activeTab - não precisamos mais de abas
   const [searchTerm, setSearchTerm] = useState("")
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null)
   const [showTicketForm, setShowTicketForm] = useState(false)
@@ -133,7 +123,16 @@ const CentralAjudaPage: React.FC = () => {
 
   // Adicionar após os estados existentes
   const [showChamadoDetalhes, setShowChamadoDetalhes] = useState(false)
-  const [chamadoDetalhado, setChamadoDetalhado] = useState<any>(null)
+  interface Resposta {
+    resposta: string
+    tipo_usuario: "cliente" | "funcionario"
+    nome_usuario?: string
+    data_resposta: string
+  }
+
+  const [chamadoDetalhado, setChamadoDetalhado] = useState<
+    (Chamado & { respostas?: Resposta[]; funcionario_nome?: string }) | null
+  >(null)
 
   // Adicionar após os estados existentes
   const [respostaCliente, setRespostaCliente] = useState("")
@@ -166,10 +165,6 @@ const CentralAjudaPage: React.FC = () => {
     }
   }
 
-  useEffect(() => {
-    checkUser()
-  }, [])
-
   // Verificar se usuário está logado
   const isLoggedIn = () => {
     return !!localStorage.getItem("token")
@@ -197,13 +192,23 @@ const CentralAjudaPage: React.FC = () => {
         headers: { Authorization: `Bearer ${token}` },
       })
       setChamados(response.data)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erro ao buscar chamados:", err)
-      if (err.response?.status === 401) {
-        setError("Sessão expirada. Faça login novamente.")
-        localStorage.removeItem("token")
-      } else if (err.response?.status === 403) {
-        setError("Acesso negado. Apenas clientes podem visualizar chamados próprios.")
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: unknown }).response === "object"
+      ) {
+        const response = (err as { response?: { status?: number } }).response
+        if (response?.status === 401) {
+          setError("Sessão expirada. Faça login novamente.")
+          localStorage.removeItem("token")
+        } else if (response?.status === 403) {
+          setError("Acesso negado. Apenas clientes podem visualizar chamados próprios.")
+        } else {
+          setError("Erro ao carregar chamados")
+        }
       } else {
         setError("Erro ao carregar chamados")
       }
@@ -213,10 +218,14 @@ const CentralAjudaPage: React.FC = () => {
   }
 
   useEffect(() => {
-    if (showMyTickets) {
+    checkUser()
+  }, [])
+
+  useEffect(() => {
+    if (isLoggedIn() && isCliente()) {
       fetchChamados()
     }
-  }, [showMyTickets, usuario])
+  }, [usuario])
 
   // Criar novo chamado (apenas para clientes)
   const handleSubmitTicket = async (e: React.FormEvent) => {
@@ -262,19 +271,27 @@ const CentralAjudaPage: React.FC = () => {
       setDescription("")
       setShowTicketForm(false)
 
-      // Refresh chamados se estiver na tela de chamados
-      if (showMyTickets) {
-        fetchChamados()
-      }
-    } catch (err: any) {
+      // Atualizar lista de chamados sempre após criar um novo chamado
+      fetchChamados()
+    } catch (err: unknown) {
       console.error("Erro ao criar chamado:", err)
-      if (err.response?.status === 401) {
-        setError("Sessão expirada. Faça login novamente.")
-        localStorage.removeItem("token")
-      } else if (err.response?.status === 403) {
-        setError("Acesso negado. Apenas clientes podem abrir chamados.")
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: unknown }).response === "object"
+      ) {
+        const response = (err as { response?: { status?: number; data?: { message?: string } } }).response
+        if (response?.status === 401) {
+          setError("Sessão expirada. Faça login novamente.")
+          localStorage.removeItem("token")
+        } else if (response?.status === 403) {
+          setError("Acesso negado. Apenas clientes podem abrir chamados.")
+        } else {
+          setError(response?.data?.message || "Erro ao criar chamado")
+        }
       } else {
-        setError(err.response?.data?.message || "Erro ao criar chamado")
+        setError("Erro ao criar chamado")
       }
     } finally {
       setLoading(false)
@@ -299,13 +316,23 @@ const CentralAjudaPage: React.FC = () => {
 
       setSuccess("Chamado encerrado com sucesso!")
       fetchChamados() // Refresh lista
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erro ao encerrar chamado:", err)
-      if (err.response?.status === 401) {
-        setError("Sessão expirada. Faça login novamente.")
-        localStorage.removeItem("token")
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: unknown }).response === "object"
+      ) {
+        const response = (err as { response?: { status?: number; data?: { message?: string } } }).response
+        if (response?.status === 401) {
+          setError("Sessão expirada. Faça login novamente.")
+          localStorage.removeItem("token")
+        } else {
+          setError(response?.data?.message || "Erro ao encerrar chamado")
+        }
       } else {
-        setError(err.response?.data?.message || "Erro ao encerrar chamado")
+        setError("Erro ao encerrar chamado")
       }
     } finally {
       setLoading(false)
@@ -316,10 +343,6 @@ const CentralAjudaPage: React.FC = () => {
     switch (status) {
       case "aberto":
         return "text-blue-600 bg-blue-100"
-      case "em_andamento":
-        return "text-yellow-600 bg-yellow-100"
-      case "respondido":
-        return "text-purple-600 bg-purple-100"
       case "aguardando_cliente":
         return "text-orange-600 bg-orange-100"
       case "aguardando_funcionario":
@@ -337,10 +360,6 @@ const CentralAjudaPage: React.FC = () => {
     switch (status) {
       case "aberto":
         return "Aberto"
-      case "em_andamento":
-        return "Em Andamento"
-      case "respondido":
-        return "Respondido"
       case "aguardando_cliente":
         return "Aguardando Sua Resposta"
       case "aguardando_funcionario":
@@ -358,10 +377,6 @@ const CentralAjudaPage: React.FC = () => {
     switch (status) {
       case "aberto":
         return <AlertCircle className="w-4 h-4" />
-      case "em_andamento":
-        return <Clock className="w-4 h-4" />
-      case "respondido":
-        return <MessageSquare className="w-4 h-4" />
       case "aguardando_cliente":
         return <User className="w-4 h-4" />
       case "aguardando_funcionario":
@@ -396,7 +411,7 @@ const CentralAjudaPage: React.FC = () => {
       })
       setChamadoDetalhado(response.data)
       setShowChamadoDetalhes(true)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erro ao buscar detalhes do chamado:", err)
       setError("Erro ao carregar detalhes do chamado")
     } finally {
@@ -423,9 +438,19 @@ const CentralAjudaPage: React.FC = () => {
 
       // Atualizar detalhes do chamado
       await fetchChamadoDetalhes(chamadoDetalhado.id_chamado)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erro ao responder chamado:", err)
-      setError(err.response?.data?.message || "Erro ao enviar resposta")
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: { data?: { message?: string } } }).response === "object"
+      ) {
+        const response = (err as { response?: { data?: { message?: string } } }).response
+        setError(response?.data?.message || "Erro ao enviar resposta")
+      } else {
+        setError("Erro ao enviar resposta")
+      }
     } finally {
       setEnviandoResposta(false)
     }
@@ -435,7 +460,7 @@ const CentralAjudaPage: React.FC = () => {
   if (showChamadoDetalhes && chamadoDetalhado) {
     return (
       <Layout>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-8">
           <div className="flex items-center mb-8">
             <button
               onClick={() => {
@@ -532,7 +557,7 @@ const CentralAjudaPage: React.FC = () => {
 
               {chamadoDetalhado.respostas && chamadoDetalhado.respostas.length > 0 ? (
                 <div className="space-y-4">
-                  {chamadoDetalhado.respostas.map((resposta: any, index: number) => (
+                  {chamadoDetalhado.respostas.map((resposta: Resposta, index: number) => (
                     <div
                       key={index}
                       className={`border-l-4 pl-4 py-2 ${
@@ -683,7 +708,7 @@ const CentralAjudaPage: React.FC = () => {
                 Para gerenciar todos os chamados do sistema, acesse a área administrativa.
               </p>
               <button
-                onClick={() => navigate("/admin/chamados")}
+                onClick={() => navigate("/gestao/chamados")}
                 className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors mr-4"
               >
                 <Users className="w-4 h-4 inline mr-2" />
@@ -891,7 +916,7 @@ const CentralAjudaPage: React.FC = () => {
                 Funcionários não podem abrir chamados de suporte. Esta funcionalidade é exclusiva para clientes.
               </p>
               <button
-                onClick={() => navigate("/admin/chamados")}
+                onClick={() => navigate("/gestao/chamados")}
                 className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors mr-4"
               >
                 <Users className="w-4 h-4 inline mr-2" />
@@ -1016,7 +1041,7 @@ const CentralAjudaPage: React.FC = () => {
   // Tela Principal da Central de Ajuda
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-8">
         <div className="flex items-center mb-8">
           <button onClick={() => navigate("/")} className="flex items-center text-gray-600 hover:text-gray-800 mr-4">
             <ArrowLeft className="w-5 h-5 mr-2" />
@@ -1043,14 +1068,15 @@ const CentralAjudaPage: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Main Content */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
+          <div className="lg:col-span-3 space-y-6">
+            {/* Seção de Busca */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Como podemos ajudar?</h2>
               <p className="text-gray-600 mb-4">Pesquise por dúvidas frequentes ou entre em contato conosco</p>
 
-              <div className="relative mb-6">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
@@ -1060,186 +1086,157 @@ const CentralAjudaPage: React.FC = () => {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+            </div>
 
-              <div className="flex space-x-1 mb-6 border-b border-gray-200">
-                <button
-                  onClick={() => setActiveTab("faq")}
-                  className={`px-4 py-2 rounded-t-md transition-colors ${
-                    activeTab === "faq"
-                      ? "bg-blue-50 text-blue-700 border-b-2 border-blue-700"
-                      : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                  }`}
-                >
-                  Perguntas Frequentes
-                </button>
-                <button
-                  onClick={() => setActiveTab("contact")}
-                  className={`px-4 py-2 rounded-t-md transition-colors ${
-                    activeTab === "contact"
-                      ? "bg-blue-50 text-blue-700 border-b-2 border-blue-700"
-                      : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                  }`}
-                >
-                  Fale Conosco
-                </button>
+            {/* Perguntas Frequentes */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+              <div className="flex items-center mb-4">
+                <Package className="w-5 h-5 text-gray-600 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Perguntas Frequentes</h3>
               </div>
 
-              {activeTab === "faq" && (
-                <div>
-                  <div className="flex items-center mb-4">
-                    <Package className="w-5 h-5 text-gray-600 mr-2" />
-                    <h3 className="text-lg font-semibold text-gray-900">Perguntas Frequentes</h3>
+              <div className="space-y-2">
+                {filteredFAQs.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">Nenhuma pergunta encontrada para "{searchTerm}"</p>
                   </div>
-
-                  <div className="space-y-2">
-                    {filteredFAQs.length === 0 ? (
-                      <div className="text-center py-8">
-                        <p className="text-gray-500">Nenhuma pergunta encontrada para "{searchTerm}"</p>
-                      </div>
-                    ) : (
-                      filteredFAQs.map((faq) => (
-                        <div key={faq.id} className="border border-gray-200 rounded-md">
-                          <button
-                            onClick={() => setExpandedFAQ(expandedFAQ === faq.id ? null : faq.id)}
-                            className="w-full px-4 py-3 text-left flex justify-between items-center hover:bg-gray-50 transition-colors"
-                          >
-                            <span className="text-gray-900 font-medium">{faq.question}</span>
-                            {expandedFAQ === faq.id ? (
-                              <ChevronUp className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                            ) : (
-                              <ChevronDown className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                            )}
-                          </button>
-                          {expandedFAQ === faq.id && (
-                            <div className="px-4 pb-3 text-gray-600 border-t border-gray-200 bg-gray-50">
-                              <p className="pt-3">{faq.answer}</p>
-                            </div>
-                          )}
+                ) : (
+                  filteredFAQs.map((faq) => (
+                    <div key={faq.id} className="border border-gray-200 rounded-md">
+                      <button
+                        onClick={() => setExpandedFAQ(expandedFAQ === faq.id ? null : faq.id)}
+                        className="w-full px-4 py-3 text-left flex justify-between items-center hover:bg-gray-50 transition-colors"
+                      >
+                        <span className="text-gray-900 font-medium">{faq.question}</span>
+                        {expandedFAQ === faq.id ? (
+                          <ChevronUp className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                        )}
+                      </button>
+                      {expandedFAQ === faq.id && (
+                        <div className="px-4 pb-3 text-gray-600 border-t border-gray-200 bg-gray-50">
+                          <p className="pt-3">{faq.answer}</p>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "contact" && (
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Não encontrou o que procurava?</h3>
-                    <p className="text-gray-600 mb-6">
-                      {isCliente()
-                        ? "Abra um chamado e nossa equipe entrará em contato com você"
-                        : isFuncionario()
-                          ? "Como funcionário, você pode gerenciar chamados na área administrativa"
-                          : "Faça login como cliente para abrir um chamado de suporte"}
-                    </p>
-
-                    {isCliente() && (
-                      <button
-                        onClick={() => setShowTicketForm(true)}
-                        className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors flex items-center mx-auto"
-                      >
-                        <Plus className="w-5 h-5 mr-2" />
-                        Abrir Chamado
-                      </button>
-                    )}
-
-                    {isFuncionario() && (
-                      <button
-                        onClick={() => navigate("/admin/chamados")}
-                        className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors flex items-center mx-auto"
-                      >
-                        <Users className="w-5 h-5 mr-2" />
-                        Gerenciar Chamados
-                      </button>
-                    )}
-
-                    {!isLoggedIn() && (
-                      <button
-                        onClick={() => navigate("/login")}
-                        className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors flex items-center mx-auto"
-                      >
-                        Fazer Login
-                      </button>
-                    )}
-                  </div>
-
-                  {isLoggedIn() && isCliente() && (
-                    <div className="border-t border-gray-200 pt-6">
-                      <button
-                        onClick={() => setShowMyTickets(true)}
-                        className="w-full text-left p-4 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h4 className="font-medium text-gray-900">Meus Chamados</h4>
-                            <p className="text-sm text-gray-600">Acompanhe o status dos seus chamados abertos</p>
-                          </div>
-                          <ChevronRight className="w-5 h-5 text-gray-400" />
-                        </div>
-                      </button>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Contact Channels */}
+          {/* Sidebar com 3 cards de mesma largura */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Card 1: Precisa de Ajuda? */}
             <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Canais de Atendimento</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Precisa de Ajuda?</h3>
+              <div className="text-center">
+                <p className="text-gray-600 mb-4">Não encontrou o que procurava?</p>
+                <p className="text-gray-600 mb-6">Abra um chamado e nossa equipe entrará em contato com você</p>
 
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <Phone className="w-5 h-5 text-gray-600 mt-1" />
-                  <div>
-                    <h4 className="font-medium text-gray-900">Telefone</h4>
-                    <p className="text-sm text-gray-600">(11) 9999-9999</p>
-                    <p className="text-xs text-gray-500">Segunda a Sexta, das 9h às 18h</p>
-                  </div>
-                </div>
+                {isCliente() && (
+                  <button
+                    onClick={() => setShowTicketForm(true)}
+                    className="w-full bg-blue-600 text-white px-4 py-3 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Abrir Chamado
+                  </button>
+                )}
 
-                <div className="flex items-start space-x-3">
-                  <Mail className="w-5 h-5 text-gray-600 mt-1" />
-                  <div>
-                    <h4 className="font-medium text-gray-900">E-mail</h4>
-                    <p className="text-sm text-gray-600">atendimento@labstore.com.br</p>
-                    <p className="text-xs text-gray-500">Resposta em até 24h úteis</p>
-                  </div>
-                </div>
+                {isFuncionario() && (
+                  <button
+                    onClick={() => navigate("/gestao/chamados")}
+                    className="w-full bg-blue-600 text-white px-4 py-3 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center"
+                  >
+                    <Users className="w-5 h-5 mr-2" />
+                    Gerenciar Chamados
+                  </button>
+                )}
+
+                {!isLoggedIn() && (
+                  <button
+                    onClick={() => navigate("/login")}
+                    className="w-full bg-blue-600 text-white px-4 py-3 rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    Fazer Login
+                  </button>
+                )}
+
+                {isLoggedIn() && isCliente() && (
+                  <button
+                    onClick={() => setShowMyTickets(true)}
+                    className="w-full bg-gray-200 text-gray-700 px-4 py-3 rounded-md hover:bg-gray-300 transition-colors flex items-center justify-center mt-3"
+                  >
+                    <MessageSquare className="w-5 h-5 mr-2" />
+                    Meus Chamados
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Quick Links */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Links Rápidos</h3>
+            {/* Card 2: Chamados em Andamento (apenas para clientes logados) */}
+            {isLoggedIn() && isCliente() && (
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Chamados em Andamento</h3>
 
-              <div className="space-y-2">
-                <button
-                  onClick={() => navigate("/pedidos")}
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-md transition-colors w-full text-left"
-                >
-                  <div className="flex items-center">
-                    <Package className="w-5 h-5 text-gray-600 mr-3" />
-                    <span className="text-gray-900">Meus Pedidos</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </button>
+                <div className="space-y-3">
+                  {chamados.filter((c) => c.status !== "encerrado").slice(0, 3).length === 0 ? (
+                    <div className="text-center py-4">
+                      <MessageSquare className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">Nenhum chamado em andamento</p>
+                    </div>
+                  ) : (
+                    chamados
+                      .filter((c) => c.status !== "encerrado")
+                      .slice(0, 3)
+                      .map((chamado) => (
+                        <div key={chamado.id_chamado} className="border border-gray-200 rounded-md p-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900 truncate">{chamado.assunto}</p>
+                              <p className="text-xs text-gray-600 truncate">
+                                LAB{chamado.id_chamado.toString().padStart(6, "0")}
+                              </p>
+                            </div>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium flex items-center ${getStatusColor(chamado.status)}`}
+                            >
+                              {getStatusIcon(chamado.status)}
+                            </span>
+                          </div>
 
-                <button
-                  onClick={() => navigate("/servicos")}
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-md transition-colors w-full text-left"
-                >
-                  <div className="flex items-center">
-                    <Package className="w-5 h-5 text-gray-600 mr-3" />
-                    <span className="text-gray-900">Meus Serviços</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </button>
+                          {chamado.proximo_responder === "cliente" && chamado.status === "aguardando_cliente" && (
+                            <div className="mb-2">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                Resposta necessária
+                              </span>
+                            </div>
+                          )}
+
+                          <button
+                            onClick={() => fetchChamadoDetalhes(chamado.id_chamado)}
+                            className="w-full text-xs bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                          >
+                            Ver Detalhes
+                          </button>
+                        </div>
+                      ))
+                  )}
+
+                  {chamados.filter((c) => c.status !== "encerrado").length > 3 && (
+                    <button
+                      onClick={() => setShowMyTickets(true)}
+                      className="w-full text-sm text-blue-600 hover:text-blue-800 py-2"
+                    >
+                      Ver todos os chamados ({chamados.filter((c) => c.status !== "encerrado").length})
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

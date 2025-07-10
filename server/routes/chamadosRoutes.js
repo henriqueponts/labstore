@@ -404,8 +404,6 @@ router.get("/todos", verifyToken, verifyFuncionario, async (req, res) => {
                 CASE cs.status 
                     WHEN 'aberto' THEN 1
                     WHEN 'aguardando_funcionario' THEN 2
-                    WHEN 'em_andamento' THEN 3
-                    WHEN 'respondido' THEN 4
                     WHEN 'aguardando_cliente' THEN 5
                     WHEN 'resolvido' THEN 6
                     WHEN 'encerrado' THEN 7
@@ -489,64 +487,98 @@ router.get("/:id", verifyToken, verifyFuncionario, async (req, res) => {
   }
 })
 
-// Atualizar status do chamado (para funcionários)
+// Atualizar a rota de atualização de status para permitir reabertura de chamados resolvidos
 router.put("/:id/status", verifyToken, verifyFuncionario, async (req, res) => {
   console.log(`🔄 PUT /chamados/${req.params.id}/status chamado`)
   try {
     const { id } = req.params
-    const { status, observacao } = req.body
+    const { status, justificativa } = req.body
 
-    const statusValidos = [
-      "aberto",
-      "em_andamento",
-      "respondido",
-      "aguardando_cliente",
-      "aguardando_funcionario",
-      "encerrado",
-      "resolvido",
-    ]
+    // Only allow manual status changes to these values
+    const statusValidos = ["aberto", "resolvido", "encerrado"]
+
     if (!statusValidos.includes(status)) {
-      return res.status(400).json({ message: "Status inválido" })
+      return res.status(400).json({
+        message: "Status inválido. Apenas 'aberto', 'resolvido' e 'encerrado' podem ser definidos manualmente.",
+      })
     }
 
     const db = await connectToDatabase()
 
-    const [chamadoExists] = await db.query(
-      `
-            SELECT id_chamado FROM ChamadoSuporte WHERE id_chamado = ?
-        `,
-      [id],
-    )
+    const [chamadoExists] = await db.query(`SELECT id_chamado, status FROM ChamadoSuporte WHERE id_chamado = ?`, [id])
 
     if (chamadoExists.length === 0) {
       return res.status(404).json({ message: "Chamado não encontrado" })
     }
 
-    // Determinar próximo responder baseado no status
-    let proximoResponder = null
-    if (status === "aguardando_cliente") {
-      proximoResponder = "cliente"
-    } else if (status === "aguardando_funcionario") {
-      proximoResponder = "funcionario"
+    // Special validation: only allow setting to "aberto" if current status is "encerrado" or "resolvido"
+    if (status === "aberto" && chamadoExists[0].status !== "encerrado" && chamadoExists[0].status !== "resolvido") {
+      return res.status(400).json({
+        message: "Status 'aberto' só pode ser definido quando o chamado está 'encerrado' ou 'resolvido'",
+      })
     }
 
-    await db.query(
-      `
-            UPDATE ChamadoSuporte 
-            SET status = ?,
-                proximo_responder = ?,
-                ultima_atividade = NOW()
-            WHERE id_chamado = ?
-        `,
-      [status, proximoResponder, id],
-    )
+    // Require justification when reopening a ticket
+    if (status === "aberto" && (!justificativa || !justificativa.trim())) {
+      return res.status(400).json({
+        message: "É obrigatório informar o motivo da reabertura do chamado",
+      })
+    }
 
-    console.log(`✅ Status do chamado ${id} atualizado para ${status} por funcionário ${req.userId}`)
+    // Iniciar transação
+    await db.query("START TRANSACTION")
 
-    res.status(200).json({
-      message: "Status atualizado com sucesso!",
-      status: status,
-    })
+    try {
+      // Se está reabrindo o chamado, inserir justificativa como resposta do funcionário
+      if (status === "aberto" && justificativa && justificativa.trim()) {
+        await db.query(
+          `INSERT INTO RespostaChamado (id_chamado, id_funcionario, resposta, tipo_usuario) 
+           VALUES (?, ?, ?, 'funcionario')`,
+          [id, req.userId, `🔄 CHAMADO REABERTO: ${justificativa.trim()}`],
+        )
+      }
+
+      // Determine próximo responder baseado no status
+      let statusFinal = status
+      let proximoResponder = null
+
+      if (status === "aberto") {
+        // Se está reabrindo com justificativa, muda para aguardando_cliente
+        if (justificativa && justificativa.trim()) {
+          statusFinal = "aguardando_cliente"
+          proximoResponder = "cliente"
+        } else {
+          proximoResponder = "funcionario"
+        }
+      }
+
+      await db.query(
+        `UPDATE ChamadoSuporte 
+         SET status = ?,
+             proximo_responder = ?,
+             funcionario_responsavel = ?,
+             ultima_atividade = NOW()
+         WHERE id_chamado = ?`,
+        [statusFinal, proximoResponder, req.userId, id],
+      )
+
+      // Confirmar transação
+      await db.query("COMMIT")
+
+      console.log(`✅ Status do chamado ${id} atualizado para ${status} por funcionário ${req.userId}`)
+
+      res.status(200).json({
+        message:
+          status === "aberto"
+            ? "Chamado reaberto com sucesso! Cliente pode responder."
+            : "Status atualizado com sucesso!",
+        status: statusFinal,
+      })
+    } catch (err) {
+      // Reverter transação em caso de erro
+      await db.query("ROLLBACK")
+      throw err
+    }
   } catch (err) {
     console.error("❌ Erro ao atualizar status:", err)
     res.status(500).json({ message: "Erro interno do servidor" })
@@ -630,53 +662,169 @@ router.post("/:id/responder", verifyToken, verifyFuncionario, async (req, res) =
   }
 })
 
-// Estatísticas dos chamados (para funcionários)
+// Estatísticas dos chamados (para funcionários) - CORRIGIDO
 router.get("/stats/dashboard", verifyToken, verifyFuncionario, async (req, res) => {
   console.log("📊 GET /chamados/stats/dashboard chamado")
   try {
+    const { periodo = "30" } = req.query // Período em dias, padrão 30 dias
     const db = await connectToDatabase()
 
     // Estatísticas gerais
     const [stats] = await db.query(`
-            SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'aberto' THEN 1 ELSE 0 END) as abertos,
-                SUM(CASE WHEN status = 'em_andamento' THEN 1 ELSE 0 END) as em_andamento,
-                SUM(CASE WHEN status = 'respondido' THEN 1 ELSE 0 END) as respondidos,
-                SUM(CASE WHEN status = 'aguardando_cliente' THEN 1 ELSE 0 END) as aguardando_cliente,
-                SUM(CASE WHEN status = 'aguardando_funcionario' THEN 1 ELSE 0 END) as aguardando_funcionario,
-                SUM(CASE WHEN status = 'resolvido' THEN 1 ELSE 0 END) as resolvidos,
-                SUM(CASE WHEN status = 'encerrado' THEN 1 ELSE 0 END) as encerrados
-            FROM ChamadoSuporte
-        `)
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'aberto' THEN 1 ELSE 0 END) as abertos,
+        SUM(CASE WHEN status = 'aguardando_cliente' THEN 1 ELSE 0 END) as aguardando_cliente,
+        SUM(CASE WHEN status = 'aguardando_funcionario' THEN 1 ELSE 0 END) as aguardando_funcionario,
+        SUM(CASE WHEN status = 'resolvido' THEN 1 ELSE 0 END) as resolvidos,
+        SUM(CASE WHEN status = 'encerrado' THEN 1 ELSE 0 END) as encerrados,
+        SUM(CASE WHEN DATE(data_abertura) = CURDATE() THEN 1 ELSE 0 END) as hoje,
+        SUM(CASE WHEN DATE(data_abertura) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as ultimos_7_dias,
+        SUM(CASE WHEN DATE(data_abertura) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as ultimos_30_dias
+      FROM ChamadoSuporte
+    `)
+
+    // Estatísticas do período selecionado
+    const [statsPeriodo] = await db.query(
+      `
+      SELECT 
+        COUNT(*) as total_periodo,
+        SUM(CASE WHEN status = 'encerrado' OR status = 'resolvido' THEN 1 ELSE 0 END) as resolvidos_periodo,
+        AVG(CASE 
+          WHEN status IN ('encerrado', 'resolvido') 
+          THEN TIMESTAMPDIFF(HOUR, data_abertura, ultima_atividade) 
+          ELSE NULL 
+        END) as tempo_medio_resolucao_horas
+      FROM ChamadoSuporte
+      WHERE data_abertura >= DATE_SUB(NOW(), INTERVAL ? DAY)
+    `,
+      [periodo],
+    )
 
     // Chamados por categoria
-    const [categorias] = await db.query(`
-            SELECT 
-                categoria,
-                COUNT(*) as quantidade
-            FROM ChamadoSuporte
-            WHERE categoria IS NOT NULL
-            GROUP BY categoria
-            ORDER BY quantidade DESC
-        `)
+    const [categorias] = await db.query(
+      `
+      SELECT 
+        COALESCE(categoria, 'Sem Categoria') as categoria,
+        COUNT(*) as quantidade,
+        SUM(CASE WHEN status IN ('resolvido', 'encerrado') THEN 1 ELSE 0 END) as resolvidos,
+        AVG(CASE 
+          WHEN status IN ('encerrado', 'resolvido') 
+          THEN TIMESTAMPDIFF(HOUR, data_abertura, ultima_atividade) 
+          ELSE NULL 
+        END) as tempo_medio_horas
+      FROM ChamadoSuporte
+      WHERE data_abertura >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      GROUP BY categoria
+      ORDER BY quantidade DESC
+    `,
+      [periodo],
+    )
 
-    // Chamados dos últimos 7 dias
-    const [recentes] = await db.query(`
-            SELECT 
-                DATE(data_abertura) as data,
-                COUNT(*) as quantidade
-            FROM ChamadoSuporte
-            WHERE data_abertura >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            GROUP BY DATE(data_abertura)
-            ORDER BY data DESC
-        `)
+    // Tendência diária dos últimos 30 dias
+    const [tendenciaDiaria] = await db.query(`
+      SELECT 
+        DATE(data_abertura) as data,
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'aberto' THEN 1 ELSE 0 END) as abertos,
+        SUM(CASE WHEN status IN ('resolvido', 'encerrado') THEN 1 ELSE 0 END) as resolvidos
+      FROM ChamadoSuporte
+      WHERE data_abertura >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      GROUP BY DATE(data_abertura)
+      ORDER BY data DESC
+    `)
 
-    console.log("📊 Estatísticas geradas com sucesso")
+    // Tendência semanal dos últimos 3 meses - CORRIGIDO
+    const [tendenciaSemanal] = await db.query(`
+      SELECT 
+        YEARWEEK(data_abertura, 1) as semana,
+        MIN(DATE(DATE_SUB(data_abertura, INTERVAL WEEKDAY(data_abertura) DAY))) as inicio_semana,
+        COUNT(*) as total,
+        SUM(CASE WHEN status IN ('resolvido', 'encerrado') THEN 1 ELSE 0 END) as resolvidos
+      FROM ChamadoSuporte
+      WHERE data_abertura >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+      GROUP BY YEARWEEK(data_abertura, 1)
+      ORDER BY semana DESC
+      LIMIT 12
+    `)
+
+    // Performance por funcionário - CORRIGIDO
+    const [performanceFuncionarios] = await db.query(`
+      SELECT 
+        u.nome as funcionario,
+        COUNT(cs.id_chamado) as total_atendidos,
+        SUM(CASE WHEN cs.status IN ('resolvido', 'encerrado') THEN 1 ELSE 0 END) as resolvidos,
+        AVG(CASE 
+          WHEN cs.status IN ('encerrado', 'resolvido') 
+          THEN TIMESTAMPDIFF(HOUR, cs.data_abertura, cs.ultima_atividade) 
+          ELSE NULL 
+        END) as tempo_medio_horas,
+        SUM(CASE WHEN cs.data_abertura >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as ultimos_7_dias
+      FROM Usuario u
+      LEFT JOIN ChamadoSuporte cs ON u.id_usuario = cs.funcionario_responsavel
+      WHERE u.tipo_perfil IN ('admin', 'analista')
+      GROUP BY u.id_usuario, u.nome
+      HAVING total_atendidos > 0
+      ORDER BY total_atendidos DESC
+    `)
+
+    // Chamados mais antigos em aberto
+    const [chamadosAntigos] = await db.query(`
+      SELECT 
+        cs.id_chamado,
+        cs.assunto,
+        cs.status,
+        cs.data_abertura,
+        c.nome as cliente_nome,
+        TIMESTAMPDIFF(DAY, cs.data_abertura, NOW()) as dias_aberto
+      FROM ChamadoSuporte cs
+      JOIN Cliente c ON cs.id_cliente = c.id_cliente
+      WHERE cs.status NOT IN ('encerrado')
+      ORDER BY cs.data_abertura ASC
+      LIMIT 10
+    `)
+
+    // Taxa de resolução por período
+    const [taxaResolucao] = await db.query(`
+      SELECT 
+        'Hoje' as periodo,
+        COUNT(*) as total,
+        SUM(CASE WHEN status IN ('resolvido', 'encerrado') THEN 1 ELSE 0 END) as resolvidos,
+        ROUND(COALESCE((SUM(CASE WHEN status IN ('resolvido', 'encerrado') THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)) * 100, 0), 1) as taxa_resolucao
+      FROM ChamadoSuporte
+      WHERE DATE(data_abertura) = CURDATE()
+      
+      UNION ALL
+      
+      SELECT 
+        'Últimos 7 dias' as periodo,
+        COUNT(*) as total,
+        SUM(CASE WHEN status IN ('resolvido', 'encerrado') THEN 1 ELSE 0 END) as resolvidos,
+        ROUND(COALESCE((SUM(CASE WHEN status IN ('resolvido', 'encerrado') THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)) * 100, 0), 1) as taxa_resolucao
+      FROM ChamadoSuporte
+      WHERE data_abertura >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+      
+      UNION ALL
+      
+      SELECT 
+        'Últimos 30 dias' as periodo,
+        COUNT(*) as total,
+        SUM(CASE WHEN status IN ('resolvido', 'encerrado') THEN 1 ELSE 0 END) as resolvidos,
+        ROUND(COALESCE((SUM(CASE WHEN status IN ('resolvido', 'encerrado') THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)) * 100, 0), 1) as taxa_resolucao
+      FROM ChamadoSuporte
+      WHERE data_abertura >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    `)
+
+    console.log("📊 Estatísticas detalhadas geradas com sucesso")
     res.status(200).json({
       geral: stats[0],
+      periodo: statsPeriodo[0],
       categorias,
-      recentes,
+      tendenciaDiaria,
+      tendenciaSemanal,
+      performanceFuncionarios,
+      chamadosAntigos,
+      taxaResolucao,
     })
   } catch (err) {
     console.error("❌ Erro ao buscar estatísticas:", err)

@@ -27,31 +27,42 @@ import {
   ChevronRight,
 } from "lucide-react"
 
+// Importar o novo componente de dashboard
+import DashboardChamados from "../components/DashboardChamados"
+
 // Interfaces (mantém as mesmas)
 interface Chamado {
   id_chamado: number
   assunto: string
   descricao: string
   categoria: string | null
-  status: "aberto" | "em_andamento" | "respondido" | "encerrado" | "resolvido"
+  status: "aberto" | "aguardando_cliente" | "aguardando_funcionario" | "resolvido" | "encerrado"
   data_abertura: string
   cliente_nome: string
   cliente_email: string
   cliente_telefone?: string
 }
 
+interface RespostaChamado {
+  id_resposta: number
+  resposta: string
+  data_resposta: string
+  tipo_usuario: "cliente" | "suporte"
+  nome_usuario: string
+}
+
 interface ChamadoDetalhado extends Chamado {
   id_cliente: number
   cliente_documento: string
-  respostas?: any[]
+  respostas?: RespostaChamado[]
 }
 
 interface Estatisticas {
   geral: {
     total: number
     abertos: number
-    em_andamento: number
-    respondidos: number
+    aguardando_cliente: number
+    aguardando_funcionario: number
     resolvidos: number
     encerrados: number
   }
@@ -86,6 +97,7 @@ const AdminChamadosPage: React.FC = () => {
   const [filtroStatus, setFiltroStatus] = useState("todos")
   const [filtroCategoria, setFiltroCategoria] = useState("todas")
   const [searchTerm, setSearchTerm] = useState("")
+  const [mostrarEncerrados, setMostrarEncerrados] = useState(false)
   const [paginacao, setPaginacao] = useState<Paginacao>({
     currentPage: 1,
     totalPages: 1,
@@ -99,13 +111,17 @@ const AdminChamadosPage: React.FC = () => {
   const [novoStatus, setNovoStatus] = useState("")
 
   // Estados do dashboard
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [estatisticas, setEstatisticas] = useState<Estatisticas | null>(null)
+
+  // No componente AdminChamadosPage, adicionar estado para justificativa de reabertura
+  const [justificativaReabertura, setJustificativaReabertura] = useState("")
 
   const statusOptions = [
     { value: "todos", label: "Todos os Status", color: "gray" },
     { value: "aberto", label: "Aberto", color: "blue" },
-    { value: "em_andamento", label: "Em Andamento", color: "yellow" },
-    { value: "respondido", label: "Respondido", color: "purple" },
+    { value: "aguardando_cliente", label: "Aguardando Cliente", color: "orange" },
+    { value: "aguardando_funcionario", label: "Aguardando Funcionário", color: "indigo" },
     { value: "resolvido", label: "Resolvido", color: "green" },
     { value: "encerrado", label: "Encerrado", color: "gray" },
   ]
@@ -158,6 +174,7 @@ const AdminChamadosPage: React.FC = () => {
         limit: "10",
         ...(filtroStatus !== "todos" && { status: filtroStatus }),
         ...(filtroCategoria !== "todas" && { categoria: filtroCategoria }),
+        ...(!mostrarEncerrados && { excluir_encerrados: "true" }),
       })
 
       const response = await axios.get(`http://localhost:3000/chamados/todos?${params}`, {
@@ -166,7 +183,7 @@ const AdminChamadosPage: React.FC = () => {
 
       setChamados(response.data.chamados)
       setPaginacao(response.data.pagination)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erro ao buscar chamados:", err)
       setError("Erro ao carregar chamados")
     } finally {
@@ -195,9 +212,9 @@ const AdminChamadosPage: React.FC = () => {
       }
 
       setChamadoSelecionado(chamadoCompleto)
-      setNovoStatus(response.data.status)
+      setNovoStatus("")
       setView("detalhes")
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erro ao buscar detalhes do chamado:", err)
       setError("Erro ao carregar detalhes do chamado")
     } finally {
@@ -216,7 +233,7 @@ const AdminChamadosPage: React.FC = () => {
       })
 
       setEstatisticas(response.data)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Erro ao buscar estatísticas:", err)
       setError("Erro ao carregar estatísticas")
     } finally {
@@ -230,27 +247,60 @@ const AdminChamadosPage: React.FC = () => {
     } else if (view === "dashboard") {
       fetchEstatisticas()
     }
-  }, [view, filtroStatus, filtroCategoria])
+  }, [view, filtroStatus, filtroCategoria, mostrarEncerrados])
 
-  // Atualizar status
+  // Modificar a função handleUpdateStatus para incluir redirecionamento
   const handleUpdateStatus = async () => {
     if (!chamadoSelecionado || !novoStatus) return
+
+    // Validar se é necessária justificativa para reabertura
+    if (novoStatus === "aberto" && !justificativaReabertura.trim()) {
+      setError("É obrigatório informar o motivo da reabertura do chamado")
+      return
+    }
 
     setLoading(true)
     setError(null)
     try {
       const token = localStorage.getItem("token")
-      await axios.put(
-        `http://localhost:3000/chamados/${chamadoSelecionado.id_chamado}/status`,
-        { status: novoStatus },
-        { headers: { Authorization: `Bearer ${token}` } },
-      )
+
+      const payload: { status: string; justificativa?: string } = { status: novoStatus }
+      if (novoStatus === "aberto") {
+        payload.justificativa = justificativaReabertura.trim()
+      }
+
+      await axios.put(`http://localhost:3000/chamados/${chamadoSelecionado.id_chamado}/status`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
 
       setSuccess("Status atualizado com sucesso!")
-      setChamadoSelecionado({ ...chamadoSelecionado, status: novoStatus as any })
-    } catch (err: any) {
+
+      // Limpar estados
+      if (novoStatus === "aberto") {
+        setJustificativaReabertura("")
+      }
+
+      // Redirecionar imediatamente para a lista de chamados
+      setView("lista")
+      setChamadoSelecionado(null)
+      setNovoStatus("")
+    } catch (err: unknown) {
       console.error("Erro ao atualizar status:", err)
-      setError(err.response?.data?.message || "Erro ao atualizar status")
+      if (
+        err &&
+        typeof err === "object" &&
+        "response" in err &&
+        err.response &&
+        typeof err.response === "object" &&
+        "data" in err.response &&
+        err.response.data &&
+        typeof err.response.data === "object" &&
+        "message" in err.response.data
+      ) {
+        setError((err.response as { data: { message?: string } }).data.message || "Erro ao atualizar status")
+      } else {
+        setError("Erro ao atualizar status")
+      }
     } finally {
       setLoading(false)
     }
@@ -272,11 +322,36 @@ const AdminChamadosPage: React.FC = () => {
 
       setSuccess("Resposta enviada com sucesso!")
       setResposta("")
-      setChamadoSelecionado({ ...chamadoSelecionado, status: "respondido" })
-      setNovoStatus("respondido")
-    } catch (err: any) {
+
+      // Refresh the ticket details to show the new response immediately
+      const respostasResponse = await axios.get(
+        `http://localhost:3000/chamados/${chamadoSelecionado.id_chamado}/respostas`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      )
+
+      setChamadoSelecionado({
+        ...chamadoSelecionado,
+        respostas: respostasResponse.data,
+      })
+    } catch (err: unknown) {
       console.error("Erro ao responder chamado:", err)
-      setError(err.response?.data?.message || "Erro ao enviar resposta")
+      if (
+        err &&
+        typeof err === "object" &&
+        "response" in err &&
+        err.response &&
+        typeof err.response === "object" &&
+        "data" in err.response &&
+        err.response.data &&
+        typeof err.response.data === "object" &&
+        "message" in err.response.data
+      ) {
+        setError((err.response as { data: { message?: string } }).data.message || "Erro ao enviar resposta")
+      } else {
+        setError("Erro ao enviar resposta")
+      }
     } finally {
       setLoading(false)
     }
@@ -286,10 +361,10 @@ const AdminChamadosPage: React.FC = () => {
     switch (status) {
       case "aberto":
         return "text-blue-600 bg-blue-100"
-      case "em_andamento":
-        return "text-yellow-600 bg-yellow-100"
-      case "respondido":
-        return "text-purple-600 bg-purple-100"
+      case "aguardando_cliente":
+        return "text-orange-600 bg-orange-100"
+      case "aguardando_funcionario":
+        return "text-indigo-600 bg-indigo-100"
       case "resolvido":
         return "text-green-600 bg-green-100"
       case "encerrado":
@@ -303,10 +378,10 @@ const AdminChamadosPage: React.FC = () => {
     switch (status) {
       case "aberto":
         return "Aberto"
-      case "em_andamento":
-        return "Em Andamento"
-      case "respondido":
-        return "Respondido"
+      case "aguardando_cliente":
+        return "Aguardando Cliente"
+      case "aguardando_funcionario":
+        return "Aguardando Funcionário"
       case "resolvido":
         return "Resolvido"
       case "encerrado":
@@ -320,10 +395,10 @@ const AdminChamadosPage: React.FC = () => {
     switch (status) {
       case "aberto":
         return <AlertCircle className="w-4 h-4" />
-      case "em_andamento":
+      case "aguardando_cliente":
+        return <User className="w-4 h-4" />
+      case "aguardando_funcionario":
         return <Clock className="w-4 h-4" />
-      case "respondido":
-        return <MessageSquare className="w-4 h-4" />
       case "resolvido":
         return <CheckCircle className="w-4 h-4" />
       case "encerrado":
@@ -345,161 +420,20 @@ const AdminChamadosPage: React.FC = () => {
 
   const filteredChamados = chamados.filter(
     (chamado) =>
-      chamado.assunto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      chamado.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      chamado.cliente_email.toLowerCase().includes(searchTerm.toLowerCase()),
+      (chamado.assunto.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        chamado.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        chamado.cliente_email.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (mostrarEncerrados || chamado.status !== "encerrado"),
   )
+
+  // Remover todo o código do dashboard view e substituir por:
 
   // Dashboard View
   if (view === "dashboard") {
     return (
       <Layout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center">
-              <button
-                onClick={() => navigate("/admin")}
-                className="flex items-center text-gray-600 hover:text-gray-800 mr-4"
-              >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                Voltar
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900">Dashboard de Chamados</h1>
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setView("lista")}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Ver Lista
-              </button>
-              <button
-                onClick={() => fetchEstatisticas()}
-                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4 inline mr-2" />
-                Atualizar
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-              <button onClick={() => setError(null)} className="float-right">
-                <X className="w-4 h-4" />
-              </button>
-              {error}
-            </div>
-          )}
-
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-gray-600">Carregando estatísticas...</p>
-            </div>
-          ) : estatisticas ? (
-            <div className="space-y-6">
-              {/* Cards de Estatísticas */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <BarChart3 className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Total de Chamados</p>
-                      <p className="text-2xl font-bold text-gray-900">{estatisticas.geral.total}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-red-100 rounded-lg">
-                      <AlertCircle className="w-6 h-6 text-red-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Abertos</p>
-                      <p className="text-2xl font-bold text-gray-900">{estatisticas.geral.abertos}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-yellow-100 rounded-lg">
-                      <Clock className="w-6 h-6 text-yellow-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Em Andamento</p>
-                      <p className="text-2xl font-bold text-gray-900">{estatisticas.geral.em_andamento}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <CheckCircle className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Resolvidos</p>
-                      <p className="text-2xl font-bold text-gray-900">{estatisticas.geral.resolvidos}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Gráficos */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Chamados por Categoria */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Chamados por Categoria</h3>
-                  <div className="space-y-3">
-                    {estatisticas.categorias.map((categoria, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">{categoria.categoria}</span>
-                        <div className="flex items-center">
-                          <div className="w-32 bg-gray-200 rounded-full h-2 mr-3">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{
-                                width: `${(categoria.quantidade / estatisticas.geral.total) * 100}%`,
-                              }}
-                            ></div>
-                          </div>
-                          <span className="text-sm font-medium text-gray-900">{categoria.quantidade}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Chamados Recentes */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Últimos 7 Dias</h3>
-                  <div className="space-y-3">
-                    {estatisticas.recentes.map((dia, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">{new Date(dia.data).toLocaleDateString("pt-BR")}</span>
-                        <div className="flex items-center">
-                          <div className="w-24 bg-gray-200 rounded-full h-2 mr-3">
-                            <div
-                              className="bg-green-600 h-2 rounded-full"
-                              style={{
-                                width: `${Math.max((dia.quantidade / Math.max(...estatisticas.recentes.map((d) => d.quantidade))) * 100, 10)}%`,
-                              }}
-                            ></div>
-                          </div>
-                          <span className="text-sm font-medium text-gray-900">{dia.quantidade}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
+          <DashboardChamados onVoltar={() => setView("lista")} />
         </div>
       </Layout>
     )
@@ -604,7 +538,7 @@ const AdminChamadosPage: React.FC = () => {
 
               {chamadoSelecionado.respostas && chamadoSelecionado.respostas.length > 0 ? (
                 <div className="space-y-4">
-                  {chamadoSelecionado.respostas.map((resposta: any, index: number) => (
+                  {chamadoSelecionado.respostas.map((resposta: RespostaChamado, index: number) => (
                     <div
                       key={index}
                       className={`border-l-4 pl-4 py-2 ${
@@ -720,6 +654,7 @@ const AdminChamadosPage: React.FC = () => {
                 </div>
 
                 {/* Alterar Status */}
+                {/* Na seção "Alterar Status", modificar o conteúdo para incluir campo de justificativa */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Alterar Status</h3>
 
@@ -728,20 +663,65 @@ const AdminChamadosPage: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Novo Status</label>
                       <select
                         value={novoStatus}
-                        onChange={(e) => setNovoStatus(e.target.value)}
+                        onChange={(e) => {
+                          setNovoStatus(e.target.value)
+                          // Limpar justificativa se não for reabertura
+                          if (e.target.value !== "aberto") {
+                            setJustificativaReabertura("")
+                          }
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
-                        {statusOptions.slice(1).map((status) => (
-                          <option key={status.value} value={status.value}>
-                            {status.label}
-                          </option>
-                        ))}
+                        <option value="">Selecione um novo status</option>
+                        {statusOptions.slice(1).map((status) => {
+                          // Allow "aberto" if current status is "encerrado" or "resolvido"
+                          if (
+                            status.value === "aberto" &&
+                            chamadoSelecionado.status !== "encerrado" &&
+                            chamadoSelecionado.status !== "resolvido"
+                          ) {
+                            return null
+                          }
+                          // Don't show system-managed statuses in dropdown
+                          if (status.value === "aguardando_cliente" || status.value === "aguardando_funcionario") {
+                            return null
+                          }
+                          return (
+                            <option key={status.value} value={status.value}>
+                              {status.label}
+                            </option>
+                          )
+                        })}
                       </select>
                     </div>
 
+                    {/* Campo de justificativa para reabertura */}
+                    {novoStatus === "aberto" && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Motivo da Reabertura *</label>
+                        <textarea
+                          value={justificativaReabertura}
+                          onChange={(e) => setJustificativaReabertura(e.target.value)}
+                          rows={3}
+                          maxLength={500}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Explique o motivo da reabertura deste chamado..."
+                        />
+                        <p className="text-xs text-gray-500 mt-1">{justificativaReabertura.length}/500 caracteres</p>
+                        <p className="text-xs text-orange-600 mt-1">
+                          ⚠️ Obrigatório informar o motivo para reabrir o chamado
+                        </p>
+                      </div>
+                    )}
+
                     <button
                       onClick={handleUpdateStatus}
-                      disabled={loading || novoStatus === chamadoSelecionado.status}
+                      disabled={
+                        loading ||
+                        !novoStatus || // Agora exige que um status seja selecionado
+                        (novoStatus === "aberto" && !justificativaReabertura.trim())
+                      }
                       className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? "Atualizando..." : "Atualizar Status"}
@@ -759,7 +739,7 @@ const AdminChamadosPage: React.FC = () => {
   // Lista View (padrão)
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center">
             <button
@@ -774,7 +754,7 @@ const AdminChamadosPage: React.FC = () => {
           <div className="flex space-x-2">
             <button
               onClick={() => setView("dashboard")}
-              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
             >
               <BarChart3 className="w-4 h-4 inline mr-2" />
               Dashboard
@@ -854,14 +834,25 @@ const AdminChamadosPage: React.FC = () => {
               </select>
             </div>
 
-            <div className="flex items-end">
+            <div className="flex flex-col space-y-2">
+              <button
+                onClick={() => setMostrarEncerrados(!mostrarEncerrados)}
+                className={`w-full px-4 py-2 rounded-md transition-colors text-sm font-medium ${
+                  mostrarEncerrados
+                    ? "bg-red-100 text-red-700 hover:bg-red-200"
+                    : "bg-green-100 text-green-700 hover:bg-green-200"
+                }`}
+              >
+                {mostrarEncerrados ? "Ocultar Encerrados" : "Mostrar Encerrados"}
+              </button>
               <button
                 onClick={() => {
                   setFiltroStatus("todos")
                   setFiltroCategoria("todas")
                   setSearchTerm("")
+                  setMostrarEncerrados(false)
                 }}
-                className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+                className="w-full px-4 py-2 rounded-md transition-colors text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
               >
                 Limpar Filtros
               </button>
@@ -924,7 +915,7 @@ const AdminChamadosPage: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 max-w-xs truncate">{chamado.assunto}</div>
+                          <div className="text-sm font-medium text-gray-900 max-w-xs truncate">{chamado.assunto}</div>
                           {chamado.categoria && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 mt-1">
                               {chamado.categoria}
