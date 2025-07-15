@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  ShoppingCart, 
-  User, 
-  Search, 
-  Menu, 
+"use client"
+
+import type React from "react"
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import {
+  ShoppingCart,
+  User,
+  Search,
+  Menu,
   Wrench,
-  CircleQuestionMark,
+  CircleIcon as CircleQuestionMark,
   Scale,
   Users,
   LogOut,
@@ -14,28 +17,28 @@ import {
   BarChart3,
   Headphones,
   Monitor,
-  X
-} from 'lucide-react';
+  X,
+} from "lucide-react"
 
 interface UsuarioData {
-  id_cliente?: number;
-  id_usuario?: number;
-  nome?: string;
-  email: string;
-  tipo: 'cliente' | 'funcionario';
-  tipo_perfil?: 'admin' | 'analista';
+  id_cliente?: number
+  id_usuario?: number
+  nome?: string
+  email: string
+  tipo: "cliente" | "funcionario"
+  tipo_perfil?: "admin" | "analista"
 }
 
 interface HeaderProps {
-  usuario: UsuarioData | null;
-  onLogout: () => void;
-  searchTerm: string;
-  onSearchChange: (value: string) => void;
+  usuario: UsuarioData | null
+  onLogout: () => void
+  searchTerm: string
+  onSearchChange: (value: string) => void
 }
 
 const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearchChange }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const navigate = useNavigate()
 
   return (
     <header className="bg-white shadow-md relative z-50">
@@ -44,15 +47,10 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
         <div className="flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
-            <h1 
-              className="text-2xl font-bold text-blue-600 cursor-pointer" 
-              onClick={() => navigate('/')}
-            >
+            <h1 className="text-2xl font-bold text-blue-600 cursor-pointer" onClick={() => navigate("/")}>
               LabStore
             </h1>
-            <span className="text-sm text-gray-500 ml-2 hidden md:block">
-              Tecnologia & Inovação
-            </span>
+            <span className="text-sm text-gray-500 ml-2 hidden md:block">Tecnologia & Inovação</span>
           </div>
 
           {/* Search bar */}
@@ -74,7 +72,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
             {!usuario ? (
               <>
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate("/login")}
                   className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
                 >
                   <User size={20} className="mr-1" />
@@ -86,30 +84,26 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 <div className="text-sm">
                   <span className="text-gray-700 hidden md:inline">Olá, </span>
                   <span className="font-medium text-blue-600">
-                    {usuario.nome?.split(' ')[0] || usuario.email.split('@')[0]}
+                    {usuario.nome?.split(" ")[0] || usuario.email.split("@")[0]}
                   </span>
                 </div>
-                {usuario.tipo === 'funcionario' && (
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    usuario.tipo_perfil === 'admin' 
-                      ? 'bg-purple-100 text-purple-800' 
-                      : 'bg-green-100 text-green-800'
-                  }`}>
-                    {usuario.tipo_perfil === 'admin' ? 'Admin' : 'Técnico'}
+                {usuario.tipo === "funcionario" && (
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      usuario.tipo_perfil === "admin" ? "bg-purple-100 text-purple-800" : "bg-green-100 text-green-800"
+                    }`}
+                  >
+                    {usuario.tipo_perfil === "admin" ? "Admin" : "Técnico"}
                   </span>
                 )}
-                <button
-                  onClick={onLogout}
-                  className="text-gray-500 hover:text-red-600 transition-colors"
-                  title="Sair"
-                >
+                <button onClick={onLogout} className="text-gray-500 hover:text-red-600 transition-colors" title="Sair">
                   <LogOut size={18} />
                 </button>
               </div>
             )}
-            
+
             {/* Carrinho - só aparece para clientes ou visitantes */}
-            {(!usuario || usuario.tipo === 'cliente') && (
+            {(!usuario || usuario.tipo === "cliente") && (
               <button className="relative flex items-center text-gray-700 hover:text-blue-600 transition-colors">
                 <ShoppingCart size={20} />
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -119,10 +113,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
             )}
 
             {/* Mobile menu button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-gray-700 p-1"
-            >
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-gray-700 p-1">
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
@@ -134,7 +125,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
         <div className="max-w-7xl mx-auto px-4">
           <nav className="flex space-x-8 py-3">
             {/* Menu público */}
-            <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
+            <a href="/produtos" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
               <Monitor size={16} className="mr-1" />
               Produtos
             </a>
@@ -146,12 +137,15 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
               <CircleQuestionMark size={16} className="mr-1" />
               Ajuda
             </a>
-           
+
             {/* Menu administrativo */}
-            {usuario?.tipo === 'funcionario' && (
+            {usuario?.tipo === "funcionario" && (
               <>
                 <div className="border-l border-gray-300 mx-4"></div>
-                <a href="#" className="flex items-center text-green-700 hover:text-green-600 transition-colors">
+                <a
+                  href="/gestao/produtos"
+                  className="flex items-center text-green-700 hover:text-green-600 transition-colors"
+                >
                   <Package size={16} className="mr-1" />
                   Gerenciar Produtos
                 </a>
@@ -161,19 +155,25 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   Solicitações
                 </a>
 
-                <a href="/gestao/chamados" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors">
+                <a
+                  href="/gestao/chamados"
+                  className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors"
+                >
                   <Headphones size={16} className="mr-1" />
                   Chamados
                 </a>
-                                                <div className="border-l border-gray-300 mx-4"></div>
+                <div className="border-l border-gray-300 mx-4"></div>
 
-                                {usuario.tipo_perfil === 'admin' && (
+                {usuario.tipo_perfil === "admin" && (
                   <>
-                    <a href="/gestao/usuarios" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
+                    <a
+                      href="/gestao/usuarios"
+                      className="flex items-center text-purple-700 hover:text-purple-600 transition-colors"
+                    >
                       <Users size={16} className="mr-1" />
                       Usuários
                     </a>
-                                        <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
+                    <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
                       <BarChart3 size={16} className="mr-1" />
                       Relatórios
                     </a>
@@ -209,12 +209,15 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 Ajuda
               </a>
             </div>
-            
+
             {/* Menu administrativo mobile */}
-            {usuario?.tipo === 'funcionario' && (
+            {usuario?.tipo === "funcionario" && (
               <div className="border-t pt-3 space-y-2">
                 <h4 className="font-semibold text-gray-800 text-sm">Administração</h4>
-                <a href="#" className="flex items-center text-green-700 hover:text-green-600 transition-colors py-2">
+                <a
+                  href="/gestao/produtos"
+                  className="flex items-center text-green-700 hover:text-green-600 transition-colors py-2"
+                >
                   <Package size={16} className="mr-2" />
                   Gerenciar Produtos
                 </a>
@@ -224,22 +227,31 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   Solicitações
                 </a>
 
-                                <a href="#" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2">
+                <a href="#" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2">
                   <Headphones size={16} className="mr-2" />
                   Chamados
                 </a>
-                                {usuario.tipo_perfil === 'admin' && (
+                {usuario.tipo_perfil === "admin" && (
                   <>
-                    <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2">
+                    <a
+                      href="#"
+                      className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2"
+                    >
                       <Users size={16} className="mr-2" />
                       Usuários
                     </a>
-                    <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2">
+                    <a
+                      href="#"
+                      className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2"
+                    >
                       <BarChart3 size={16} className="mr-2" />
                       Relatórios
                     </a>
-                    
-                    <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2">
+
+                    <a
+                      href="#"
+                      className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2"
+                    >
                       <Scale size={16} className="mr-2" />
                       LGPD
                     </a>
@@ -251,7 +263,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
         </div>
       )}
     </header>
-  );
-};
+  )
+}
 
-export default Header;
+export default Header

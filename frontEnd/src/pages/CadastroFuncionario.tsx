@@ -243,7 +243,7 @@ const CadastroFuncionario: React.FC = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className={`flex items-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors ${
+                                className={`flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors ${
                                     loading ? 'opacity-70 cursor-not-allowed' : ''
                                 }`}
                             >

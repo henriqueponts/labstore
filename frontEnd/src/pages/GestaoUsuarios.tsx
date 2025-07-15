@@ -252,7 +252,7 @@ const GestaoUsuarios: React.FC = () => {
               </h2>
               <button
                 onClick={() => navigate('/cadastro/funcionario')}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center"
               >
                 <Users size={20} className="mr-2" />
                 Adicionar Funcionário
@@ -308,7 +308,7 @@ const GestaoUsuarios: React.FC = () => {
                             </select>
                             <button
                               onClick={() => alterarPerfil(usuario.id_usuario, newProfile)}
-                              className="text-green-600 hover:text-green-800"
+                              className="text-blue-600 hover:text-blue-800"
                               title="Salvar"
                             >
                               ✓
