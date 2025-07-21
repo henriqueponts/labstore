@@ -45,11 +45,23 @@ CREATE TABLE Produto (
     modelo VARCHAR(50),
     estoque INT NOT NULL DEFAULT 0,
     status ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
-    imagemUrl VARCHAR(255) NULL,
     compatibilidade TEXT NULL,
     cor VARCHAR(50) NULL,
     ano_fabricacao INT NULL,
     FOREIGN KEY (id_categoria) REFERENCES Categoria(id_categoria)
+);
+
+CREATE TABLE ProdutoImagem (
+    id_imagem INT PRIMARY KEY AUTO_INCREMENT,
+    id_produto INT NOT NULL,
+    url_imagem VARCHAR(255) NOT NULL,
+    nome_arquivo VARCHAR(255) NOT NULL,
+    ordem INT DEFAULT 0,
+    is_principal BOOLEAN DEFAULT FALSE,
+    data_upload DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_produto) REFERENCES Produto(id_produto) ON DELETE CASCADE,
+    INDEX idx_produto_imagem (id_produto),
+    INDEX idx_imagem_principal (id_produto, is_principal)
 );
 
 -- Tabela de Pedidos
@@ -106,18 +118,6 @@ CREATE TABLE Orcamento (
     data_criacao_orcamento DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Adicionado
     FOREIGN KEY (id_solicitacao) REFERENCES SolicitacaoServico(id_solicitacao) ON DELETE CASCADE,
     FOREIGN KEY (id_analista) REFERENCES Usuario(id_usuario)
-);
-
--- Tabela de Chamados de Suporte (Help Desk)
-CREATE TABLE ChamadoSuporte (
-    id_chamado INT PRIMARY KEY AUTO_INCREMENT,
-    id_cliente INT NOT NULL,
-    assunto VARCHAR(100) NOT NULL,
-    descricao TEXT NOT NULL,
-    categoria VARCHAR(100) NULL,
-    data_abertura DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('aberto', 'em_andamento', 'respondido', 'encerrado', 'resolvido') NOT NULL DEFAULT 'aberto',
-    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente)
 );
 
 -- Tabela de Logs de Auditoria
@@ -200,7 +200,7 @@ CREATE TABLE ChamadoSuporte (
     ultima_atividade TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     data_ultima_resposta TIMESTAMP,
     data_abertura DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('aberto', 'em_andamento', 'respondido', 'aguardando_cliente', 'aguardando_funcionario', 'resolvido', 'encerrado') NOT NULL DEFAULT 'aberto',
+    status ENUM('aberto', 'aguardando_cliente', 'aguardando_funcionario', 'resolvido', 'encerrado') NOT NULL DEFAULT 'aberto',
     FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente),
     FOREIGN KEY (funcionario_responsavel) REFERENCES Usuario(id_usuario) ON DELETE SET NULL
 );
@@ -234,10 +234,10 @@ END//
 DELIMITER ;
 
 
---admin@gmail.com
---analista@gmail.com
---SENHA É 123
+-- admin@gmail.com
+-- analista@gmail.com
+-- SENHA É 123
 
-INSERT INTO Usuario (email, senha_hash, tipo_perfil, status) VALUES 
-('admin@gmail.com', '$2b$10$be0jgPSIoDkVMjyNHLAsF.ABFs/dZUVapI8/AhT.M3sHSwhWUl4YK', 'admin', 'ativo'),
-('analista@gmail.com', '$2b$10$be0jgPSIoDkVMjyNHLAsF.ABFs/dZUVapI8/AhT.M3sHSwhWUl4YK', 'analista', 'ativo');
+INSERT INTO Usuario (nome, email, senha_hash, tipo_perfil, status) VALUES 
+('Admin','admin@gmail.com', '$2b$10$be0jgPSIoDkVMjyNHLAsF.ABFs/dZUVapI8/AhT.M3sHSwhWUl4YK', 'admin', 'ativo'),
+('Analista','analista@gmail.com', '$2b$10$be0jgPSIoDkVMjyNHLAsF.ABFs/dZUVapI8/AhT.M3sHSwhWUl4YK', 'analista', 'ativo');
