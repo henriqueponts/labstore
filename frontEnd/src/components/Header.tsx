@@ -9,7 +9,7 @@ import {
   Search,
   Menu,
   Wrench,
-  CircleIcon as CircleQuestionMark,
+  CircleQuestionMark,
   Scale,
   Users,
   LogOut,
@@ -177,7 +177,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                       <BarChart3 size={16} className="mr-1" />
                       Relatórios
                     </a>
-                    <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
+                    <a href="/gestao/lgpd" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
                       <Scale size={16} className="mr-1" />
                       LGPD
                     </a>

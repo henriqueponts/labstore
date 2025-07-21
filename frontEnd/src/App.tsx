@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Home from "./pages/Home"
-import Login from "./pages/Login"
-import CadastroCliente from "./pages/CadastroCliente.tsx"
+import LoginComLGPD from "./pages/Login"
+import CadastroClienteComLGPD from "./pages/CadastroCliente"
 import CadastroFuncionario from "./pages/CadastroFuncionario.tsx"
 import GestaoUsuarios from "./pages/GestaoUsuarios.tsx"
 import EsqueceuSenha from "./pages/EsqueceuSenha"
@@ -14,14 +14,16 @@ import GestaoProdutos from "./pages/GestaoProdutos.tsx"
 import EditarProduto from "./pages/EditarProduto.tsx"
 import VisualizarProduto from "./pages/VisualizarProduto.tsx"
 import ListagemProdutos from "./pages/ListagemProdutos.tsx"
+import GestaoLGPD from "./pages/GestaoLGPD.tsx"
+import NovoTermoLGPD from "./pages/NovoTermoLGPD.tsx"
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/cadastro/cliente" element={<CadastroCliente />} />
+        <Route path="/login" element={<LoginComLGPD />} />
+        <Route path="/cadastro/cliente" element={<CadastroClienteComLGPD />} />
         <Route path="/cadastro/funcionario" element={<CadastroFuncionario />} />
         <Route path="/gestao/usuarios" element={<GestaoUsuarios />} />
         <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
@@ -34,6 +36,10 @@ function App() {
         <Route path="/editar/produto/:id" element={<EditarProduto />} />
         <Route path="/produto/:id" element={<VisualizarProduto />} />
         <Route path="/produtos" element={<ListagemProdutos />} />
+        <Route path="/gestao/lgpd" element={<GestaoLGPD />} />
+        <Route path="/gestao/lgpd/novo-termo" element={<NovoTermoLGPD />} />
+        <Route path="/gestao/lgpd/editar/:id" element={<NovoTermoLGPD />} />
+        <Route path="/gestao/lgpd/termo/:id" element={<NovoTermoLGPD />} />
       </Routes>
     </BrowserRouter>
   )

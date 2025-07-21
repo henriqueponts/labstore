@@ -1,5 +1,4 @@
 // Arquivo: server/index.js (versão atualizada)
-
 import express from "express"
 import cors from "cors"
 import path from "path"
@@ -9,6 +8,7 @@ import gestaoRoutes from "./routes/gestaoRoutes.js"
 import recuperacaoSenhaRoutes from "./routes/recuperacaoSenha.js"
 import chamadosRoutes from "./routes/chamadosRoutes.js"
 import produtoRoutes from "./routes/produtoRoutes.js"
+import lgpdRoutes from "./routes/lgpdRoutes.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -43,6 +43,15 @@ app.get("/", (req, res) => {
         "/chamados/:id/responder",
         "/chamados/stats/dashboard",
       ],
+      lgpd: [
+        "/lgpd/termo-atual",
+        "/lgpd/status",
+        "/lgpd/termos",
+        "/lgpd/termos/:id",
+        "/lgpd/aceitar-termo",
+        "/lgpd/verificar-consentimento/:clienteId",
+        "/lgpd/relatorio-consentimentos",
+      ],
     },
     status: "online",
   })
@@ -55,6 +64,7 @@ app.use("/gestao", gestaoRoutes)
 app.use("/auth", recuperacaoSenhaRoutes)
 app.use("/chamados", chamadosRoutes)
 app.use("/produtos", produtoRoutes)
+app.use("/lgpd", lgpdRoutes)
 console.log("✅ Rotas registradas!")
 
 const PORT = process.env.PORT || 3000
@@ -82,6 +92,14 @@ app.listen(PORT, () => {
   console.log("  - PUT  /chamados/:id/encerrar")
   console.log("  - GET  /chamados/todos")
   console.log("  - PUT  /chamados/:id/status")
+  console.log("  - GET  /lgpd/termo-atual")
+  console.log("  - GET  /lgpd/status")
+  console.log("  - GET  /lgpd/termos")
+  console.log("  - POST /lgpd/termos")
+  console.log("  - GET  /lgpd/termos/:id")
+  console.log("  - POST /lgpd/aceitar-termo")
+  console.log("  - GET  /lgpd/verificar-consentimento/:clienteId")
+  console.log("  - GET  /lgpd/relatorio-consentimentos")
   console.log("")
   console.log("🗄️  Conecte ao banco MySQL e configure JWT_SECRET no .env")
 })
