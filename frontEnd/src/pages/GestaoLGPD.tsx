@@ -5,27 +5,51 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
 import Layout from "../components/Layout"
-import { FileText, Plus, Eye, Calendar, Users, BarChart3, AlertCircle } from "lucide-react"
+import {
+  FileText,
+  Plus,
+  Eye,
+  Calendar,
+  Users,
+  BarChart3,
+  AlertCircle,
+  Clock,
+  CheckCircle,
+  Edit,
+  RefreshCw,
+} from "lucide-react"
 
 interface Termo {
   id_termo: number
   versao: string
   data_efetiva: string
+  status_termo: "ativo" | "pendente"
   preview_conteudo?: string
   conteudo?: string
+  pode_editar?: boolean
 }
 
 interface RelatorioItem {
   versao: string
   data_efetiva: string
+  status_termo: "ativo" | "pendente"
   total_aceites: number
   aceites_ativos: number
+}
+
+interface StatusLGPD {
+  configurado: boolean
+  total_termos_ativos: number
+  total_termos_pendentes: number
+  pode_criar_novo: boolean
 }
 
 const GestaoLGPD: React.FC = () => {
   const [termos, setTermos] = useState<Termo[]>([])
   const [relatorio, setRelatorio] = useState<RelatorioItem[]>([])
+  const [statusLGPD, setStatusLGPD] = useState<StatusLGPD | null>(null)
   const [loading, setLoading] = useState(true)
+  const [updating, setUpdating] = useState(false)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState<"termos" | "relatorio">("termos")
   const navigate = useNavigate()
@@ -54,17 +78,19 @@ const GestaoLGPD: React.FC = () => {
       setLoading(true)
       const token = localStorage.getItem("token")
 
-      const [termosResponse, relatorioResponse] = await Promise.all([
+      const [termosResponse, relatorioResponse, statusResponse] = await Promise.all([
         axios.get("http://localhost:3000/lgpd/termos", {
           headers: { Authorization: `Bearer ${token}` },
         }),
         axios.get("http://localhost:3000/lgpd/relatorio-consentimentos", {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        axios.get("http://localhost:3000/lgpd/status"),
       ])
 
       setTermos(termosResponse.data)
       setRelatorio(relatorioResponse.data)
+      setStatusLGPD(statusResponse.data)
     } catch (err) {
       console.error("Erro ao carregar dados:", err)
       setError("Erro ao carregar dados. Tente novamente.")
@@ -73,8 +99,98 @@ const GestaoLGPD: React.FC = () => {
     }
   }
 
+  // ✅ NOVA FUNÇÃO: Atualizar termos pendentes manualmente
+  const handleUpdatePendingTerms = async () => {
+    try {
+      setUpdating(true)
+      const token = localStorage.getItem("token")
+
+      console.log("🔄 Atualizando termos pendentes...")
+
+      const response = await axios.post(
+        "http://localhost:3000/lgpd/atualizar-termos-pendentes",
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      )
+
+      console.log("✅ Resposta:", response.data)
+
+      // Recarregar dados após atualização
+      await loadData()
+
+      // Mostrar mensagem de sucesso
+      if (response.data.total_atualizados > 0) {
+        alert(`✅ ${response.data.total_atualizados} termo(s) atualizado(s) com sucesso!`)
+      } else {
+        alert("ℹ️ Nenhum termo pendente para ativar no momento.")
+      }
+    } catch (err: any) {
+      console.error("❌ Erro ao atualizar termos:", err)
+      alert("❌ Erro ao atualizar termos pendentes. Tente novamente.")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("pt-BR")
+  }
+
+  const getStatusBadge = (status: "ativo" | "pendente", dataEfetiva: string) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const dataEfetivaDate = new Date(dataEfetiva)
+    dataEfetivaDate.setHours(0, 0, 0, 0)
+
+    const isToday = dataEfetivaDate.getTime() === today.getTime()
+    const isPast = dataEfetivaDate.getTime() < today.getTime()
+
+    if (status === "ativo") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          <CheckCircle size={12} className="mr-1" />
+          Ativo
+        </span>
+      )
+    } else {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+          <Clock size={12} className="mr-1" />
+          {isToday ? "Ativa hoje" : isPast ? "Deveria estar ativo" : "Pendente"}
+        </span>
+      )
+    }
+  }
+
+  const canEditTerm = (termo: Termo) => {
+    if (termo.status_termo !== "pendente") return false
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const dataImplementacao = new Date(termo.data_efetiva)
+    dataImplementacao.setHours(0, 0, 0, 0)
+
+    return today < dataImplementacao
+  }
+
+  const getTermoPendente = () => {
+    return termos.find((termo) => termo.status_termo === "pendente")
+  }
+
+  const hasTermsToUpdate = () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    return termos.some((termo) => {
+      if (termo.status_termo !== "pendente") return false
+
+      const dataEfetiva = new Date(termo.data_efetiva)
+      dataEfetiva.setHours(0, 0, 0, 0)
+
+      return dataEfetiva <= today
+    })
   }
 
   if (loading) {
@@ -90,6 +206,8 @@ const GestaoLGPD: React.FC = () => {
     )
   }
 
+  const termoPendente = getTermoPendente()
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -103,15 +221,103 @@ const GestaoLGPD: React.FC = () => {
                 <p className="text-gray-600">Gerenciar termos de consentimento e relatórios</p>
               </div>
             </div>
-            <button
-              onClick={() => navigate("/gestao/lgpd/novo-termo")}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center transition-colors"
-            >
-              <Plus size={16} className="mr-2" />
-              {termos.length === 0 ? "Criar Primeiro Termo" : "Novo Termo"}
-            </button>
+            <div className="flex items-center space-x-3">
+              {statusLGPD && (
+                <div className="text-sm text-gray-600">
+                  <div className="flex items-center space-x-4">
+                    <span className="flex items-center">
+                      <CheckCircle size={16} className="text-green-500 mr-1" />
+                      {statusLGPD.total_termos_ativos} ativo(s)
+                    </span>
+                    <span className="flex items-center">
+                      <Clock size={16} className="text-yellow-500 mr-1" />
+                      {statusLGPD.total_termos_pendentes} pendente(s)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* ✅ BOTÃO PARA ATUALIZAR TERMOS PENDENTES */}
+              {hasTermsToUpdate() && (
+                <button
+                  onClick={handleUpdatePendingTerms}
+                  disabled={updating}
+                  className={`px-4 py-2 rounded-md flex items-center transition-colors ${
+                    updating
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-orange-600 hover:bg-orange-700 text-white"
+                  }`}
+                  title="Ativar termos pendentes cuja data efetiva já chegou"
+                >
+                  <RefreshCw size={16} className={`mr-2 ${updating ? "animate-spin" : ""}`} />
+                  {updating ? "Atualizando..." : "Ativar Termos"}
+                </button>
+              )}
+
+              <button
+                onClick={() => navigate("/gestao/lgpd/novo-termo")}
+                disabled={!statusLGPD?.pode_criar_novo}
+                className={`px-4 py-2 rounded-md flex items-center transition-colors ${
+                  statusLGPD?.pode_criar_novo
+                    ? "bg-blue-600 hover:bg-blue-700 text-white"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
+                title={!statusLGPD?.pode_criar_novo ? "Não é possível criar novo termo enquanto há um pendente" : ""}
+              >
+                <Plus size={16} className="mr-2" />
+                {termos.length === 0 ? "Criar Primeiro Termo" : "Novo Termo"}
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* ✅ ALERTA PARA TERMOS QUE DEVERIAM ESTAR ATIVOS */}
+        {hasTermsToUpdate() && (
+          <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <AlertCircle className="text-orange-600 mr-3" size={20} />
+                <div>
+                  <h3 className="text-orange-800 font-medium">Termos Pendentes Precisam ser Ativados</h3>
+                  <p className="text-orange-700 text-sm mt-1">
+                    Existem termos pendentes cuja data efetiva já chegou. Clique em "Ativar Termos" para atualizá-los
+                    automaticamente.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleUpdatePendingTerms}
+                disabled={updating}
+                className={`px-4 py-2 rounded-md flex items-center transition-colors ${
+                  updating
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-orange-600 hover:bg-orange-700 text-white"
+                }`}
+              >
+                <RefreshCw size={16} className={`mr-2 ${updating ? "animate-spin" : ""}`} />
+                {updating ? "Atualizando..." : "Ativar Agora"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Alerta quando há termo pendente */}
+        {termoPendente && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center">
+              <Clock className="text-blue-600 mr-3" size={20} />
+              <div>
+                <h3 className="text-blue-800 font-medium">Termo Pendente de Implementação</h3>
+                <p className="text-blue-700 text-sm mt-1">
+                  Versão {termoPendente.versao} será implementada em {formatDate(termoPendente.data_efetiva)}.
+                  {canEditTerm(termoPendente)
+                    ? " Você ainda pode editá-lo até o dia anterior à implementação."
+                    : " Não é mais possível editá-lo pois a data de implementação chegou."}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Alerta quando não há termos */}
         {termos.length === 0 && (
@@ -176,6 +382,9 @@ const GestaoLGPD: React.FC = () => {
                       Versão
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Data Efetiva
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -195,6 +404,9 @@ const GestaoLGPD: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(termo.status_termo, termo.data_efetiva)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center text-sm text-gray-500">
                           <Calendar size={14} className="mr-1" />
                           {formatDate(termo.data_efetiva)}
@@ -206,12 +418,27 @@ const GestaoLGPD: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           <button
-                            onClick={() => navigate(`/gestao/lgpd/termo/${termo.id_termo}`)}
+                            onClick={() => {
+                              console.log("👁️ Visualizando termo:", termo.id_termo)
+                              navigate(`/gestao/lgpd/termo/${termo.id_termo}`)
+                            }}
                             className="text-blue-600 hover:text-blue-900 p-1"
                             title="Visualizar"
                           >
                             <Eye size={16} />
                           </button>
+                          {canEditTerm(termo) && (
+                            <button
+                              onClick={() => {
+                                console.log("🔧 Editando termo:", termo.id_termo)
+                                navigate(`/gestao/lgpd/editar-termo/${termo.id_termo}`)
+                              }}
+                              className="text-green-600 hover:text-green-900 p-1"
+                              title="Editar (disponível até o dia anterior à implementação)"
+                            >
+                              <Edit size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -252,6 +479,9 @@ const GestaoLGPD: React.FC = () => {
                       Versão
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Data Efetiva
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -264,6 +494,9 @@ const GestaoLGPD: React.FC = () => {
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">v{item.versao}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(item.status_termo, item.data_efetiva)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center text-sm text-gray-500">

@@ -16,6 +16,7 @@ import VisualizarProduto from "./pages/VisualizarProduto.tsx"
 import ListagemProdutos from "./pages/ListagemProdutos.tsx"
 import GestaoLGPD from "./pages/GestaoLGPD.tsx"
 import NovoTermoLGPD from "./pages/NovoTermoLGPD.tsx"
+import VisualizarTermo from "./pages/VisualizarTermo"
 
 function App() {
   return (
@@ -36,10 +37,16 @@ function App() {
         <Route path="/editar/produto/:id" element={<EditarProduto />} />
         <Route path="/produto/:id" element={<VisualizarProduto />} />
         <Route path="/produtos" element={<ListagemProdutos />} />
+
+        {/* Rotas LGPD - CORRIGIDAS */}
         <Route path="/gestao/lgpd" element={<GestaoLGPD />} />
         <Route path="/gestao/lgpd/novo-termo" element={<NovoTermoLGPD />} />
-        <Route path="/gestao/lgpd/editar/:id" element={<NovoTermoLGPD />} />
-        <Route path="/gestao/lgpd/termo/:id" element={<NovoTermoLGPD />} />
+        {/* ROTA CORRIGIDA: era /editar/:id, agora é /editar-termo/:id */}
+        <Route path="/gestao/lgpd/editar-termo/:id" element={<NovoTermoLGPD />} />
+        {/* ROTA CORRIGIDA: era NovoTermoLGPD, agora é VisualizarTermo */}
+        <Route path="/gestao/lgpd/termo/:id" element={<VisualizarTermo />} />
+        {/* Rota alternativa mantida para compatibilidade */}
+        <Route path="/visualizar-termo/:id" element={<VisualizarTermo />} />
       </Routes>
     </BrowserRouter>
   )

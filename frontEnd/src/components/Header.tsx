@@ -196,7 +196,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
             {/* Menu público */}
             <div className="space-y-2">
               <h4 className="font-semibold text-gray-800 text-sm">Categorias</h4>
-              <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
+              <a href="/produtos" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
                 <Monitor size={16} className="mr-2" />
                 Produtos
               </a>
@@ -204,7 +204,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 <Wrench size={16} className="mr-2" />
                 Assistência Técnica
               </a>
-              <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
+              <a href="/central-ajuda" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
                 <CircleQuestionMark size={16} className="mr-2" />
                 Ajuda
               </a>
@@ -227,14 +227,14 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   Solicitações
                 </a>
 
-                <a href="#" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2">
+                <a href="/gestao/chamados" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2">
                   <Headphones size={16} className="mr-2" />
                   Chamados
                 </a>
                 {usuario.tipo_perfil === "admin" && (
                   <>
                     <a
-                      href="#"
+                      href="/gestao/usuarios"
                       className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2"
                     >
                       <Users size={16} className="mr-2" />
@@ -249,7 +249,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                     </a>
 
                     <a
-                      href="#"
+                      href="/gestao/lgpd"
                       className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2"
                     >
                       <Scale size={16} className="mr-2" />
