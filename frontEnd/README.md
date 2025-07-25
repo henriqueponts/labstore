@@ -1,3 +1,5 @@
+
+
 -- Cria o banco de dados se ele não existir
 
 CREATE DATABASE IF NOT EXISTS labstore;
@@ -139,6 +141,7 @@ CREATE TABLE TermoConsentimento (
     id_termo INT PRIMARY KEY AUTO_INCREMENT,
     conteudo TEXT NOT NULL,
     versao VARCHAR(20) NOT NULL UNIQUE,
+    status_termo ENUM('pendente', 'ativo') DEFAULT 'ativo',
     data_efetiva DATE NOT NULL
 );
 
