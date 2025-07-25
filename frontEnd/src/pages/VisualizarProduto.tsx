@@ -22,6 +22,7 @@ import {
   Tag,
   Package,
 } from "lucide-react"
+import { useCart } from "../context/CartContext" // <-- IMPORTADO
 
 interface ImagemProduto {
   id_imagem: number
@@ -56,6 +57,7 @@ const VisualizarProduto: React.FC = () => {
   const [imagemAtual, setImagemAtual] = useState(0)
   const [quantidade, setQuantidade] = useState(1)
   const [adicionandoCarrinho, setAdicionandoCarrinho] = useState(false)
+  const { adicionarAoCarrinho: adicionarProdutoAoCarrinho } = useCart() // <-- ADICIONADO
 
   // Carregar dados do produto
   const buscarProduto = async () => {
@@ -118,12 +120,10 @@ const VisualizarProduto: React.FC = () => {
 
     setAdicionandoCarrinho(true)
     try {
-      // Simular adição ao carrinho (implementar lógica real depois)
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      alert(`${quantidade} ${quantidade === 1 ? "item adicionado" : "itens adicionados"} ao carrinho!`)
+      await adicionarProdutoAoCarrinho(produto.id_produto, quantidade)
     } catch (err) {
-      console.error("Erro ao adicionar ao carrinho:", err)
-      alert("Erro ao adicionar produto ao carrinho")
+      // O tratamento de erro já está no context, mas pode adicionar lógica extra aqui se quiser
+      console.error("Erro ao adicionar ao carrinho (componente):", err)
     } finally {
       setAdicionandoCarrinho(false)
     }

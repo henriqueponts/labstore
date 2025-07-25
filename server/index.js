@@ -9,6 +9,7 @@ import recuperacaoSenhaRoutes from "./routes/recuperacaoSenha.js"
 import chamadosRoutes from "./routes/chamadosRoutes.js"
 import produtoRoutes from "./routes/produtoRoutes.js"
 import lgpdRoutes from "./routes/lgpdRoutes.js"
+import carrinhoRoutes from "./routes/carrinhoRoutes.js" // <-- ADICIONADO
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -33,6 +34,7 @@ app.get("/", (req, res) => {
       auth: ["/auth/login", "/auth/me", "/auth/registro/cliente", "/auth/registro/funcionario"],
       gestao: ["/gestao/usuarios", "/gestao/clientes"],
       produtos: ["/produtos/produtos", "/produtos/categorias"],
+      carrinho: ["/carrinho/", "/carrinho/adicionar", "/carrinho/atualizar", "/carrinho/remover/:id", "/carrinho/limpar"], // <-- ADICIONADO
       chamados: [
         "/chamados/meus-chamados",
         "/chamados/criar",
@@ -65,6 +67,7 @@ app.use("/auth", recuperacaoSenhaRoutes)
 app.use("/chamados", chamadosRoutes)
 app.use("/produtos", produtoRoutes)
 app.use("/lgpd", lgpdRoutes)
+app.use("/carrinho", carrinhoRoutes) // <-- ADICIONADO
 console.log("✅ Rotas registradas!")
 
 const PORT = process.env.PORT || 3000

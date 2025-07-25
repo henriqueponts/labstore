@@ -6,6 +6,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import TermoLGPDModal from "../components/TermoLGPDModal"
 import ErrorBoundary from "../components/ErrorBoundary"
+import { useCart } from "../context/CartContext" // <-- 1. IMPORTADO
 
 interface TermoData {
   id_termo: number
@@ -27,16 +28,30 @@ const LoginComLGPD: React.FC = () => {
   const [tempUserData, setTempUserData] = useState<any>(null)
 
   const navigate = useNavigate()
+  const { buscarCarrinho } = useCart() // <-- 2. OBTENDO A FUNÇÃO DO CONTEXTO
 
   const handleChanges = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setValues({ ...values, [e.target.name]: e.target.value })
     if (error) setError("")
   }
 
+  // Função auxiliar para finalizar o login e atualizar o carrinho
+  const finalizarLogin = async (token: string, usuario: any) => {
+    localStorage.setItem("token", token)
+    localStorage.setItem("usuario", JSON.stringify(usuario))
+    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`
+
+    // Se o usuário for um cliente, busca os dados do carrinho
+    if (usuario.tipo === 'cliente') {
+      await buscarCarrinho()
+    }
+
+    navigate("/")
+  }
+
   const verificarConsentimento = async (userData: any, token: string) => {
     try {
       if (userData.tipo !== "cliente") {
-        // Funcionários não precisam aceitar termos LGPD
         console.log("👤 Usuário é funcionário - não precisa aceitar termo LGPD")
         return false
       }
@@ -52,15 +67,8 @@ const LoginComLGPD: React.FC = () => {
       if (response.data.precisa_aceitar) {
         const termoAtual = response.data.termo_atual
 
-        // Verificar se existe termo no sistema
-        if (!termoAtual) {
-          console.log("⚠️ Nenhum termo LGPD cadastrado no sistema")
-          return false
-        }
-
-        // Verificar se o termo tem conteúdo
-        if (!termoAtual.conteudo) {
-          console.error("❌ Termo atual sem conteúdo:", termoAtual)
+        if (!termoAtual || !termoAtual.conteudo) {
+          console.error("❌ Termo atual inválido ou sem conteúdo:", termoAtual)
           setError("Erro ao carregar termo LGPD. Contate o administrador.")
           return false
         }
@@ -96,13 +104,10 @@ const LoginComLGPD: React.FC = () => {
         { headers: { Authorization: `Bearer ${token}` } },
       )
 
-      // Finalizar login após aceitar o termo
-      localStorage.setItem("token", token)
-      localStorage.setItem("usuario", JSON.stringify(tempUserData.userData))
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`
-
       setShowTermoModal(false)
-      navigate("/")
+      // <-- 3. CHAMANDO A FUNÇÃO CENTRALIZADA APÓS ACEITAR O TERMO
+      await finalizarLogin(token, tempUserData.userData)
+
     } catch (error) {
       console.error("Erro ao aceitar termo:", error)
       setError("Erro ao processar consentimento. Tente novamente.")
@@ -116,16 +121,13 @@ const LoginComLGPD: React.FC = () => {
 
     try {
       const response = await axios.post("http://localhost:3000/auth/login", values)
+      const { token, usuario } = response.data
 
-      // Verificar se precisa aceitar termo LGPD
-      const precisaAceitarTermo = await verificarConsentimento(response.data.usuario, response.data.token)
+      const precisaAceitarTermo = await verificarConsentimento(usuario, token)
 
       if (!precisaAceitarTermo) {
-        // Login normal sem necessidade de aceitar termo
-        localStorage.setItem("token", response.data.token)
-        localStorage.setItem("usuario", JSON.stringify(response.data.usuario))
-        axios.defaults.headers.common["Authorization"] = `Bearer ${response.data.token}`
-        navigate("/")
+        // <-- 4. CHAMANDO A FUNÇÃO CENTRALIZADA NO LOGIN DIRETO
+        await finalizarLogin(token, usuario)
       }
     } catch (error) {
       console.error("Erro no login:", error)
@@ -151,11 +153,9 @@ const LoginComLGPD: React.FC = () => {
             <p className="text-gray-600 text-sm mt-2">Acesse sua conta</p>
           </div>
 
-          {/* Mensagem de erro */}
           {error && <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
 
           <form onSubmit={handleSubmit}>
-            {/* Email Field */}
             <div className="mb-4">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email
@@ -172,7 +172,6 @@ const LoginComLGPD: React.FC = () => {
               />
             </div>
 
-            {/* Password Field */}
             <div className="mb-6">
               <label htmlFor="senha" className="block text-sm font-medium text-gray-700 mb-1">
                 Senha
@@ -189,7 +188,6 @@ const LoginComLGPD: React.FC = () => {
               />
             </div>
 
-            {/* Submit Button */}
             <div className="mb-6">
               <button
                 type="submit"
@@ -202,7 +200,6 @@ const LoginComLGPD: React.FC = () => {
               </button>
             </div>
 
-            {/* Links para cadastro */}
             <div className="border-t pt-4">
               <div className="text-center mb-3">
                 <span className="text-sm text-gray-600">Não tem uma conta?</span>
@@ -217,7 +214,6 @@ const LoginComLGPD: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal de Termo LGPD */}
       <ErrorBoundary>
         <TermoLGPDModal
           isOpen={showTermoModal}

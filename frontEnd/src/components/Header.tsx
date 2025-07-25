@@ -19,6 +19,7 @@ import {
   Monitor,
   X,
 } from "lucide-react"
+import { useCart } from "../context/CartContext" // <-- IMPORTADO
 
 interface UsuarioData {
   id_cliente?: number
@@ -39,6 +40,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearchChange }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
+  const { totalItens } = useCart() // <-- ADICIONADO
 
   return (
     <header className="bg-white shadow-md relative z-50">
@@ -104,11 +106,16 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
 
             {/* Carrinho - só aparece para clientes ou visitantes */}
             {(!usuario || usuario.tipo === "cliente") && (
-              <button className="relative flex items-center text-gray-700 hover:text-blue-600 transition-colors">
+              <button 
+                onClick={() => navigate('/carrinho')} // <-- ADICIONADO
+                className="relative flex items-center text-gray-700 hover:text-blue-600 transition-colors"
+              >
                 <ShoppingCart size={20} />
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  0
-                </span>
+                {totalItens > 0 && ( // <-- ADICIONADO
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {totalItens}
+                  </span>
+                )}
               </button>
             )}
 
@@ -120,6 +127,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
         </div>
       </div>
 
+      {/* O resto do componente permanece o mesmo */}
       {/* Desktop Navigation Menu */}
       <div className="bg-gray-100 border-t hidden md:block">
         <div className="max-w-7xl mx-auto px-4">

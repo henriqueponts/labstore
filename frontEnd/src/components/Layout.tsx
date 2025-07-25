@@ -2,11 +2,11 @@
 // Salvar como: frontEnd/src/components/Layout.tsx
 
 import axios from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import Header from './Header';
-import { useNavigate } from 'react-router-dom';
-
+import { useNavigate, useLocation } from 'react-router-dom'; // <-- useLocation IMPORTADO
+import { useCart } from '../context/CartContext';
 
 interface UsuarioData {
   id_cliente?: number;
@@ -31,43 +31,52 @@ const Layout: React.FC<LayoutProps> = ({
   showLoading = true 
 }) => {
   const navigate = useNavigate();
+  const location = useLocation(); // <-- OBTENDO A LOCALIZAÇÃO ATUAL DA ROTA
   const [usuario, setUsuario] = useState<UsuarioData | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const { handleLogoutAndClearCart } = useCart();
 
-  // Verificar se há usuário logado (opcional)
-  const checkUser = async () => {
+  // Usamos useCallback para garantir que a função checkUser não mude a cada render
+  const checkUser = useCallback(async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
       if (token) {
-        const response = await axios.get('http://localhost:3000/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        // Define o header para a verificação
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        const response = await axios.get('http://localhost:3000/auth/me');
+        
         if (response.status === 200) {
           setUsuario(response.data);
+        } else {
+          // Se a resposta não for 200, trata como logout
+          handleLogoutAndClearCart();
+          setUsuario(null);
         }
+      } else {
+        // Se não há token, garante que o estado esteja limpo
+        setUsuario(null);
       }
     } catch (err) {
-      // Usuário não logado ou token inválido - não é problema
-      localStorage.removeItem('token');
-      localStorage.removeItem('usuario');
+      // Se a requisição falhar (ex: token inválido), limpa tudo
+      handleLogoutAndClearCart();
+      setUsuario(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [handleLogoutAndClearCart]); // A função depende do logout do contexto
 
+  // ESTE É O PONTO CRÍTICO DA CORREÇÃO
+  // O useEffect agora roda na montagem inicial E toda vez que a URL (location) muda.
   useEffect(() => {
     checkUser();
-  }, []);
+  }, [location, checkUser]); // <-- DEPENDÊNCIA DE ROTA ADICIONADA
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
-    setUsuario(null);
-    delete axios.defaults.headers.common['Authorization'];
-    
-    // Redireciona para a página inicial
-    navigate('/');
+    handleLogoutAndClearCart(); // Chama a função do contexto que limpa o carrinho e o localStorage
+    setUsuario(null);           // Atualiza o estado do usuário no Layout imediatamente
+    navigate('/');              // Redireciona para a página inicial
   };
 
   if (loading && showLoading) {
@@ -83,7 +92,6 @@ const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className={`min-h-screen ${backgroundColor}`}>
-      {/* Header - Opcional */}
       {showHeader && (
         <Header 
           usuario={usuario}
@@ -93,7 +101,6 @@ const Layout: React.FC<LayoutProps> = ({
         />
       )}
       
-      {/* Conteúdo da página */}
       {children}
     </div>
   );

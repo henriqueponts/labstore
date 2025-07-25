@@ -18,6 +18,7 @@ import {
   Zap,
   X,
 } from "lucide-react"
+import { useCart } from "../context/CartContext" // <-- IMPORTADO
 
 interface Produto {
   id_produto: number
@@ -51,6 +52,7 @@ type OrdenacaoTipo = "nome" | "preco_asc" | "preco_desc" | "mais_recente"
 const ListagemProdutos: React.FC = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { adicionarAoCarrinho } = useCart() // <-- ADICIONADO
 
   // Estados principais
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -520,7 +522,9 @@ const ListagemProdutos: React.FC = () => {
                                   Ver Detalhes
                                 </button>
                                 <button
-                                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl transition-all duration-200"
+                                  onClick={() => adicionarAoCarrinho(produto.id_produto, 1)}
+                                  disabled={produto.estoque <= 0}
+                                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Adicionar ao carrinho"
                                 >
                                   <ShoppingCart size={16} />
@@ -595,7 +599,9 @@ const ListagemProdutos: React.FC = () => {
                                       Ver Detalhes
                                     </button>
                                     <button
-                                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl transition-all duration-200 flex items-center justify-center"
+                                      onClick={() => adicionarAoCarrinho(produto.id_produto, 1)}
+                                      disabled={produto.estoque <= 0}
+                                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                                       title="Adicionar ao carrinho"
                                     >
                                       <ShoppingCart size={16} />

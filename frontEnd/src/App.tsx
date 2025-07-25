@@ -17,6 +17,7 @@ import ListagemProdutos from "./pages/ListagemProdutos.tsx"
 import GestaoLGPD from "./pages/GestaoLGPD.tsx"
 import NovoTermoLGPD from "./pages/NovoTermoLGPD.tsx"
 import VisualizarTermo from "./pages/VisualizarTermo"
+import CarrinhoPage from "./pages/CarrinhoPage.tsx"
 
 function App() {
   return (
@@ -37,6 +38,9 @@ function App() {
         <Route path="/editar/produto/:id" element={<EditarProduto />} />
         <Route path="/produto/:id" element={<VisualizarProduto />} />
         <Route path="/produtos" element={<ListagemProdutos />} />
+        <Route path="/carrinho" element={<CarrinhoPage />} />
+        
+        {/* Rotas de gestão de produtos */}
 
         {/* Rotas LGPD - CORRIGIDAS */}
         <Route path="/gestao/lgpd" element={<GestaoLGPD />} />
