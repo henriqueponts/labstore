@@ -21,6 +21,8 @@ import {
   Hash,
   Truck,
   AlertCircle,
+  Weight,
+  Ruler,
 } from "lucide-react"
 
 interface Categoria {
@@ -58,6 +60,10 @@ interface Produto {
   status: "ativo" | "inativo"
   categoria_nome: string
   imagens: ImagemExistente[]
+  peso_kg: number | null
+  altura_cm: number | null
+  largura_cm: number | null
+  comprimento_cm: number | null
 }
 
 const EditarProduto: React.FC = () => {
@@ -84,6 +90,10 @@ const EditarProduto: React.FC = () => {
     cor: "",
     ano_fabricacao: "",
     status: "ativo" as "ativo" | "inativo",
+    peso_kg: "",
+    altura_cm: "",
+    largura_cm: "",
+    comprimento_cm: "",
   })
 
   const [erros, setErros] = useState<Record<string, string>>({})
@@ -106,6 +116,10 @@ const EditarProduto: React.FC = () => {
         cor: produto.cor || "",
         ano_fabricacao: produto.ano_fabricacao?.toString() || "",
         status: produto.status || "ativo",
+        peso_kg: produto.peso_kg?.toString() || "",
+        altura_cm: produto.altura_cm?.toString() || "",
+        largura_cm: produto.largura_cm?.toString() || "",
+        comprimento_cm: produto.comprimento_cm?.toString() || "",
       })
 
       setImagensExistentes(produto.imagens || [])
@@ -165,6 +179,10 @@ const EditarProduto: React.FC = () => {
     ) {
       novosErros.ano_fabricacao = "Ano de fabricação inválido"
     }
+    if (dadosFormulario.peso_kg && Number.parseFloat(dadosFormulario.peso_kg) <= 0) novosErros.peso_kg = "Peso deve ser maior que zero";
+    if (dadosFormulario.altura_cm && Number.parseFloat(dadosFormulario.altura_cm) <= 0) novosErros.altura_cm = "Altura deve ser maior que zero";
+    if (dadosFormulario.largura_cm && Number.parseFloat(dadosFormulario.largura_cm) <= 0) novosErros.largura_cm = "Largura deve ser maior que zero";
+    if (dadosFormulario.comprimento_cm && Number.parseFloat(dadosFormulario.comprimento_cm) <= 0) novosErros.comprimento_cm = "Comprimento deve ser maior que zero";
 
     setErros(novosErros)
     return Object.keys(novosErros).length === 0
@@ -234,30 +252,25 @@ const EditarProduto: React.FC = () => {
 
       const dadosEnvio = new FormData()
 
-      // Adicionar dados do produto
       Object.entries(dadosFormulario).forEach(([chave, valor]) => {
         if (valor !== null && valor !== "") {
           dadosEnvio.append(chave, valor.toString())
         }
       })
 
-      // Adicionar novas imagens
       novasImagens.forEach((arquivoImagem) => {
         dadosEnvio.append("novas_imagens", arquivoImagem.arquivo)
       })
 
-      // Adicionar IDs das imagens a serem removidas
       if (imagensParaRemover.length > 0) {
         dadosEnvio.append("imagens_removidas", JSON.stringify(imagensParaRemover))
       }
 
-      // Adicionar ID da imagem principal
       const imagemPrincipal = imagensExistentes.find((img) => img.is_principal)
       if (imagemPrincipal) {
         dadosEnvio.append("imagem_principal_id", imagemPrincipal.id_imagem.toString())
       }
 
-      // Adicionar ordens das imagens existentes
       const ordensImagens = imagensExistentes.map((img) => ({
         id_imagem: img.id_imagem,
         ordem: img.ordem,
@@ -435,7 +448,6 @@ const EditarProduto: React.FC = () => {
               </div>
             </div>
 
-            {/* Formulário de nova categoria */}
             {mostrarFormularioNovaCategoria && (
               <div className="mt-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
                 <h3 className="font-medium text-gray-800 mb-3">Nova Categoria</h3>
@@ -571,6 +583,95 @@ const EditarProduto: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Descreva com quais sistemas, dispositivos ou componentes este produto é compatível..."
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Informações de Envio */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+              <Truck className="mr-2" size={24} />
+              Informações de Envio
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Essas informações são essenciais para o cálculo automático do frete.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Weight className="inline mr-1" size={16} />
+                  Peso (kg)
+                </label>
+                <input
+                  type="number"
+                  name="peso_kg"
+                  value={dadosFormulario.peso_kg}
+                  onChange={processarMudancaInput}
+                  step="0.001"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.peso_kg ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 0.850"
+                />
+                {erros.peso_kg && <p className="text-red-500 text-sm mt-1">{erros.peso_kg}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Ruler className="inline mr-1" size={16} />
+                  Altura (cm)
+                </label>
+                <input
+                  type="number"
+                  name="altura_cm"
+                  value={dadosFormulario.altura_cm}
+                  onChange={processarMudancaInput}
+                  step="0.01"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.altura_cm ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 15.5"
+                />
+                {erros.altura_cm && <p className="text-red-500 text-sm mt-1">{erros.altura_cm}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Ruler className="inline mr-1" size={16} />
+                  Largura (cm)
+                </label>
+                <input
+                  type="number"
+                  name="largura_cm"
+                  value={dadosFormulario.largura_cm}
+                  onChange={processarMudancaInput}
+                  step="0.01"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.largura_cm ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 25.0"
+                />
+                {erros.largura_cm && <p className="text-red-500 text-sm mt-1">{erros.largura_cm}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Ruler className="inline mr-1" size={16} />
+                  Comprimento (cm)
+                </label>
+                <input
+                  type="number"
+                  name="comprimento_cm"
+                  value={dadosFormulario.comprimento_cm}
+                  onChange={processarMudancaInput}
+                  step="0.01"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.comprimento_cm ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 35.0"
+                />
+                {erros.comprimento_cm && <p className="text-red-500 text-sm mt-1">{erros.comprimento_cm}</p>}
               </div>
             </div>
           </div>
