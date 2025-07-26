@@ -20,6 +20,8 @@ import {
   FileText,
   Hash,
   Truck,
+  Weight,
+  Ruler,
 } from "lucide-react"
 
 interface Categoria {
@@ -53,6 +55,10 @@ const CadastroProdutos: React.FC = () => {
     compatibilidade: "",
     cor: "",
     ano_fabricacao: "",
+    peso_kg: "",
+    altura_cm: "",
+    largura_cm: "",
+    comprimento_cm: "",
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -91,6 +97,10 @@ const CadastroProdutos: React.FC = () => {
     ) {
       newErrors.ano_fabricacao = "Ano de fabricação inválido"
     }
+    if (formData.peso_kg && Number.parseFloat(formData.peso_kg) <= 0) newErrors.peso_kg = "Peso deve ser maior que zero";
+    if (formData.altura_cm && Number.parseFloat(formData.altura_cm) <= 0) newErrors.altura_cm = "Altura deve ser maior que zero";
+    if (formData.largura_cm && Number.parseFloat(formData.largura_cm) <= 0) newErrors.largura_cm = "Largura deve ser maior que zero";
+    if (formData.comprimento_cm && Number.parseFloat(formData.comprimento_cm) <= 0) newErrors.comprimento_cm = "Comprimento deve ser maior que zero";
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -101,7 +111,6 @@ const CadastroProdutos: React.FC = () => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
 
-    // Limpar erro do campo quando usuário começar a digitar
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }))
     }
@@ -153,14 +162,12 @@ const CadastroProdutos: React.FC = () => {
 
       const submitData = new FormData()
 
-      // Adicionar dados do produto
       Object.entries(formData).forEach(([key, value]) => {
         if (value !== null && value !== "") {
           submitData.append(key, value.toString())
         }
       })
 
-      // Adicionar imagens
       images.forEach((imageFile) => {
         submitData.append("imagens", imageFile.file)
       })
@@ -309,7 +316,6 @@ const CadastroProdutos: React.FC = () => {
                 {errors.id_categoria && <p className="text-red-500 text-sm mt-1">{errors.id_categoria}</p>}
               </div>
 
-              {/* Formulário de nova categoria */}
               {showNewCategoryForm && (
                 <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                   <h3 className="font-medium text-gray-800 mb-3">Nova Categoria</h3>
@@ -446,6 +452,95 @@ const CadastroProdutos: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Descreva com quais sistemas, dispositivos ou componentes este produto é compatível..."
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Informações de Envio */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+              <Truck className="mr-2" size={24} />
+              Informações de Envio
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Essas informações são essenciais para o cálculo automático do frete.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Weight className="inline mr-1" size={16} />
+                  Peso (kg)
+                </label>
+                <input
+                  type="number"
+                  name="peso_kg"
+                  value={formData.peso_kg}
+                  onChange={handleInputChange}
+                  step="0.001"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.peso_kg ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 0.850"
+                />
+                {errors.peso_kg && <p className="text-red-500 text-sm mt-1">{errors.peso_kg}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Ruler className="inline mr-1" size={16} />
+                  Altura (cm)
+                </label>
+                <input
+                  type="number"
+                  name="altura_cm"
+                  value={formData.altura_cm}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.altura_cm ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 15.5"
+                />
+                {errors.altura_cm && <p className="text-red-500 text-sm mt-1">{errors.altura_cm}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Ruler className="inline mr-1" size={16} />
+                  Largura (cm)
+                </label>
+                <input
+                  type="number"
+                  name="largura_cm"
+                  value={formData.largura_cm}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.largura_cm ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 25.0"
+                />
+                {errors.largura_cm && <p className="text-red-500 text-sm mt-1">{errors.largura_cm}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Ruler className="inline mr-1" size={16} />
+                  Comprimento (cm)
+                </label>
+                <input
+                  type="number"
+                  name="comprimento_cm"
+                  value={formData.comprimento_cm}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.comprimento_cm ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 35.0"
+                />
+                {errors.comprimento_cm && <p className="text-red-500 text-sm mt-1">{errors.comprimento_cm}</p>}
               </div>
             </div>
           </div>

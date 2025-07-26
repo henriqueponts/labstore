@@ -10,6 +10,8 @@ import chamadosRoutes from "./routes/chamadosRoutes.js"
 import produtoRoutes from "./routes/produtoRoutes.js"
 import lgpdRoutes from "./routes/lgpdRoutes.js"
 import carrinhoRoutes from "./routes/carrinhoRoutes.js" // <-- ADICIONADO
+import freteRoutes from "./routes/freteRoutes.js" // <-- ADICIONADO
+
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -68,6 +70,7 @@ app.use("/chamados", chamadosRoutes)
 app.use("/produtos", produtoRoutes)
 app.use("/lgpd", lgpdRoutes)
 app.use("/carrinho", carrinhoRoutes) // <-- ADICIONADO
+app.use("/frete", freteRoutes) // <-- ADICIONADO
 console.log("✅ Rotas registradas!")
 
 const PORT = process.env.PORT || 3000

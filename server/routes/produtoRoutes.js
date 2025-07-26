@@ -192,35 +192,34 @@ router.get("/produtos/:id", async (req, res) => {
 // Criar novo produto com múltiplas imagens
 router.post("/produtos", verificarFuncionario, upload.array("imagens", 10), async (req, res) => {
   try {
-    const { nome, descricao, preco, marca, modelo, estoque, id_categoria, compatibilidade, cor, ano_fabricacao } =
-      req.body
+    // 1. Adiciona os novos campos de peso e dimensões
+    const { 
+      nome, descricao, preco, marca, modelo, estoque, id_categoria, 
+      compatibilidade, cor, ano_fabricacao,
+      peso_kg, altura_cm, largura_cm, comprimento_cm 
+    } = req.body
 
-    // Validações básicas
     if (!nome || !descricao || !preco || !id_categoria) {
-      return res.status(400).json({
-        message: "Nome, descrição, preço e categoria são obrigatórios",
-      })
+      return res.status(400).json({ message: "Nome, descrição, preço e categoria são obrigatórios" })
     }
-
     if (isNaN(Number.parseFloat(preco)) || Number.parseFloat(preco) <= 0) {
       return res.status(400).json({ message: "Preço deve ser um número válido maior que zero" })
     }
 
     const db = await connectToDatabase()
-
-    // Verificar se categoria existe
     const [categoria] = await db.query("SELECT id_categoria FROM Categoria WHERE id_categoria = ?", [id_categoria])
     if (categoria.length === 0) {
       return res.status(400).json({ message: "Categoria não encontrada" })
     }
 
-    // Inserir produto
+    // 2. Adiciona os novos campos na query SQL
     const [resultado] = await db.query(
       `
       INSERT INTO Produto (
-          nome, descricao, preco, marca, modelo, estoque, 
-          id_categoria, compatibilidade, cor, ano_fabricacao
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          nome, descricao, preco, marca, modelo, estoque, id_categoria, 
+          compatibilidade, cor, ano_fabricacao,
+          peso_kg, altura_cm, largura_cm, comprimento_cm
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         nome,
@@ -233,21 +232,23 @@ router.post("/produtos", verificarFuncionario, upload.array("imagens", 10), asyn
         compatibilidade || null,
         cor || null,
         ano_fabricacao ? Number.parseInt(ano_fabricacao) : null,
+        // 3. Adiciona os valores (convertendo para número ou null)
+        peso_kg ? Number.parseFloat(peso_kg) : null,
+        altura_cm ? Number.parseFloat(altura_cm) : null,
+        largura_cm ? Number.parseFloat(largura_cm) : null,
+        comprimento_cm ? Number.parseFloat(comprimento_cm) : null,
       ],
     )
 
     const idProduto = resultado.insertId
 
-    // Inserir imagens se foram enviadas
     if (req.files && req.files.length > 0) {
       for (let i = 0; i < req.files.length; i++) {
         const arquivo = req.files[i]
         const urlImagem = `/uploads/produtos/${arquivo.filename}`
-        const ehPrincipal = i === 0 // Primeira imagem é a principal
-
+        const ehPrincipal = i === 0
         await db.query(
-          `INSERT INTO ProdutoImagem (id_produto, url_imagem, nome_arquivo, ordem, is_principal) 
-           VALUES (?, ?, ?, ?, ?)`,
+          `INSERT INTO ProdutoImagem (id_produto, url_imagem, nome_arquivo, ordem, is_principal) VALUES (?, ?, ?, ?, ?)`,
           [idProduto, urlImagem, arquivo.filename, i, ehPrincipal],
         )
       }
@@ -264,36 +265,24 @@ router.post("/produtos", verificarFuncionario, upload.array("imagens", 10), asyn
   }
 })
 
+
 // Atualizar produto existente
 router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 10), async (req, res) => {
   try {
     const { id } = req.params
+    // 1. Adiciona os novos campos de peso e dimensões
     const {
-      nome,
-      descricao,
-      preco,
-      marca,
-      modelo,
-      estoque,
-      id_categoria,
-      compatibilidade,
-      cor,
-      ano_fabricacao,
-      status,
-      imagens_removidas, // IDs das imagens a serem removidas
-      imagem_principal_id, // ID da nova imagem principal
-      ordens_imagens, // JSON com as novas ordens das imagens
+      nome, descricao, preco, marca, modelo, estoque, id_categoria,
+      compatibilidade, cor, ano_fabricacao, status,
+      peso_kg, altura_cm, largura_cm, comprimento_cm,
+      imagens_removidas, imagem_principal_id, ordens_imagens,
     } = req.body
 
     const db = await connectToDatabase()
-
-    // Verificar se produto existe
     const [produtoExistente] = await db.query("SELECT * FROM Produto WHERE id_produto = ?", [id])
     if (produtoExistente.length === 0) {
       return res.status(404).json({ message: "Produto não encontrado" })
     }
-
-    // Verificar se categoria existe (se foi fornecida)
     if (id_categoria) {
       const [categoria] = await db.query("SELECT id_categoria FROM Categoria WHERE id_categoria = ?", [id_categoria])
       if (categoria.length === 0) {
@@ -315,7 +304,11 @@ router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 
           compatibilidade = COALESCE(?, compatibilidade),
           cor = COALESCE(?, cor),
           ano_fabricacao = COALESCE(?, ano_fabricacao),
-          status = COALESCE(?, status)
+          status = COALESCE(?, status),
+          peso_kg = COALESCE(?, peso_kg),
+          altura_cm = COALESCE(?, altura_cm),
+          largura_cm = COALESCE(?, largura_cm),
+          comprimento_cm = COALESCE(?, comprimento_cm)
       WHERE id_produto = ?
       `,
       [
@@ -330,9 +323,15 @@ router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 
         cor || null,
         ano_fabricacao ? Number.parseInt(ano_fabricacao) : null,
         status || null,
+        // 3. Adiciona os valores (convertendo para número ou null)
+        peso_kg ? Number.parseFloat(peso_kg) : null,
+        altura_cm ? Number.parseFloat(altura_cm) : null,
+        largura_cm ? Number.parseFloat(largura_cm) : null,
+        comprimento_cm ? Number.parseFloat(comprimento_cm) : null,
         id,
       ],
     )
+
 
     // Processar remoção de imagens
     if (imagens_removidas) {

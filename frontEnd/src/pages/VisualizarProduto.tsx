@@ -21,6 +21,8 @@ import {
   Palette,
   Tag,
   Package,
+  Weight,
+  Ruler,
 } from "lucide-react"
 import { useCart } from "../context/CartContext" // <-- IMPORTADO
 
@@ -47,6 +49,10 @@ interface Produto {
   status: "ativo" | "inativo"
   categoria_nome: string
   imagens: ImagemProduto[]
+  peso_kg: number | null
+  altura_cm: number | null
+  largura_cm: number | null
+  comprimento_cm: number | null
 }
 
 const VisualizarProduto: React.FC = () => {
@@ -197,10 +203,10 @@ const VisualizarProduto: React.FC = () => {
             <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group">
               {imagemPrincipal ? (
                 <img
-                  src={`http://localhost:3000/produtos${imagemPrincipal.url_imagem}` || "/placeholder.svg"}
-                  alt={produto.nome}
-                  className="w-full h-full object-cover"
-                />
+                    src={imagemPrincipal.url_imagem ? `http://localhost:3000/produtos${imagemPrincipal.url_imagem}` : "/placeholder.svg"}
+                    alt={produto.nome}
+                    className="w-full h-full object-cover"
+                  />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Package className="h-24 w-24 text-gray-400" />
@@ -253,7 +259,7 @@ const VisualizarProduto: React.FC = () => {
                     }`}
                   >
                     <img
-                      src={`http://localhost:3000/produtos${imagem.url_imagem}` || "/placeholder.svg"}
+                      src={imagem.url_imagem ? `http://localhost:3000/produtos${imagem.url_imagem}` : "/placeholder.svg"}
                       alt={`${produto.nome} - Imagem ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
@@ -386,6 +392,8 @@ const VisualizarProduto: React.FC = () => {
             )}
           </div>
 
+
+
           {/* Informações do Produto (antiga Especificações) */}
           <div>
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Informações do Produto</h3>
@@ -420,6 +428,8 @@ const VisualizarProduto: React.FC = () => {
                   <span className="text-sm text-gray-900">{produto.ano_fabricacao}</span>
                 </div>
               )}
+
+              
               <div className="px-4 py-3 flex justify-between">
                 <span className="text-sm font-medium text-gray-600 flex items-center">
                   <Tag size={14} className="mr-1" />
@@ -428,6 +438,32 @@ const VisualizarProduto: React.FC = () => {
                 <span className="text-sm text-gray-900">{produto.categoria_nome}</span>
               </div>
             </div>
+            
+            {(produto.peso_kg || produto.altura_cm) && (
+              <div className="mt-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">Informações de Envio</h3>
+                <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-200">
+                  {produto.peso_kg && (
+                    <div className="px-4 py-3 flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-600 flex items-center">
+                        <Weight size={14} className="mr-2" /> Peso
+                      </span>
+                      <span className="text-sm text-gray-900">{produto.peso_kg} kg</span>
+                    </div>
+                  )}
+                  {(produto.altura_cm && produto.largura_cm && produto.comprimento_cm) && (
+                    <div className="px-4 py-3 flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-600 flex items-center">
+                        <Ruler size={14} className="mr-2" /> Dimensões
+                      </span>
+                      <span className="text-sm text-gray-900">
+                        {produto.altura_cm}cm (A) x {produto.largura_cm}cm (L) x {produto.comprimento_cm}cm (C)
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

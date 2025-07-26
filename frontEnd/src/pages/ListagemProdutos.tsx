@@ -15,7 +15,6 @@ import {
   SlidersHorizontal,
   ArrowUpDown,
   TrendingUp,
-  Zap,
   X,
 } from "lucide-react"
 import { useCart } from "../context/CartContext" // <-- IMPORTADO
@@ -213,10 +212,6 @@ const ListagemProdutos: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Header da página */}
           <div className="mb-12 text-center">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full text-blue-700 text-sm font-medium mb-4">
-              <Zap size={16} className="mr-2" />
-              Catálogo Completo
-            </div>
             <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
               Nossos Produtos
             </h1>
