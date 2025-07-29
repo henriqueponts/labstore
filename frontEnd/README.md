@@ -1,5 +1,3 @@
-
-
 -- Cria o banco de dados se ele não existir
 
 CREATE DATABASE IF NOT EXISTS labstore;
@@ -50,8 +48,13 @@ CREATE TABLE Produto (
     compatibilidade TEXT NULL,
     cor VARCHAR(50) NULL,
     ano_fabricacao INT NULL,
+    peso_kg DECIMAL(10, 3) NULL,
+    altura_cm DECIMAL(10, 2) NULL,
+    largura_cm DECIMAL(10, 2) NULL,
+    comprimento_cm DECIMAL(10, 2) NULL,
     FOREIGN KEY (id_categoria) REFERENCES Categoria(id_categoria)
 );
+
 
 CREATE TABLE ProdutoImagem (
     id_imagem INT PRIMARY KEY AUTO_INCREMENT,
@@ -141,7 +144,7 @@ CREATE TABLE TermoConsentimento (
     id_termo INT PRIMARY KEY AUTO_INCREMENT,
     conteudo TEXT NOT NULL,
     versao VARCHAR(20) NOT NULL UNIQUE,
-    status_termo ENUM('pendente', 'ativo') DEFAULT 'ativo',
+	status_termo ENUM('pendente', 'ativo') DEFAULT 'ativo',
     data_efetiva DATE NOT NULL
 );
 
@@ -225,6 +228,178 @@ CREATE TABLE IF NOT EXISTS RespostaChamado (
 );
 
 DELIMITER //
+CREATE PROCEDURE AdicionarItemCarrinho(
+    IN p_id_cliente INT,
+    IN p_id_produto INT,
+    IN p_quantidade INT
+)
+BEGIN
+    DECLARE v_id_carrinho INT;
+    DECLARE v_preco_atual DECIMAL(10,2);
+    DECLARE v_estoque_disponivel INT;
+    
+    -- Verifica se o produto existe e está ativo
+    SELECT preco, estoque INTO v_preco_atual, v_estoque_disponivel
+    FROM Produto 
+    WHERE id_produto = p_id_produto AND status = 'ativo';
+    
+    -- Verifica se há estoque suficiente
+    IF v_estoque_disponivel < p_quantidade THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Estoque insuficiente';
+    END IF;
+    
+    -- Busca ou cria o carrinho do cliente
+    SELECT id_carrinho INTO v_id_carrinho 
+    FROM Carrinho 
+    WHERE id_cliente = p_id_cliente;
+    
+    IF v_id_carrinho IS NULL THEN
+        INSERT INTO Carrinho (id_cliente) VALUES (p_id_cliente);
+        SET v_id_carrinho = LAST_INSERT_ID();
+    END IF;
+    
+    -- Adiciona ou atualiza o item no carrinho
+    INSERT INTO ItemCarrinho (id_carrinho, id_produto, quantidade, preco_unitario_no_momento_adicao)
+    VALUES (v_id_carrinho, p_id_produto, p_quantidade, v_preco_atual)
+    ON DUPLICATE KEY UPDATE 
+        quantidade = quantidade + p_quantidade,
+        data_adicao = CURRENT_TIMESTAMP;
+        
+END//
+DELIMITER ;
+
+-- 3. Procedure para atualizar quantidade de um item
+DELIMITER //
+CREATE PROCEDURE AtualizarQuantidadeItem(
+    IN p_id_cliente INT,
+    IN p_id_produto INT,
+    IN p_nova_quantidade INT
+)
+BEGIN
+    DECLARE v_id_carrinho INT;
+    DECLARE v_estoque_disponivel INT;
+    
+    -- Verifica estoque
+    SELECT estoque INTO v_estoque_disponivel
+    FROM Produto 
+    WHERE id_produto = p_id_produto AND status = 'ativo';
+    
+    IF v_estoque_disponivel < p_nova_quantidade THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Estoque insuficiente';
+    END IF;
+    
+    -- Busca o carrinho
+    SELECT id_carrinho INTO v_id_carrinho 
+    FROM Carrinho 
+    WHERE id_cliente = p_id_cliente;
+    
+    -- Atualiza a quantidade ou remove se for 0
+    IF p_nova_quantidade > 0 THEN
+        UPDATE ItemCarrinho 
+        SET quantidade = p_nova_quantidade 
+        WHERE id_carrinho = v_id_carrinho 
+        AND id_produto = p_id_produto;
+    ELSE
+        DELETE FROM ItemCarrinho 
+        WHERE id_carrinho = v_id_carrinho 
+        AND id_produto = p_id_produto;
+    END IF;
+    
+END//
+DELIMITER ;
+
+-- 4. Procedure para remover item do carrinho
+DELIMITER //
+CREATE PROCEDURE RemoverItemCarrinho(
+    IN p_id_cliente INT,
+    IN p_id_produto INT
+)
+BEGIN
+    DECLARE v_id_carrinho INT;
+    
+    SELECT id_carrinho INTO v_id_carrinho 
+    FROM Carrinho 
+    WHERE id_cliente = p_id_cliente;
+    
+    DELETE FROM ItemCarrinho 
+    WHERE id_carrinho = v_id_carrinho 
+    AND id_produto = p_id_produto;
+    
+END//
+DELIMITER ;
+
+-- 5. Procedure para limpar carrinho completo
+DELIMITER //
+CREATE PROCEDURE LimparCarrinho(IN p_id_cliente INT)
+BEGIN
+    DECLARE v_id_carrinho INT;
+    
+    SELECT id_carrinho INTO v_id_carrinho 
+    FROM Carrinho 
+    WHERE id_cliente = p_id_cliente;
+    
+    DELETE FROM ItemCarrinho WHERE id_carrinho = v_id_carrinho;
+    
+END//
+DELIMITER ;
+
+-- 6. View para facilitar consultas do carrinho com detalhes dos produtos
+CREATE VIEW CarrinhoDetalhado AS
+SELECT 
+    c.id_cliente,
+    c.data_criacao as data_criacao_carrinho,
+    c.data_ultima_modificacao,
+    ic.id_produto,
+    p.nome as nome_produto,
+    p.descricao as descricao_produto,
+    p.preco as preco_atual,
+    ic.preco_unitario_no_momento_adicao,
+    ic.quantidade,
+    (ic.quantidade * ic.preco_unitario_no_momento_adicao) as subtotal,
+    p.estoque,
+    p.status as status_produto,
+    pi.url_imagem as imagem_principal
+FROM Carrinho c
+JOIN ItemCarrinho ic ON c.id_carrinho = ic.id_carrinho
+JOIN Produto p ON ic.id_produto = p.id_produto
+LEFT JOIN ProdutoImagem pi ON p.id_produto = pi.id_produto AND pi.is_principal = TRUE;
+
+-- 7. Trigger para limpar carrinhos antigos (opcional - rodar via cron job)
+-- Limpa carrinhos sem modificação há mais de 30 dias
+DELIMITER //
+CREATE EVENT LimparCarrinhosAntigos
+ON SCHEDULE EVERY 1 DAY
+DO
+BEGIN
+    DELETE c, ic 
+    FROM Carrinho c
+    LEFT JOIN ItemCarrinho ic ON c.id_carrinho = ic.id_carrinho
+    WHERE c.data_ultima_modificacao < DATE_SUB(NOW(), INTERVAL 30 DAY);
+END//
+DELIMITER ;
+
+-- 8. Função para calcular total do carrinho
+DELIMITER //
+CREATE FUNCTION CalcularTotalCarrinho(p_id_cliente INT) 
+RETURNS DECIMAL(10,2)
+READS SQL DATA
+DETERMINISTIC
+BEGIN
+    DECLARE v_total DECIMAL(10,2) DEFAULT 0;
+    
+    SELECT COALESCE(SUM(quantidade * preco_unitario_no_momento_adicao), 0)
+    INTO v_total
+    FROM Carrinho c
+    JOIN ItemCarrinho ic ON c.id_carrinho = ic.id_carrinho
+    WHERE c.id_cliente = p_id_cliente;
+    
+    RETURN v_total;
+END//
+DELIMITER ;
+
+
+DELIMITER //
+
 CREATE TRIGGER update_chamado_stats 
 AFTER INSERT ON RespostaChamado
 FOR EACH ROW
@@ -253,70 +428,90 @@ INSERT INTO Categoria (id_categoria, nome, descricao) VALUES
 (2, 'Notebooks', 'Computadores portáteis de diversas marcas e modelos.'),
 (3, 'PCs Gamer', 'Computadores de mesa montados e otimizados para jogos.');
 
--- Inserindo os produtos com base nos links fornecidos
--- Produto 1: Monitor Gamer LG 26"
-INSERT INTO Produto (id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao) VALUES
-(
+-- Produto 1: Monitor LG
+INSERT INTO Produto 
+(id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) 
+VALUES (
     1,
     'Monitor Gamer LG 26" UltraWide',
     'Monitor Gamer LG 26 polegadas Full HD, 75Hz, 1ms, IPS, HDMI, AMD FreeSync Premium, HDR 10, 99% sRGB, VESA.',
-    899.99, -- Preço exemplo, ajuste se necessário
+    899.99,
     'LG',
     '26WQ500',
-    50, -- Estoque exemplo
+    50,
     'ativo',
     'Compatível com PCs e consoles via HDMI. Suporte VESA para montagem.',
     'Preto',
-    2023 -- Ano exemplo
+    2023,
+    3.200,
+    41.2,
+    61.1,
+    22.5
 );
 
--- Produto 2: Notebook Gamer ASUS ROG Strix G16
-INSERT INTO Produto (id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao) VALUES
-(
+-- Produto 2: Notebook ASUS
+INSERT INTO Produto 
+(id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) 
+VALUES (
     2,
     'Notebook Gamer ASUS ROG Strix G16',
     'Intel Core i9-13980HX, 16GB RAM DDR5, RTX 4060 8GB, SSD 512GB NVMe, Tela 16" FHD 165Hz IPS, Windows 11.',
-    12999.90, -- Preço exemplo, ajuste se necessário
+    12999.90,
     'ASUS',
     'G614JV-N3094W',
-    20, -- Estoque exemplo
+    20,
     'ativo',
     'Ideal para jogos de alta performance e softwares de criação. Wi-Fi 6E, Bluetooth 5.2.',
     'Cinza',
-    2023 -- Ano exemplo
+    2023,
+    2.500,
+    2.26,
+    35.4,
+    26.4
 );
 
--- Produto 3: Notebook Gamer MSI Alpha 17
-INSERT INTO Produto (id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao) VALUES
-(
+-- Produto 3: Notebook MSI
+INSERT INTO Produto 
+(id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) 
+VALUES (
     2,
     'Notebook Gamer MSI Alpha 17',
     'AMD Ryzen 9 7945HX, 16GB RAM, SSD 1TB, Tela 17.3" QHD 240Hz, RTX 4060, Windows 11 Home.',
-    14599.99, -- Preço exemplo, ajuste se necessário
+    14599.99,
     'MSI',
     '9S7-17KK11-058',
-    15, -- Estoque exemplo
+    15,
     'ativo',
     'Projetado para gamers e criadores de conteúdo que buscam máximo desempenho. Tela com alta taxa de atualização.',
     'Preto',
-    2024 -- Ano exemplo
+    2024,
+    2.800,
+    2.50,
+    39.8,
+    27.3
 );
 
--- Produto 4: PC Gamer Ludic by BluePC
-INSERT INTO Produto (id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao) VALUES
-(
+-- Produto 4: PC Gamer Ludic
+INSERT INTO Produto 
+(id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) 
+VALUES (
     3,
     'PC Gamer Ludic by BluePC',
     'AMD Ryzen 5 5500, GeForce RTX 3050 8GB, 16GB RAM, SSD 512GB M.2 NVMe, Fonte 600W 80 Plus.',
-    3899.99, -- Preço exemplo, ajuste se necessário
+    3899.99,
     'Ludic by BluePC',
     'PGBP-1205LUD',
-    30, -- Estoque exemplo
+    30,
     'ativo',
     'Computador de mesa pronto para rodar jogos populares em Full HD. Sistema operacional não incluso.',
     'Preto',
-    2024 -- Ano exemplo
+    2024,
+    8.500,
+    45.0,
+    20.0,
+    45.0
 );
+
 
 -- Inserindo imagens para os produtos
 -- Lembre-se de ajustar o id_produto se os IDs dos seus produtos forem diferentes.
@@ -388,3 +583,4 @@ INSERT INTO ProdutoImagem (id_produto, url_imagem, nome_arquivo, ordem, is_princ
     1,
     FALSE
 );
+
