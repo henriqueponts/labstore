@@ -18,8 +18,9 @@ import {
   Headphones,
   Monitor,
   X,
+  Edit3,
 } from "lucide-react"
-import { useCart } from "../context/CartContext" // <-- IMPORTADO
+import { useCart } from "../context/CartContext"
 
 interface UsuarioData {
   id_cliente?: number
@@ -40,7 +41,20 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearchChange }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
-  const { totalItens } = useCart() // <-- ADICIONADO
+  const { totalItens } = useCart()
+
+  // Verificar se o usuário pode editar a home page
+  const canEditHomePage =
+    usuario?.tipo === "funcionario" && (usuario?.tipo_perfil === "admin" || usuario?.tipo_perfil === "analista")
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchTerm.trim()) {
+      navigate(`/produtos?busca=${encodeURIComponent(searchTerm.trim())}`)
+    } else {
+      navigate("/produtos")
+    }
+  }
 
   return (
     <header className="bg-white shadow-md relative z-50">
@@ -57,16 +71,20 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
 
           {/* Search bar */}
           <div className="flex-1 max-w-xl mx-4 md:mx-8">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Buscar produtos..."
-                value={searchTerm}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <Search className="absolute right-3 top-2.5 text-gray-400" size={20} />
-            </div>
+            <form onSubmit={handleSearch}>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Buscar produtos..."
+                  value={searchTerm}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <button type="submit" className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600">
+                  <Search size={20} />
+                </button>
+              </div>
+            </form>
           </div>
 
           {/* User actions */}
@@ -106,12 +124,12 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
 
             {/* Carrinho - só aparece para clientes ou visitantes */}
             {(!usuario || usuario.tipo === "cliente") && (
-              <button 
-                onClick={() => navigate('/carrinho')} // <-- ADICIONADO
+              <button
+                onClick={() => navigate("/carrinho")}
                 className="relative flex items-center text-gray-700 hover:text-blue-600 transition-colors"
               >
                 <ShoppingCart size={20} />
-                {totalItens > 0 && ( // <-- ADICIONADO
+                {totalItens > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     {totalItens}
                   </span>
@@ -127,7 +145,6 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
         </div>
       </div>
 
-      {/* O resto do componente permanece o mesmo */}
       {/* Desktop Navigation Menu */}
       <div className="bg-gray-100 border-t hidden md:block">
         <div className="max-w-7xl mx-auto px-4">
@@ -150,6 +167,18 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
             {usuario?.tipo === "funcionario" && (
               <>
                 <div className="border-l border-gray-300 mx-4"></div>
+
+                {/* Botão Editar Home - Apenas para Admin e Analista */}
+                {canEditHomePage && (
+                  <a
+                    href="/editar-home"
+                    className="flex items-center text-orange-700 hover:text-orange-600 transition-colors"
+                  >
+                    <Edit3 size={16} className="mr-1" />
+                    Editar Home
+                  </a>
+                )}
+
                 <a
                   href="/gestao/produtos"
                   className="flex items-center text-green-700 hover:text-green-600 transition-colors"
@@ -185,7 +214,10 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                       <BarChart3 size={16} className="mr-1" />
                       Relatórios
                     </a>
-                    <a href="/gestao/lgpd" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
+                    <a
+                      href="/gestao/lgpd"
+                      className="flex items-center text-purple-700 hover:text-purple-600 transition-colors"
+                    >
                       <Scale size={16} className="mr-1" />
                       LGPD
                     </a>
@@ -204,7 +236,10 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
             {/* Menu público */}
             <div className="space-y-2">
               <h4 className="font-semibold text-gray-800 text-sm">Categorias</h4>
-              <a href="/produtos" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
+              <a
+                href="/produtos"
+                className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2"
+              >
                 <Monitor size={16} className="mr-2" />
                 Produtos
               </a>
@@ -212,7 +247,10 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 <Wrench size={16} className="mr-2" />
                 Assistência Técnica
               </a>
-              <a href="/central-ajuda" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
+              <a
+                href="/central-ajuda"
+                className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2"
+              >
                 <CircleQuestionMark size={16} className="mr-2" />
                 Ajuda
               </a>
@@ -222,6 +260,18 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
             {usuario?.tipo === "funcionario" && (
               <div className="border-t pt-3 space-y-2">
                 <h4 className="font-semibold text-gray-800 text-sm">Administração</h4>
+
+                {/* Botão Editar Home Mobile - Apenas para Admin e Analista */}
+                {canEditHomePage && (
+                  <a
+                    href="/editar-home"
+                    className="flex items-center text-orange-700 hover:text-orange-600 transition-colors py-2"
+                  >
+                    <Edit3 size={16} className="mr-2" />
+                    Editar Home
+                  </a>
+                )}
+
                 <a
                   href="/gestao/produtos"
                   className="flex items-center text-green-700 hover:text-green-600 transition-colors py-2"
@@ -235,7 +285,10 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   Solicitações
                 </a>
 
-                <a href="/gestao/chamados" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2">
+                <a
+                  href="/gestao/chamados"
+                  className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2"
+                >
                   <Headphones size={16} className="mr-2" />
                   Chamados
                 </a>

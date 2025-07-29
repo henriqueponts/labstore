@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { CartProvider } from "./context/CartContext"
 import Home from "./pages/Home"
 import LoginComLGPD from "./pages/Login"
 import CadastroClienteComLGPD from "./pages/CadastroCliente"
@@ -18,41 +19,40 @@ import GestaoLGPD from "./pages/GestaoLGPD.tsx"
 import NovoTermoLGPD from "./pages/NovoTermoLGPD.tsx"
 import VisualizarTermo from "./pages/VisualizarTermo"
 import CarrinhoPage from "./pages/CarrinhoPage.tsx"
+import EditarHome from "./pages/EditarHome.tsx"
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<LoginComLGPD />} />
-        <Route path="/cadastro/cliente" element={<CadastroClienteComLGPD />} />
-        <Route path="/cadastro/funcionario" element={<CadastroFuncionario />} />
-        <Route path="/gestao/usuarios" element={<GestaoUsuarios />} />
-        <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
-        <Route path="/redefinir-senha" element={<RedefinirSenha />} />
-        <Route path="/alterar-senha" element={<AlterarSenha />} />
-        <Route path="/central-ajuda" element={<CentralAjudaPage />} />
-        <Route path="/gestao/chamados" element={<AdminChamadosPage />} />
-        <Route path="/cadastro/produto" element={<CadastroProdutos />} />
-        <Route path="/gestao/produtos" element={<GestaoProdutos />} />
-        <Route path="/editar/produto/:id" element={<EditarProduto />} />
-        <Route path="/produto/:id" element={<VisualizarProduto />} />
-        <Route path="/produtos" element={<ListagemProdutos />} />
-        <Route path="/carrinho" element={<CarrinhoPage />} />
-        
-        {/* Rotas de gestão de produtos */}
+    <CartProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<LoginComLGPD />} />
+          <Route path="/cadastro/cliente" element={<CadastroClienteComLGPD />} />
+          <Route path="/cadastro/funcionario" element={<CadastroFuncionario />} />
+          <Route path="/gestao/usuarios" element={<GestaoUsuarios />} />
+          <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+          <Route path="/alterar-senha" element={<AlterarSenha />} />
+          <Route path="/central-ajuda" element={<CentralAjudaPage />} />
+          <Route path="/gestao/chamados" element={<AdminChamadosPage />} />
+          <Route path="/cadastro/produto" element={<CadastroProdutos />} />
+          <Route path="/gestao/produtos" element={<GestaoProdutos />} />
+          <Route path="/editar/produto/:id" element={<EditarProduto />} />
+          <Route path="/produto/:id" element={<VisualizarProduto />} />
+          <Route path="/produtos" element={<ListagemProdutos />} />
+          <Route path="/carrinho" element={<CarrinhoPage />} />
+          <Route path="/editar-home" element={<EditarHome />} />
 
-        {/* Rotas LGPD - CORRIGIDAS */}
-        <Route path="/gestao/lgpd" element={<GestaoLGPD />} />
-        <Route path="/gestao/lgpd/novo-termo" element={<NovoTermoLGPD />} />
-        {/* ROTA CORRIGIDA: era /editar/:id, agora é /editar-termo/:id */}
-        <Route path="/gestao/lgpd/editar-termo/:id" element={<NovoTermoLGPD />} />
-        {/* ROTA CORRIGIDA: era NovoTermoLGPD, agora é VisualizarTermo */}
-        <Route path="/gestao/lgpd/termo/:id" element={<VisualizarTermo />} />
-        {/* Rota alternativa mantida para compatibilidade */}
-        <Route path="/visualizar-termo/:id" element={<VisualizarTermo />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Rotas LGPD */}
+          <Route path="/gestao/lgpd" element={<GestaoLGPD />} />
+          <Route path="/gestao/lgpd/novo-termo" element={<NovoTermoLGPD />} />
+          <Route path="/gestao/lgpd/editar-termo/:id" element={<NovoTermoLGPD />} />
+          <Route path="/gestao/lgpd/termo/:id" element={<VisualizarTermo />} />
+          <Route path="/visualizar-termo/:id" element={<VisualizarTermo />} />
+        </Routes>
+      </BrowserRouter>
+    </CartProvider>
   )
 }
 

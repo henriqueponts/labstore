@@ -1,3 +1,5 @@
+
+
 -- Cria o banco de dados se ele não existir
 
 CREATE DATABASE IF NOT EXISTS labstore;
@@ -226,6 +228,20 @@ CREATE TABLE IF NOT EXISTS RespostaChamado (
     INDEX idx_funcionario (id_funcionario),
     INDEX idx_data (data_resposta)
 );
+
+-- Tabela para armazenar as imagens do carrossel
+CREATE TABLE carousel_images (
+    id_carousel INT PRIMARY KEY AUTO_INCREMENT,
+    titulo VARCHAR(255) NOT NULL,
+    subtitulo TEXT,
+    url_imagem VARCHAR(500),
+    link_destino VARCHAR(500),
+    ordem INT DEFAULT 1,
+    ativo BOOLEAN DEFAULT TRUE,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 
 DELIMITER //
 CREATE PROCEDURE AdicionarItemCarrinho(
@@ -584,3 +600,8 @@ INSERT INTO ProdutoImagem (id_produto, url_imagem, nome_arquivo, ordem, is_princ
     FALSE
 );
 
+-- Inserir dados padrão
+INSERT INTO carousel_images (titulo, subtitulo, url_imagem, link_destino, ordem, ativo) VALUES
+('Tecnologia que Transforma', 'Encontre os melhores produtos com preços incríveis', '/uploads/carousel/default1.jpg', '/produtos', 1, TRUE),
+('Setup Gamer Completo', 'Monte seu setup dos sonhos com nossa linha gamer', '/uploads/carousel/default2.jpg', '/produtos?categoria=PCs Gamer', 2, TRUE),
+('Assistência Técnica Especializada', 'Reparo rápido e confiável para seus equipamentos', '/uploads/carousel/default3.jpg', '/central-ajuda', 3, TRUE);
