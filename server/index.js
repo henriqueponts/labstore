@@ -4,6 +4,7 @@ import cors from "cors"
 import path from "path"
 import { fileURLToPath } from "url"
 import { connectToDatabase } from "./lib/db.js"
+import { enviarEmailConfirmacaoCompra } from "./routes/emailCompras.js"
 import authRoutes from "./routes/authRoutes.js"
 import gestaoRoutes from "./routes/gestaoRoutes.js"
 import recuperacaoSenhaRoutes from "./routes/recuperacaoSenha.js"
@@ -25,6 +26,8 @@ const app = express()
 console.log('=== TESTE DE VARIÁVEIS ===');
 console.log('PAGARME_SECRET_KEY:', process.env.PAGARME_SECRET_KEY ? 'DEFINIDO' : 'NÃO DEFINIDO');
 console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'DEFINIDO' : 'NÃO DEFINIDO');
+console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'DEFINIDO' : 'NÃO DEFINIDO'); // Adicione para debug
+console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'DEFINIDO' : 'NÃO DEFINIDO');
 
 console.log("🚀 LabStore Server iniciando...")
 
@@ -81,6 +84,7 @@ app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async 
 
       if (clienteId) {
         await db.beginTransaction();
+        let pedidoId;
         try {
           // Buscar itens do carrinho
           const [itensCarrinho] = await db.query(
@@ -166,6 +170,17 @@ app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async 
           
           console.log(`Pedido ${pedidoId} criado com sucesso via Webhook para cliente ${clienteId}`);
           await db.commit();
+
+          if (pedidoId) {
+            try {
+              await enviarEmailConfirmacaoCompra(pedidoId);
+            } catch (emailError) {
+              // O erro já é logado dentro da função, mas podemos logar aqui também.
+              // O importante é não deixar que um erro de e-mail quebre o fluxo.
+              console.error(`Falha ao enfileirar e-mail para o pedido ${pedidoId}, mas o pedido foi salvo.`);
+            }
+          }
+
         } catch (err) {
           await db.rollback();
           console.error('Erro ao processar pedido no webhook:', err);
