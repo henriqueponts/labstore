@@ -1,3 +1,4 @@
+// frontEnd/src/pages/CarrinhoPage.tsx - VERSÃƒO COMPLETA E CORRIGIDA
 "use client"
 
 import type React from "react"
@@ -24,7 +25,6 @@ import {
   ShieldCheck,
 } from "lucide-react"
 
-// Interfaces para os dados da API Melhor Envio (mantidas da nossa implementação funcional)
 interface OpcaoFrete {
   id: number;
   name: string;
@@ -44,7 +44,6 @@ interface FreteSelecionado {
 }
 
 const CarrinhoPage: React.FC = () => {
-  // 1. ESTADOS E FUNÇÕES DA NOSSA IMPLEMENTAÇÃO FUNCIONAL (MANTIDOS)
   const { itensCarrinho, carregando, atualizarQuantidade, removerDoCarrinho, limparCarrinho, totalItens, totalPreco } =
     useCart()
   const navigate = useNavigate()
@@ -55,6 +54,7 @@ const CarrinhoPage: React.FC = () => {
   const [calculandoFrete, setCalculandoFrete] = useState(false)
   const [erroFrete, setErroFrete] = useState("")
   const [comSeguro, setComSeguro] = useState(false)
+  const [processandoPagamento, setProcessandoPagamento] = useState(false)
 
   const formatarPreco = (preco: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -65,7 +65,7 @@ const CarrinhoPage: React.FC = () => {
 
   const handleCalcularFrete = async (seguroHabilitado = comSeguro) => {
     if (cep.replace(/\D/g, "").length !== 8) {
-      setErroFrete("CEP inválido. Deve conter 8 dígitos.")
+      setErroFrete("CEP invÃ¡lido. Deve conter 8 dÃ­gitos.")
       return
     }
     setCalculandoFrete(true)
@@ -88,7 +88,7 @@ const CarrinhoPage: React.FC = () => {
       const opcoesValidas: OpcaoFrete[] = response.data.filter((opcao: OpcaoFrete) => !opcao.error) || []
 
       if (opcoesValidas.length === 0) {
-        setErroFrete(response.data[0]?.error || "Nenhuma opção de frete encontrada para este CEP.")
+        setErroFrete(response.data[0]?.error || "Nenhuma opçãoo de frete encontrada para este CEP.")
       }
 
       setOpcoesFrete(opcoesValidas)
@@ -120,7 +120,6 @@ const CarrinhoPage: React.FC = () => {
     const valor = e.target.value.replace(/\D/g, "")
     if (valor.length <= 8) {
       setCep(valor)
-      // Limpa as opções antigas ao digitar um novo CEP
       if (opcoesFrete.length > 0) {
         setOpcoesFrete([])
         setFreteSelecionado(null)
@@ -134,12 +133,66 @@ const CarrinhoPage: React.FC = () => {
 
   const valorTotalFinal = totalPreco + (freteSelecionado?.valor || 0)
 
-  // 2. JSX DO NOVO DESIGN INTEGRADO COM A LÓGICA ACIMA
+  const handleFinalizarCompra = async () => {
+    if (!freteSelecionado) {
+      alert('Selecione uma opção de entrega');
+      return;
+    }
+  
+    setProcessandoPagamento(true);
+  
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('http://localhost:3000/pagamento/criar-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          
+          frete_nome: freteSelecionado.nome,
+          frete_valor: freteSelecionado.valor,
+          frete_prazo_dias: freteSelecionado.prazo,
+          endereco_entrega: 'EndereÃ§o do cliente' // TODO: Implementar busca do endereÃ§o
+        })
+      });
+  
+      const data = await response.json();
+  
+      // =================== ALTERAÃ‡ÃƒO AQUI ===================
+      // Adicionamos uma verificação para 'data.payment_url'.
+      // Se a URL não vier, o processo para com uma mensagem de erro clara.
+      if (response.ok && data.success && data.payment_url) {
+        localStorage.setItem('current_order_id', data.order_id);
+        
+        // Abre a pÃ¡gina de pagamento em uma nova aba
+        window.open(data.payment_url, '_blank');
+        
+        // Navega a aba atual para a pÃ¡gina de espera
+        navigate(`/aguardo-pagamento?order_id=${data.order_id}`);
+        
+      } else {
+        // Mensagem de erro mais especÃ­fica se a URL não for criada
+        const errorMessage = data.message || 'Não foi possÃ­vel obter a URL de pagamento do servidor.';
+        console.error('Erro ao criar link de pagamento:', data);
+        alert(`Erro ao criar link de pagamento: ${errorMessage}`);
+      }
+      // =======================================================
+  
+    } catch (error) {
+      console.error('Erro ao criar link de pagamento:', error);
+      alert('Erro ao processar pagamento. Tente novamente.');
+    } finally {
+      setProcessandoPagamento(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
         <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* Header da página */}
           <div className="mb-8">
             <div className="flex items-center mb-6">
               <button
@@ -159,7 +212,6 @@ const CarrinhoPage: React.FC = () => {
               <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
                 Meu Carrinho
               </h1>
-              
             </div>
           </div>
 
@@ -169,9 +221,9 @@ const CarrinhoPage: React.FC = () => {
                 <div className="bg-gradient-to-br from-blue-100 to-indigo-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
                   <ShoppingCart className="h-12 w-12 text-blue-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-3">Seu carrinho está vazio</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mb-3">Seu carrinho estÃ¡ vazio</h2>
                 <p className="text-slate-600 mb-8 leading-relaxed">
-                  Que tal explorar nossos produtos e encontrar algo especial para você?
+                  Que tal explorar nossos produtos e encontrar algo especial para vocÃª?
                 </p>
                 <button
                   onClick={() => navigate("/produtos")}
@@ -184,13 +236,11 @@ const CarrinhoPage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-              {/* Lista de Itens */}
               <div className="xl:col-span-2">
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 mb-6">
                   <div className="flex justify-between items-center mb-6 pb-6 border-b border-slate-200">
                     <div>
                       <h2 className="text-2xl font-bold text-slate-900 flex items-center">
-                        
                         Itens do Carrinho
                       </h2>
                       <p className="text-slate-600 mt-1">
@@ -246,7 +296,7 @@ const CarrinhoPage: React.FC = () => {
                             {item.estoque < item.quantidade && (
                               <div className="flex items-center text-red-600 bg-red-50 px-3 py-2 rounded-lg text-sm font-medium">
                                 <AlertTriangle size={16} className="mr-2" />
-                                Quantidade excede o estoque disponível!
+                                Quantidade excede o estoque disponÃ­vel!
                               </div>
                             )}
                           </div>
@@ -271,7 +321,7 @@ const CarrinhoPage: React.FC = () => {
                                 <Plus size={16} />
                               </button>
                             </div>
-                            <span className="text-xs text-slate-500">{item.estoque} disponível</span>
+                            <span className="text-xs text-slate-500">{item.estoque} disponÃ­vel</span>
                           </div>
 
                           <div className="text-right flex flex-col items-end gap-4">
@@ -294,10 +344,8 @@ const CarrinhoPage: React.FC = () => {
                     ))}
                   </div>
                 </div>
-
               </div>
 
-              {/* Resumo do Pedido */}
               <div className="xl:col-span-1">
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 sticky top-4">
                   <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-4 border-b border-slate-200 flex items-center">
@@ -307,7 +355,7 @@ const CarrinhoPage: React.FC = () => {
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
                       <Truck size={18} className="mr-2 text-blue-600" />
-                      Opções de Entrega
+                      Opçµes de Entrega
                     </h3>
                     <div className="space-y-3">
                       <label
@@ -329,10 +377,10 @@ const CarrinhoPage: React.FC = () => {
                         </div>
                         <div className="flex-grow">
                           <p className="font-bold text-slate-900">Retirar na Loja</p>
-                          <p className="text-sm text-slate-600">Disponível para retirada</p>
+                          <p className="text-sm text-slate-600">DisponÃ­vel para retirada</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-green-600 text-lg">Grátis</p>
+                          <p className="font-bold text-green-600 text-lg">GrÃ¡tis</p>
                         </div>
                       </label>
 
@@ -371,7 +419,7 @@ const CarrinhoPage: React.FC = () => {
                               <p className="font-bold text-slate-900">{opcao.name}</p>
                               <p className="text-sm text-slate-600 flex items-center">
                                 <Clock size={12} className="mr-1" />
-                                {opcao.delivery_time} {opcao.delivery_time === 1 ? "dia útil" : "dias úteis"}
+                                {opcao.delivery_time} {opcao.delivery_time === 1 ? "dia Ãºtil" : "dias Ãºteis"}
                               </p>
                             </div>
                             <div className="text-right">
@@ -430,7 +478,7 @@ const CarrinhoPage: React.FC = () => {
                             <ShieldCheck size={14} className="text-green-600" />
                           </div>
                           <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
-                            Adicionar seguro à encomenda
+                            Adicionar seguro Ã  encomenda
                           </span>
                         </div>
                       </label>
@@ -486,7 +534,7 @@ const CarrinhoPage: React.FC = () => {
                         </span>
                         {freteSelecionado && freteSelecionado.prazo > 0 && (
                           <p className="text-sm text-slate-600 mt-1">
-                            Em até 12x de {formatarPreco(valorTotalFinal / 12)} sem juros
+                            Em atÃ© 12x de {formatarPreco(valorTotalFinal / 12)} sem juros
                           </p>
                         )}
                       </div>
@@ -495,11 +543,21 @@ const CarrinhoPage: React.FC = () => {
 
                   <div className="space-y-3">
                     <button
-                      disabled={!freteSelecionado}
+                      onClick={handleFinalizarCompra}
+                      disabled={!freteSelecionado || processandoPagamento}
                       className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-slate-300 disabled:to-slate-400 text-white px-6 py-4 rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center text-lg disabled:cursor-not-allowed"
                     >
-                      <CreditCard size={20} className="mr-2" />
-                      {freteSelecionado ? "Finalizar Compra" : "Selecione uma forma de entrega"}
+                      {processandoPagamento ? (
+                        <>
+                          <Loader2 className="animate-spin mr-2" size={20} />
+                          Criando pagamento...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard size={20} className="mr-2" />
+                          {freteSelecionado ? "Finalizar Compra" : "Selecione uma forma de entrega"}
+                        </>
+                      )}
                     </button>
 
                     <button
@@ -509,7 +567,6 @@ const CarrinhoPage: React.FC = () => {
                       Continuar Comprando
                     </button>
                   </div>
-
                 </div>
               </div>
             </div>
