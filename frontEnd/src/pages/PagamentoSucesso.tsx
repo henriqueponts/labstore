@@ -1,17 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout';
-import { CheckCircle, Package, Home } from 'lucide-react';
+"use client"
+
+import type React from "react"
+import { useEffect, useState } from "react"
+import { useSearchParams, useNavigate } from "react-router-dom"
+import Layout from "../components/Layout"
+import { CheckCircle, Package, Home } from "lucide-react"
 
 const PagamentoSucesso: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const [orderId, setOrderId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const [orderId, setOrderId] = useState<string | null>(null)
 
   useEffect(() => {
-    const id = searchParams.get('order_id');
-    setOrderId(id);
-  }, [searchParams]);
+    const id = searchParams.get("order_id")
+    setOrderId(id)
+  }, [searchParams])
 
   return (
     <Layout>
@@ -20,42 +23,40 @@ const PagamentoSucesso: React.FC = () => {
           <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="h-10 w-10 text-green-600" />
           </div>
-          
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Pagamento Realizado com Sucesso!
-          </h1>
-          
+
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Pagamento Realizado com Sucesso!</h1>
+
           <p className="text-gray-600 mb-6">
-            Seu pedido foi processado e vocÃª receberÃ¡ um e-mail de confirmaÃ§Ã£o em breve.
+            Seu pedido foi processado e você receberá um e-mail de confirmação em breve.
           </p>
-          
+
           {orderId && (
             <p className="text-sm text-gray-500 mb-6">
-              NÃºmero do pedido: <strong>{orderId}</strong>
+              Número do pedido: <strong>{orderId}</strong>
             </p>
           )}
-          
+
           <div className="space-y-3">
             <button
-              onClick={() => navigate('/meus-pedidos')}
+              onClick={() => navigate("/meus-pedidos")}
               className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center"
             >
               <Package size={20} className="mr-2" />
               Ver Meus Pedidos
             </button>
-            
+
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate("/")}
               className="w-full border border-gray-300 hover:border-gray-400 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center"
             >
               <Home size={20} className="mr-2" />
-              Voltar ao InÃ­cio
+              Voltar ao Início
             </button>
           </div>
         </div>
       </div>
     </Layout>
-  );
-};
+  )
+}
 
-export default PagamentoSucesso;
+export default PagamentoSucesso

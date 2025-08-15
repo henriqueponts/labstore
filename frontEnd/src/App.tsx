@@ -22,6 +22,7 @@ import CarrinhoPage from "./pages/CarrinhoPage.tsx"
 import EditarHome from "./pages/EditarHome.tsx"
 import AguardoPagamento from './pages/AguardoPagamento';
 import PagamentoSucesso from './pages/PagamentoSucesso';
+import MeusPedidos from "./pages/MeusPedidos.tsx"
 
 function App() {
   return (
@@ -45,7 +46,7 @@ function App() {
           <Route path="/produtos" element={<ListagemProdutos />} />
           <Route path="/carrinho" element={<CarrinhoPage />} />
           <Route path="/editar-home" element={<EditarHome />} />
-
+          <Route path="/meus-pedidos" element={<MeusPedidos />} />
           <Route path="/aguardo-pagamento" element={<AguardoPagamento />} />
           <Route path="/pagamento-sucesso" element={<PagamentoSucesso />} />
 

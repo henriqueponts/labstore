@@ -1,4 +1,3 @@
-// frontEnd/src/pages/CarrinhoPage.tsx - VERSÃƒO COMPLETA E CORRIGIDA
 "use client"
 
 import type React from "react"
@@ -26,21 +25,21 @@ import {
 } from "lucide-react"
 
 interface OpcaoFrete {
-  id: number;
-  name: string;
-  price: string;
-  delivery_time: number;
+  id: number
+  name: string
+  price: string
+  delivery_time: number
   company: {
-    name: string;
-    picture: string;
-  };
-  error?: string;
+    name: string
+    picture: string
+  }
+  error?: string
 }
 
 interface FreteSelecionado {
-  nome: string;
-  valor: number;
-  prazo: number;
+  nome: string
+  valor: number
+  prazo: number
 }
 
 const CarrinhoPage: React.FC = () => {
@@ -65,7 +64,7 @@ const CarrinhoPage: React.FC = () => {
 
   const handleCalcularFrete = async (seguroHabilitado = comSeguro) => {
     if (cep.replace(/\D/g, "").length !== 8) {
-      setErroFrete("CEP invÃ¡lido. Deve conter 8 dÃ­gitos.")
+      setErroFrete("CEP inválido. Deve conter 8 dígitos.")
       return
     }
     setCalculandoFrete(true)
@@ -88,7 +87,7 @@ const CarrinhoPage: React.FC = () => {
       const opcoesValidas: OpcaoFrete[] = response.data.filter((opcao: OpcaoFrete) => !opcao.error) || []
 
       if (opcoesValidas.length === 0) {
-        setErroFrete(response.data[0]?.error || "Nenhuma opçãoo de frete encontrada para este CEP.")
+        setErroFrete(response.data[0]?.error || "Nenhuma opção de frete encontrada para este CEP.")
       }
 
       setOpcoesFrete(opcoesValidas)
@@ -128,66 +127,67 @@ const CarrinhoPage: React.FC = () => {
   }
 
   if (carregando) {
-    return <Layout showLoading={true}><div/></Layout>
+    return (
+      <Layout showLoading={true}>
+        <div />
+      </Layout>
+    )
   }
 
   const valorTotalFinal = totalPreco + (freteSelecionado?.valor || 0)
 
   const handleFinalizarCompra = async () => {
     if (!freteSelecionado) {
-      alert('Selecione uma opção de entrega');
-      return;
+      alert("Selecione uma opção de entrega")
+      return
     }
-  
-    setProcessandoPagamento(true);
-  
+
+    setProcessandoPagamento(true)
+
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch('http://localhost:3000/pagamento/criar-link', {
-        method: 'POST',
+      const token = localStorage.getItem("token")
+
+      const response = await fetch("http://localhost:3000/pagamento/criar-link", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          
           frete_nome: freteSelecionado.nome,
           frete_valor: freteSelecionado.valor,
           frete_prazo_dias: freteSelecionado.prazo,
-          endereco_entrega: 'EndereÃ§o do cliente' // TODO: Implementar busca do endereÃ§o
-        })
-      });
-  
-      const data = await response.json();
-  
+          endereco_entrega: "Endereço do cliente", // TODO: Implementar busca do endereço
+        }),
+      })
+
+      const data = await response.json()
+
       // =================== ALTERAÃ‡ÃƒO AQUI ===================
       // Adicionamos uma verificação para 'data.payment_url'.
       // Se a URL não vier, o processo para com uma mensagem de erro clara.
       if (response.ok && data.success && data.payment_url) {
-        localStorage.setItem('current_order_id', data.order_id);
-        
+        localStorage.setItem("current_order_id", data.order_id)
+
         // Abre a pÃ¡gina de pagamento em uma nova aba
-        window.open(data.payment_url, '_blank');
-        
+        window.open(data.payment_url, "_blank")
+
         // Navega a aba atual para a pÃ¡gina de espera
-        navigate(`/aguardo-pagamento?order_id=${data.order_id}`);
-        
+        navigate(`/aguardo-pagamento?order_id=${data.order_id}`)
       } else {
         // Mensagem de erro mais especÃ­fica se a URL não for criada
-        const errorMessage = data.message || 'Não foi possÃ­vel obter a URL de pagamento do servidor.';
-        console.error('Erro ao criar link de pagamento:', data);
-        alert(`Erro ao criar link de pagamento: ${errorMessage}`);
+        const errorMessage = data.message || "Não foi possível obter a URL de pagamento do servidor."
+        console.error("Erro ao criar link de pagamento:", data)
+        alert(`Erro ao criar link de pagamento: ${errorMessage}`)
       }
       // =======================================================
-  
     } catch (error) {
-      console.error('Erro ao criar link de pagamento:', error);
-      alert('Erro ao processar pagamento. Tente novamente.');
+      console.error("Erro ao criar link de pagamento:", error)
+      alert("Erro ao processar pagamento. Tente novamente.")
     } finally {
-      setProcessandoPagamento(false);
+      setProcessandoPagamento(false)
     }
-  };
+  }
 
   return (
     <Layout>
@@ -221,9 +221,9 @@ const CarrinhoPage: React.FC = () => {
                 <div className="bg-gradient-to-br from-blue-100 to-indigo-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
                   <ShoppingCart className="h-12 w-12 text-blue-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-3">Seu carrinho estÃ¡ vazio</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mb-3">Seu carrinho está vazio</h2>
                 <p className="text-slate-600 mb-8 leading-relaxed">
-                  Que tal explorar nossos produtos e encontrar algo especial para vocÃª?
+                  Que tal explorar nossos produtos e encontrar algo especial para você?
                 </p>
                 <button
                   onClick={() => navigate("/produtos")}
@@ -240,9 +240,7 @@ const CarrinhoPage: React.FC = () => {
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 mb-6">
                   <div className="flex justify-between items-center mb-6 pb-6 border-b border-slate-200">
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-900 flex items-center">
-                        Itens do Carrinho
-                      </h2>
+                      <h2 className="text-2xl font-bold text-slate-900 flex items-center">Itens do Carrinho</h2>
                       <p className="text-slate-600 mt-1">
                         {totalItens} {totalItens === 1 ? "produto" : "produtos"} selecionados
                       </p>
@@ -296,7 +294,7 @@ const CarrinhoPage: React.FC = () => {
                             {item.estoque < item.quantidade && (
                               <div className="flex items-center text-red-600 bg-red-50 px-3 py-2 rounded-lg text-sm font-medium">
                                 <AlertTriangle size={16} className="mr-2" />
-                                Quantidade excede o estoque disponÃ­vel!
+                                Quantidade excede o estoque disponível!
                               </div>
                             )}
                           </div>
@@ -321,7 +319,7 @@ const CarrinhoPage: React.FC = () => {
                                 <Plus size={16} />
                               </button>
                             </div>
-                            <span className="text-xs text-slate-500">{item.estoque} disponÃ­vel</span>
+                            <span className="text-xs text-slate-500">{item.estoque} disponível</span>
                           </div>
 
                           <div className="text-right flex flex-col items-end gap-4">
@@ -355,7 +353,7 @@ const CarrinhoPage: React.FC = () => {
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
                       <Truck size={18} className="mr-2 text-blue-600" />
-                      Opçµes de Entrega
+                      Opções de Entrega
                     </h3>
                     <div className="space-y-3">
                       <label
@@ -377,10 +375,10 @@ const CarrinhoPage: React.FC = () => {
                         </div>
                         <div className="flex-grow">
                           <p className="font-bold text-slate-900">Retirar na Loja</p>
-                          <p className="text-sm text-slate-600">DisponÃ­vel para retirada</p>
+                          <p className="text-sm text-slate-600">Disponível para retirada</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-green-600 text-lg">GrÃ¡tis</p>
+                          <p className="font-bold text-green-600 text-lg">Grátis</p>
                         </div>
                       </label>
 
@@ -402,7 +400,7 @@ const CarrinhoPage: React.FC = () => {
                               onChange={() =>
                                 handleSelecionarFrete({
                                   nome: `${opcao.company.name} - ${opcao.name}`,
-                                  valor: parseFloat(opcao.price),
+                                  valor: Number.parseFloat(opcao.price),
                                   prazo: opcao.delivery_time,
                                 })
                               }
@@ -419,12 +417,12 @@ const CarrinhoPage: React.FC = () => {
                               <p className="font-bold text-slate-900">{opcao.name}</p>
                               <p className="text-sm text-slate-600 flex items-center">
                                 <Clock size={12} className="mr-1" />
-                                {opcao.delivery_time} {opcao.delivery_time === 1 ? "dia Ãºtil" : "dias Ãºteis"}
+                                {opcao.delivery_time} {opcao.delivery_time === 1 ? "dia útil" : "dias úteis"}
                               </p>
                             </div>
                             <div className="text-right">
                               <p className="font-bold text-slate-900 text-lg">
-                                {formatarPreco(parseFloat(opcao.price))}
+                                {formatarPreco(Number.parseFloat(opcao.price))}
                               </p>
                             </div>
                           </label>
@@ -478,7 +476,7 @@ const CarrinhoPage: React.FC = () => {
                             <ShieldCheck size={14} className="text-green-600" />
                           </div>
                           <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
-                            Adicionar seguro Ã  encomenda
+                            Adicionar seguro à encomenda
                           </span>
                         </div>
                       </label>
@@ -534,7 +532,7 @@ const CarrinhoPage: React.FC = () => {
                         </span>
                         {freteSelecionado && freteSelecionado.prazo > 0 && (
                           <p className="text-sm text-slate-600 mt-1">
-                            Em atÃ© 12x de {formatarPreco(valorTotalFinal / 12)} sem juros
+                            Em até 12x de {formatarPreco(valorTotalFinal / 12)} sem juros
                           </p>
                         )}
                       </div>

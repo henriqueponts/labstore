@@ -39,15 +39,34 @@ app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async 
 
     if (event.type === 'order.paid') {
       const order = event.data;
-      // Tentar ler metadata de order.metadata ou order.integration.metadata
-      let metadata = order.metadata || order.integration?.metadata || {};
-      console.log('Metadata extraída:', metadata);
+      const paymentLinkId = order.code; // O ID do link de pagamento (pl_...)
 
-      let clienteId = metadata.cliente_id;
+      // 1. Buscar dados do frete da nossa tabela temporária
+      const db = await connectToDatabase();
+      const [freteRows] = await db.query(
+        'SELECT * FROM TempFrete WHERE payment_link_id = ?',
+        [paymentLinkId]
+      );
 
-      // Fallback: Buscar cliente por email se cliente_id não estiver em metadata
+      let freteInfo = {
+        frete_nome: null,
+        frete_valor: 0,
+        frete_prazo_dias: null,
+        cliente_id: null
+      };
+
+      if (freteRows.length > 0) {
+        freteInfo = freteRows[0];
+        console.log(`Dados de frete encontrados para ${paymentLinkId}:`, freteInfo);
+      } else {
+        console.warn(`AVISO: Nenhum dado de frete encontrado na tabela TempFrete para o link ${paymentLinkId}. Usando fallbacks.`);
+      }
+      
+      // Usar o ID do cliente da tabela de frete é mais seguro
+      let clienteId = freteInfo.cliente_id;
+
+      // Fallback: Buscar cliente por email se não estiver na tabela de frete
       if (!clienteId && order.customer?.email) {
-        const db = await connectToDatabase();
         const [clienteRows] = await db.query(
           'SELECT id_cliente FROM Cliente WHERE email = ? LIMIT 1',
           [order.customer.email]
@@ -61,7 +80,6 @@ app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async 
       }
 
       if (clienteId) {
-        const db = await connectToDatabase();
         await db.beginTransaction();
         try {
           // Buscar itens do carrinho
@@ -70,17 +88,17 @@ app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async 
             [clienteId]
           );
 
-          // Criar pedido
+          // 2. Usar os dados de frete que buscamos da nossa tabela
           const [pedidoResult] = await db.query(
             `INSERT INTO Pedido (id_cliente, frete_nome, frete_valor, frete_prazo_dias, status, endereco_entrega)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
               clienteId,
-              metadata.frete_nome || null,
-              metadata.frete_valor ? parseFloat(metadata.frete_valor) : 0,
-              metadata.frete_prazo_dias ? parseInt(metadata.frete_prazo_dias) : null,
+              freteInfo.frete_nome,
+              freteInfo.frete_valor,
+              freteInfo.frete_prazo_dias,
               'pago',
-              metadata.endereco_entrega || order.customer?.address?.street || null
+              order.shipping?.address?.line_1 || order.customer?.address?.line_1 || null
             ]
           );
           const pedidoId = pedidoResult.insertId;
@@ -138,10 +156,14 @@ app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async 
               order.charges?.[0]?.payment_method || null,
               order.amount || null,
               order.charges?.[0]?.installments || null,
-              order.code // payment_link_id (pl_...)
+              paymentLinkId // Usando a variável que já temos
             ]
           );
 
+          // 3. Limpar a entrada da tabela temporária (OPCIONAL, MAS RECOMENDADO)
+          await db.query('DELETE FROM TempFrete WHERE payment_link_id = ?', [paymentLinkId]);
+          console.log(`Dados de frete temporários para ${paymentLinkId} foram limpos.`);
+          
           console.log(`Pedido ${pedidoId} criado com sucesso via Webhook para cliente ${clienteId}`);
           await db.commit();
         } catch (err) {
