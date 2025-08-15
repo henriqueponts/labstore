@@ -159,7 +159,7 @@ const MeusPedidos: React.FC = () => {
         try {
           const errorData = JSON.parse(responseText)
           errorMessage = errorData.message || errorMessage
-        } catch (jsonError) {
+        } catch {
           console.log("[v0] Resposta não é JSON:", responseText.substring(0, 200))
           if (response.status === 404) {
             errorMessage = "Rota não encontrada. Verifique se o servidor está configurado corretamente."
@@ -171,10 +171,14 @@ const MeusPedidos: React.FC = () => {
       }
     } catch (error) {
       console.error("[v0] Erro ao buscar pedidos:", error)
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        setErro("Erro de conexão. Verifique se o servidor está rodando na porta 3000.")
+      if (error instanceof Error) {
+        if (error instanceof TypeError && error.message.includes("fetch")) {
+          setErro("Erro de conexão. Verifique se o servidor está rodando na porta 3000.")
+        } else {
+          setErro(`Erro de conexão: ${error.message}`)
+        }
       } else {
-        setErro(`Erro de conexão: ${error.message}`)
+        setErro("Erro de conexão inesperado")
       }
     } finally {
       setCarregando(false)
