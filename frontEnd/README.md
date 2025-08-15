@@ -76,11 +76,41 @@ CREATE TABLE Pedido (
     id_pedido INT PRIMARY KEY AUTO_INCREMENT,
     id_cliente INT NOT NULL,
     data_pedido DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('aguardando_pagamento', 'processando', 'enviado', 'entregue', 'cancelado', 'concluido') NOT NULL DEFAULT 'aguardando_pagamento',
-    metodo_pagamento ENUM('pix', 'cartao_credito', 'boleto') NOT NULL,
+    frete_nome VARCHAR(50) NULL,
+    frete_valor DECIMAL(10,2) NULL,
+    frete_prazo_dias INT NULL,
+    status ENUM(
+    'aguardando_pagamento',
+    'pago',
+    'processando',
+    'enviado',
+    'entregue',
+    'cancelado',
+    'reembolsado',
+    'falha_pagamento',
+    'concluido'
+) NOT NULL DEFAULT 'aguardando_pagamento',
     endereco_entrega VARCHAR(255) NULL,
     FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente)
 );
+
+-- Tabela para armazenar transações do Pagar.me
+CREATE TABLE IF NOT EXISTS TransacaoPagamento (
+    id_transacao INT PRIMARY KEY AUTO_INCREMENT,
+    id_pedido INT NOT NULL,
+    transaction_id_pagarme VARCHAR(100) NOT NULL UNIQUE,
+    status VARCHAR(50) NOT NULL,
+    metodo_pagamento VARCHAR(50) NOT NULL,
+    valor_centavos INT NOT NULL,
+    parcelas INT DEFAULT 1,
+    payment_link_id VARCHAR(255) NULL,
+    data_transacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_pedido) REFERENCES Pedido(id_pedido) ON DELETE CASCADE,
+    INDEX idx_transaction_id (transaction_id_pagarme),
+    INDEX idx_pedido (id_pedido),
+	INDEX idx_payment_link_id (payment_link_id)
+); 	
 
 -- Tabela de Itens de um Pedido
 CREATE TABLE ItemPedido (
@@ -605,3 +635,14 @@ INSERT INTO carousel_images (titulo, subtitulo, url_imagem, link_destino, ordem,
 ('Tecnologia que Transforma', 'Encontre os melhores produtos com preços incríveis', '/uploads/carousel/default1.jpg', '/produtos', 1, TRUE),
 ('Setup Gamer Completo', 'Monte seu setup dos sonhos com nossa linha gamer', '/uploads/carousel/default2.jpg', '/produtos?categoria=PCs Gamer', 2, TRUE),
 ('Assistência Técnica Especializada', 'Reparo rápido e confiável para seus equipamentos', '/uploads/carousel/default3.jpg', '/central-ajuda', 3, TRUE);
+
+CREATE TABLE TempFrete (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    payment_link_id VARCHAR(255) NOT NULL UNIQUE,
+    frete_nome VARCHAR(50),
+    frete_valor DECIMAL(10,2),
+    frete_prazo_dias INT,
+    cliente_id INT,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_payment_link_id (payment_link_id)
+);
