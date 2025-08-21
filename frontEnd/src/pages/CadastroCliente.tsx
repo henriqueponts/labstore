@@ -40,12 +40,14 @@ const CadastroClienteComLGPD: React.FC = () => {
   })
 
   const [error, setError] = useState("")
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState(false)
   const [cpfCnpjError, setCpfCnpjError] = useState("")
   const [cepLoading, setCepLoading] = useState(false)
   const [cepError, setCepError] = useState("")
   const [showTermoModal, setShowTermoModal] = useState(false)
   const [termoAtual, setTermoAtual] = useState<TermoData | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [tempFormData, setTempFormData] = useState<any>(null)
   const [temTermoLGPD, setTemTermoLGPD] = useState<boolean | null>(null)
   const navigate = useNavigate()
@@ -198,43 +200,42 @@ const CadastroClienteComLGPD: React.FC = () => {
   }
 
   // Função para buscar endereço pelo CEP
-  const buscarEnderecoPorCEP = async (cep: string): Promise<void> => {
-    const cepLimpo = cep.replace(/\D/g, "")
+   const buscarEnderecoPorCEP = async (cep: string): Promise<void> => {
+        const cepLimpo = cep.replace(/\D/g, '');
+        
+        if (cepLimpo.length !== 8) {
+            setCepError('CEP deve ter 8 dígitos');
+            return;
+        }
 
-    if (cepLimpo.length !== 8) {
-      setCepError("CEP deve ter 8 dígitos")
-      return
-    }
+        setCepLoading(true);
+        setCepError('');
 
-    setCepLoading(true)
-    setCepError("")
+        try {
+            const response = await axios.get<EnderecoData>(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+            
+            if (response.data.erro) {
+                setCepError('CEP não encontrado');
+                return;
+            }
 
-    try {
-      const response = await axios.get<EnderecoData>(`https://viacep.com.br/ws/${cepLimpo}/json/`)
+            // Preencher os campos, mas respeitando o que o usuário já digitou
+            setValues(prev => ({
+                ...prev,
+                logradouro: prev.logradouro || response.data.logradouro || '',
+                bairro: prev.bairro || response.data.bairro || '',
+                cidade: prev.cidade || response.data.localidade || '',
+                estado: prev.estado || response.data.uf || ''
+            }));
 
-      if (response.data.erro) {
-        setCepError("CEP não encontrado")
-        return
-      }
-
-      // Preencher os campos automaticamente
-      setValues((prev) => ({
-        ...prev,
-        logradouro: response.data.logradouro || "",
-        bairro: response.data.bairro || "",
-        cidade: response.data.localidade || "",
-        estado: response.data.uf || "",
-      }))
-
-      setCepError("")
-    } catch (error) {
-      console.error("Erro ao buscar CEP:", error)
-      setCepError("Erro ao buscar CEP. Tente novamente.")
-    } finally {
-      setCepLoading(false)
-    }
-  }
-
+            setCepError('');
+        } catch (error) {
+            console.error('Erro ao buscar CEP:', error);
+            setCepError('Erro ao buscar CEP. Tente novamente.');
+        } finally {
+            setCepLoading(false);
+        }
+    };
   const handleChanges = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target
 
@@ -304,6 +305,7 @@ const CadastroClienteComLGPD: React.FC = () => {
 
   const cadastrarSemTermo = async () => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { confirmarSenha, ...submitData } = values
 
       // Montar endereço completo para enviar ao backend
@@ -332,6 +334,7 @@ const CadastroClienteComLGPD: React.FC = () => {
   const handleAcceptTermo = async (termoId: number) => {
     try {
       // Primeiro, criar a conta do cliente
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { confirmarSenha, ...submitData } = tempFormData
 
       // Montar endereço completo para enviar ao backend
@@ -511,138 +514,148 @@ const CadastroClienteComLGPD: React.FC = () => {
                 />
               </div>
 
-              {/* CEP */}
-              <div>
-                <label htmlFor="cep" className="block text-sm font-medium text-gray-700 mb-1">
-                  CEP *
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    id="cep"
-                    name="cep"
-                    value={values.cep}
-                    onChange={handleChanges}
-                    placeholder="00000-000"
-                    className={`w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent ${
-                      cepError
-                        ? "border-red-500 focus:ring-red-500"
-                        : values.logradouro
-                          ? "border-green-500 focus:ring-green-500"
-                          : "border-gray-300 focus:ring-blue-500"
-                    }`}
-                    required
-                  />
-                  {cepLoading && (
-                    <div className="absolute right-3 top-2">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-                    </div>
-                  )}
-                </div>
-                {cepError && <p className="mt-1 text-sm text-red-600">{cepError}</p>}
-                {values.logradouro && !cepError && <p className="mt-1 text-sm text-green-600">✓ Endereço encontrado</p>}
-              </div>
+                        {/* CEP */}
+                        <div>
+                            <label htmlFor="cep" className="block text-sm font-medium text-gray-700 mb-1">
+                                CEP *
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    id="cep"
+                                    name="cep"
+                                    value={values.cep}
+                                    onChange={handleChanges}
+                                    placeholder="00000-000"
+                                    className={`w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent ${
+                                        cepError
+                                            ? 'border-red-500 focus:ring-red-500'
+                                            : values.logradouro
+                                            ? 'border-green-500 focus:ring-green-500'
+                                            : 'border-gray-300 focus:ring-blue-500'
+                                    }`}
+                                    required
+                                />
+                                {cepLoading && (
+                                    <div className="absolute right-3 top-2">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                                    </div>
+                                )}
+                            </div>
+                            {cepError && (
+                                <>
+                                    <p className="mt-1 text-sm text-red-600">{cepError}</p>
+                                    {/* MENSAGEM DE AJUDA ADICIONADA */}
+                                    <p className="mt-1 text-xs text-gray-500">
+                                        Você pode preencher o endereço manualmente.
+                                    </p>
+                                </>
+                            )}
+                            {values.logradouro && !cepError && (
+                                <p className="mt-1 text-sm text-green-600">✓ Endereço encontrado</p>
+                            )}
+                        </div>
 
-              {/* Logradouro */}
-              <div>
-                <label htmlFor="logradouro" className="block text-sm font-medium text-gray-700 mb-1">
-                  Logradouro
-                </label>
-                <input
-                  type="text"
-                  id="logradouro"
-                  name="logradouro"
-                  value={values.logradouro}
-                  onChange={handleChanges}
-                  placeholder="Rua, Avenida, etc."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                  readOnly
-                />
-              </div>
+                        {/* Logradouro */}
+                        <div>
+                            <label htmlFor="logradouro" className="block text-sm font-medium text-gray-700 mb-1">
+                                Logradouro
+                            </label>
+                            <input
+                                type="text"
+                                id="logradouro"
+                                name="logradouro"
+                                value={values.logradouro}
+                                onChange={handleChanges}
+                                placeholder="Rua, Avenida, etc."
+                                // REMOVIDO: bg-gray-50 e readOnly
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                        </div>
 
-              {/* Número */}
-              <div>
-                <label htmlFor="numero" className="block text-sm font-medium text-gray-700 mb-1">
-                  Número *
-                </label>
-                <input
-                  type="text"
-                  id="numero"
-                  name="numero"
-                  value={values.numero}
-                  onChange={handleChanges}
-                  placeholder="123"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
+                        {/* Número */}
+                        <div>
+                            <label htmlFor="numero" className="block text-sm font-medium text-gray-700 mb-1">
+                                Número *
+                            </label>
+                            <input
+                                type="text"
+                                id="numero"
+                                name="numero"
+                                value={values.numero}
+                                onChange={handleChanges}
+                                placeholder="123"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required
+                            />
+                        </div>
 
-              {/* Complemento */}
-              <div>
-                <label htmlFor="complemento" className="block text-sm font-medium text-gray-700 mb-1">
-                  Complemento
-                </label>
-                <input
-                  type="text"
-                  id="complemento"
-                  name="complemento"
-                  value={values.complemento}
-                  onChange={handleChanges}
-                  placeholder="Apt, Casa, etc."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+                        {/* Complemento */}
+                        <div>
+                            <label htmlFor="complemento" className="block text-sm font-medium text-gray-700 mb-1">
+                                Complemento
+                            </label>
+                            <input
+                                type="text"
+                                id="complemento"
+                                name="complemento"
+                                value={values.complemento}
+                                onChange={handleChanges}
+                                placeholder="Apt, Casa, etc."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                        </div>
 
-              {/* Bairro */}
-              <div>
-                <label htmlFor="bairro" className="block text-sm font-medium text-gray-700 mb-1">
-                  Bairro
-                </label>
-                <input
-                  type="text"
-                  id="bairro"
-                  name="bairro"
-                  value={values.bairro}
-                  onChange={handleChanges}
-                  placeholder="Centro"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                  readOnly
-                />
-              </div>
+                        {/* Bairro */}
+                        <div>
+                            <label htmlFor="bairro" className="block text-sm font-medium text-gray-700 mb-1">
+                                Bairro
+                            </label>
+                            <input
+                                type="text"
+                                id="bairro"
+                                name="bairro"
+                                value={values.bairro}
+                                onChange={handleChanges}
+                                placeholder="Centro"
+                                // REMOVIDO: bg-gray-50 e readOnly
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                        </div>
 
-              {/* Cidade */}
-              <div>
-                <label htmlFor="cidade" className="block text-sm font-medium text-gray-700 mb-1">
-                  Cidade
-                </label>
-                <input
-                  type="text"
-                  id="cidade"
-                  name="cidade"
-                  value={values.cidade}
-                  onChange={handleChanges}
-                  placeholder="São Paulo"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                  readOnly
-                />
-              </div>
+                        {/* Cidade */}
+                        <div>
+                            <label htmlFor="cidade" className="block text-sm font-medium text-gray-700 mb-1">
+                                Cidade
+                            </label>
+                            <input
+                                type="text"
+                                id="cidade"
+                                name="cidade"
+                                value={values.cidade}
+                                onChange={handleChanges}
+                                placeholder="São Paulo"
+                                // REMOVIDO: bg-gray-50 e readOnly
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                        </div>
 
-              {/* Estado */}
-              <div>
-                <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-1">
-                  Estado
-                </label>
-                <input
-                  type="text"
-                  id="estado"
-                  name="estado"
-                  value={values.estado}
-                  onChange={handleChanges}
-                  placeholder="SP"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                  readOnly
-                />
-              </div>
+                        {/* Estado */}
+                        <div>
+                            <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-1">
+                                Estado
+                            </label>
+                            <input
+                                type="text"
+                                id="estado"
+                                name="estado"
+                                value={values.estado}
+                                onChange={handleChanges}
+                                placeholder="SP"
+                                // REMOVIDO: bg-gray-50 e readOnly
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                        </div>
 
               {/* Senha */}
               <div>

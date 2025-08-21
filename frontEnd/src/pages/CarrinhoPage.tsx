@@ -24,27 +24,25 @@ import {
   ShieldCheck,
 } from "lucide-react"
 
-// Interfaces para os dados da API Melhor Envio (mantidas da nossa implementação funcional)
 interface OpcaoFrete {
-  id: number;
-  name: string;
-  price: string;
-  delivery_time: number;
+  id: number
+  name: string
+  price: string
+  delivery_time: number
   company: {
-    name: string;
-    picture: string;
-  };
-  error?: string;
+    name: string
+    picture: string
+  }
+  error?: string
 }
 
 interface FreteSelecionado {
-  nome: string;
-  valor: number;
-  prazo: number;
+  nome: string
+  valor: number
+  prazo: number
 }
 
 const CarrinhoPage: React.FC = () => {
-  // 1. ESTADOS E FUNÇÕES DA NOSSA IMPLEMENTAÇÃO FUNCIONAL (MANTIDOS)
   const { itensCarrinho, carregando, atualizarQuantidade, removerDoCarrinho, limparCarrinho, totalItens, totalPreco } =
     useCart()
   const navigate = useNavigate()
@@ -55,6 +53,7 @@ const CarrinhoPage: React.FC = () => {
   const [calculandoFrete, setCalculandoFrete] = useState(false)
   const [erroFrete, setErroFrete] = useState("")
   const [comSeguro, setComSeguro] = useState(false)
+  const [processandoPagamento, setProcessandoPagamento] = useState(false)
 
   const formatarPreco = (preco: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -120,7 +119,6 @@ const CarrinhoPage: React.FC = () => {
     const valor = e.target.value.replace(/\D/g, "")
     if (valor.length <= 8) {
       setCep(valor)
-      // Limpa as opções antigas ao digitar um novo CEP
       if (opcoesFrete.length > 0) {
         setOpcoesFrete([])
         setFreteSelecionado(null)
@@ -129,17 +127,72 @@ const CarrinhoPage: React.FC = () => {
   }
 
   if (carregando) {
-    return <Layout showLoading={true}><div/></Layout>
+    return (
+      <Layout showLoading={true}>
+        <div />
+      </Layout>
+    )
   }
 
   const valorTotalFinal = totalPreco + (freteSelecionado?.valor || 0)
 
-  // 2. JSX DO NOVO DESIGN INTEGRADO COM A LÓGICA ACIMA
+  const handleFinalizarCompra = async () => {
+    if (!freteSelecionado) {
+      alert("Selecione uma opção de entrega")
+      return
+    }
+
+    setProcessandoPagamento(true)
+
+    try {
+      const token = localStorage.getItem("token")
+
+      const response = await fetch("http://localhost:3000/pagamento/criar-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          frete_nome: freteSelecionado.nome,
+          frete_valor: freteSelecionado.valor,
+          frete_prazo_dias: freteSelecionado.prazo,
+          endereco_entrega: "Endereço do cliente", // TODO: Implementar busca do endereço
+        }),
+      })
+
+      const data = await response.json()
+
+      // =================== ALTERAÃ‡ÃƒO AQUI ===================
+      // Adicionamos uma verificação para 'data.payment_url'.
+      // Se a URL não vier, o processo para com uma mensagem de erro clara.
+      if (response.ok && data.success && data.payment_url) {
+        localStorage.setItem("current_order_id", data.order_id)
+
+        // Abre a pÃ¡gina de pagamento em uma nova aba
+        window.open(data.payment_url, "_blank")
+
+        // Navega a aba atual para a pÃ¡gina de espera
+        navigate(`/aguardo-pagamento?order_id=${data.order_id}`)
+      } else {
+        // Mensagem de erro mais especÃ­fica se a URL não for criada
+        const errorMessage = data.message || "Não foi possível obter a URL de pagamento do servidor."
+        console.error("Erro ao criar link de pagamento:", data)
+        alert(`Erro ao criar link de pagamento: ${errorMessage}`)
+      }
+      // =======================================================
+    } catch (error) {
+      console.error("Erro ao criar link de pagamento:", error)
+      alert("Erro ao processar pagamento. Tente novamente.")
+    } finally {
+      setProcessandoPagamento(false)
+    }
+  }
+
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
         <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* Header da página */}
           <div className="mb-8">
             <div className="flex items-center mb-6">
               <button
@@ -159,7 +212,6 @@ const CarrinhoPage: React.FC = () => {
               <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
                 Meu Carrinho
               </h1>
-              
             </div>
           </div>
 
@@ -184,15 +236,11 @@ const CarrinhoPage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-              {/* Lista de Itens */}
               <div className="xl:col-span-2">
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 mb-6">
                   <div className="flex justify-between items-center mb-6 pb-6 border-b border-slate-200">
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-900 flex items-center">
-                        
-                        Itens do Carrinho
-                      </h2>
+                      <h2 className="text-2xl font-bold text-slate-900 flex items-center">Itens do Carrinho</h2>
                       <p className="text-slate-600 mt-1">
                         {totalItens} {totalItens === 1 ? "produto" : "produtos"} selecionados
                       </p>
@@ -294,10 +342,8 @@ const CarrinhoPage: React.FC = () => {
                     ))}
                   </div>
                 </div>
-
               </div>
 
-              {/* Resumo do Pedido */}
               <div className="xl:col-span-1">
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 sticky top-4">
                   <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-4 border-b border-slate-200 flex items-center">
@@ -354,7 +400,7 @@ const CarrinhoPage: React.FC = () => {
                               onChange={() =>
                                 handleSelecionarFrete({
                                   nome: `${opcao.company.name} - ${opcao.name}`,
-                                  valor: parseFloat(opcao.price),
+                                  valor: Number.parseFloat(opcao.price),
                                   prazo: opcao.delivery_time,
                                 })
                               }
@@ -376,7 +422,7 @@ const CarrinhoPage: React.FC = () => {
                             </div>
                             <div className="text-right">
                               <p className="font-bold text-slate-900 text-lg">
-                                {formatarPreco(parseFloat(opcao.price))}
+                                {formatarPreco(Number.parseFloat(opcao.price))}
                               </p>
                             </div>
                           </label>
@@ -495,11 +541,21 @@ const CarrinhoPage: React.FC = () => {
 
                   <div className="space-y-3">
                     <button
-                      disabled={!freteSelecionado}
+                      onClick={handleFinalizarCompra}
+                      disabled={!freteSelecionado || processandoPagamento}
                       className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-slate-300 disabled:to-slate-400 text-white px-6 py-4 rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center text-lg disabled:cursor-not-allowed"
                     >
-                      <CreditCard size={20} className="mr-2" />
-                      {freteSelecionado ? "Finalizar Compra" : "Selecione uma forma de entrega"}
+                      {processandoPagamento ? (
+                        <>
+                          <Loader2 className="animate-spin mr-2" size={20} />
+                          Criando pagamento...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard size={20} className="mr-2" />
+                          {freteSelecionado ? "Finalizar Compra" : "Selecione uma forma de entrega"}
+                        </>
+                      )}
                     </button>
 
                     <button
@@ -509,7 +565,6 @@ const CarrinhoPage: React.FC = () => {
                       Continuar Comprando
                     </button>
                   </div>
-
                 </div>
               </div>
             </div>

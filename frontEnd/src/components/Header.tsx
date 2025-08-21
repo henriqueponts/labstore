@@ -175,7 +175,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                     className="flex items-center text-orange-700 hover:text-orange-600 transition-colors"
                   >
                     <Edit3 size={16} className="mr-1" />
-                    Editar Home
+                    Home
                   </a>
                 )}
 
@@ -184,7 +184,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   className="flex items-center text-green-700 hover:text-green-600 transition-colors"
                 >
                   <Package size={16} className="mr-1" />
-                  Gerenciar Produtos
+                  Produtos
                 </a>
 
                 <a href="#" className="flex items-center text-green-700 hover:text-green-600 transition-colors">
@@ -268,7 +268,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                     className="flex items-center text-orange-700 hover:text-orange-600 transition-colors py-2"
                   >
                     <Edit3 size={16} className="mr-2" />
-                    Editar Home
+                    Home
                   </a>
                 )}
 
@@ -277,7 +277,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   className="flex items-center text-green-700 hover:text-green-600 transition-colors py-2"
                 >
                   <Package size={16} className="mr-2" />
-                  Gerenciar Produtos
+                  Produtos
                 </a>
 
                 <a href="#" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2">

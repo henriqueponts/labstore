@@ -1,4 +1,3 @@
-// Arquivo: server/routes/carrinhoRoutes.js
 
 import express from 'express';
 import { connectToDatabase } from '../lib/db.js';
@@ -6,12 +5,12 @@ import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
-// Middleware para verificar se o usuário é um cliente logado
+// Middleware para verificar se o usuÃ¡rio Ã© um cliente logado
 const verificarCliente = async (req, res, next) => {
     try {
         const authHeader = req.headers['authorization'];
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ message: 'Token não fornecido' });
+            return res.status(401).json({ message: 'Token nÃ£o fornecido' });
         }
         
         const token = authHeader.split(' ')[1];
@@ -21,10 +20,10 @@ const verificarCliente = async (req, res, next) => {
             return res.status(403).json({ message: 'Acesso negado. Apenas clientes podem acessar o carrinho.' });
         }
         
-        req.clienteId = decoded.id; // Adiciona o id do cliente na requisição
+        req.clienteId = decoded.id; // Adiciona o id do cliente na requisiÃ§Ã£o
         next();
     } catch (err) {
-        return res.status(401).json({ message: 'Token inválido' });
+        return res.status(401).json({ message: 'Token invÃ¡lido' });
     }
 };
 
@@ -48,7 +47,7 @@ router.post('/adicionar', verificarCliente, async (req, res) => {
     const { id_produto, quantidade } = req.body;
 
     if (!id_produto || !quantidade || quantidade <= 0) {
-        return res.status(400).json({ message: 'ID do produto e quantidade são obrigatórios.' });
+        return res.status(400).json({ message: 'ID do produto e quantidade sÃ£o obrigatÃ³rios.' });
     }
 
     try {
@@ -57,7 +56,7 @@ router.post('/adicionar', verificarCliente, async (req, res) => {
         res.status(200).json({ message: 'Produto adicionado ao carrinho com sucesso!' });
     } catch (error) {
         console.error('Erro ao adicionar item ao carrinho:', error);
-        // Verifica se o erro é de estoque insuficiente
+        // Verifica se o erro Ã© de estoque insuficiente
         if (error.sqlMessage && error.sqlMessage.includes('Estoque insuficiente')) {
             return res.status(400).json({ message: 'Estoque insuficiente para a quantidade solicitada.' });
         }
@@ -70,7 +69,7 @@ router.put('/atualizar', verificarCliente, async (req, res) => {
     const { id_produto, nova_quantidade } = req.body;
 
     if (!id_produto || nova_quantidade === undefined || nova_quantidade < 0) {
-        return res.status(400).json({ message: 'ID do produto e nova quantidade são obrigatórios.' });
+        return res.status(400).json({ message: 'ID do produto e nova quantidade sÃ£o obrigatÃ³rios.' });
     }
 
     try {
