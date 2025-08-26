@@ -1,27 +1,17 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect, useRef } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import axios from "axios"
 import {
-  ShoppingCart,
-  User,
-  Search,
-  Menu,
-  Wrench,
-  FileQuestion as CircleQuestionMark,
-  Scale,
-  Users,
-  LogOut,
-  Package,
-  BarChart3,
-  Headphones,
-  Monitor,
-  X,
-  Edit3,
+  ShoppingCart, User, Search, Menu, Wrench, FileQuestion as CircleQuestionMark,
+  Scale, Users, LogOut, Package, BarChart3, Headphones, Monitor, X, Edit3, Lock,
+  ListOrdered, Loader2,
 } from "lucide-react"
 import { useCart } from "../context/CartContext"
 
+// Interface para os dados do usuário logado
 interface UsuarioData {
   id_cliente?: number
   id_usuario?: number
@@ -29,6 +19,14 @@ interface UsuarioData {
   email: string
   tipo: "cliente" | "funcionario"
   tipo_perfil?: "admin" | "analista"
+}
+
+// Interface para os produtos exibidos no dropdown de busca
+interface ProdutoBusca {
+  id_produto: number
+  nome: string
+  preco: number
+  imagemUrl: string | null
 }
 
 interface HeaderProps {
@@ -40,15 +38,58 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearchChange }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const navigate = useNavigate()
   const { totalItens } = useCart()
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const searchContainerRef = useRef<HTMLDivElement>(null)
 
-  // Verificar se o usuário pode editar a home page
-  const canEditHomePage =
-    usuario?.tipo === "funcionario" && (usuario?.tipo_perfil === "admin" || usuario?.tipo_perfil === "analista")
+  // Estados locais para o dropdown de busca rápida
+  const [dropdownResults, setDropdownResults] = useState<ProdutoBusca[]>([])
+  const [isDropdownLoading, setIsDropdownLoading] = useState(false)
+  const [isDropdownVisible, setIsDropdownVisible] = useState(false)
 
-  const handleSearch = (e: React.FormEvent) => {
+  // Efeito para fechar dropdowns ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false)
+      }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsDropdownVisible(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  // Efeito para buscar resultados para o dropdown com debounce (atraso)
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchTerm.trim().length > 1) {
+        setIsDropdownLoading(true)
+        setIsDropdownVisible(true)
+        try {
+          const response = await axios.get(`http://localhost:3000/produtos/produtos/buscar?nome=${searchTerm}`)
+          setDropdownResults(response.data.slice(0, 5)) // Limita a 5 resultados
+        } catch (error) {
+          console.error("Erro na busca de produtos:", error)
+          setDropdownResults([])
+        } finally {
+          setIsDropdownLoading(false)
+        }
+      } else {
+        setDropdownResults([])
+        setIsDropdownVisible(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchTerm])
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setIsDropdownVisible(false)
     if (searchTerm.trim()) {
       navigate(`/produtos?busca=${encodeURIComponent(searchTerm.trim())}`)
     } else {
@@ -56,9 +97,15 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
     }
   }
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price)
+  }
+
+  const canEditHomePage =
+    usuario?.tipo === "funcionario" && (usuario?.tipo_perfil === "admin" || usuario?.tipo_perfil === "analista")
+
   return (
     <header className="bg-white shadow-md relative z-50">
-      {/* Main header */}
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
@@ -66,12 +113,11 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
             <h1 className="text-2xl font-bold text-blue-600 cursor-pointer" onClick={() => navigate("/")}>
               LabStore
             </h1>
-            <span className="text-sm text-gray-500 ml-2 hidden md:block">Tecnologia & Inovação</span>
           </div>
 
-          {/* Search bar */}
-          <div className="flex-1 max-w-xl mx-4 md:mx-8">
-            <form onSubmit={handleSearch}>
+          {/* Search bar com Dropdown */}
+          <div className="flex-1 max-w-xl mx-4 md:mx-8 relative" ref={searchContainerRef}>
+            <form onSubmit={handleSearchSubmit}>
               <div className="relative">
                 <input
                   type="text"
@@ -85,44 +131,129 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 </button>
               </div>
             </form>
+
+            {/* Dropdown de Resultados */}
+            {isDropdownVisible && (
+              <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-lg border z-20 max-h-96 overflow-y-auto">
+                {isDropdownLoading ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                    <span className="ml-2 text-gray-600">Buscando...</span>
+                  </div>
+                ) : dropdownResults.length > 0 ? (
+                  <ul>
+                    {dropdownResults.map((produto) => (
+                      <li key={produto.id_produto}>
+                        <Link
+                          to={`/produto/${produto.id_produto}`}
+                          onClick={() => setIsDropdownVisible(false)}
+                          className="flex items-center p-3 hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 mr-3">
+                            <img
+                              src={
+                                produto.imagemUrl
+                                  ? `http://localhost:3000/produtos${produto.imagemUrl}`
+                                  : "/placeholder.svg"
+                              }
+                              alt={produto.nome}
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-800 truncate">{produto.nome}</p>
+                            <p className="text-sm text-blue-600 font-semibold">{formatPrice(produto.preco)}</p>
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                    <li className="border-t">
+                      <button
+                        onClick={handleSearchSubmit}
+                        className="w-full text-center p-3 text-sm font-semibold text-blue-600 hover:bg-blue-50"
+                      >
+                        Ver todos os resultados
+                      </button>
+                    </li>
+                  </ul>
+                ) : (
+                  <div className="p-4 text-center text-gray-500">Nenhum produto encontrado.</div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* User actions */}
           <div className="flex items-center space-x-2 md:space-x-4">
             {!usuario ? (
-              <>
-                <button
-                  onClick={() => navigate("/login")}
-                  className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
-                >
-                  <User size={20} className="mr-1" />
-                  <span className="hidden md:block">Entrar</span>
-                </button>
-              </>
+              <button
+                onClick={() => navigate("/login")}
+                className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                <User size={20} className="mr-1" />
+                <span className="hidden md:block">Entrar</span>
+              </button>
             ) : (
-              <div className="flex items-center space-x-2 md:space-x-3">
-                <div className="text-sm">
-                  <span className="text-gray-700 hidden md:inline">Olá, </span>
-                  <span className="font-medium text-blue-600">
-                    {usuario.nome?.split(" ")[0] || usuario.email.split("@")[0]}
-                  </span>
-                </div>
-                {usuario.tipo === "funcionario" && (
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      usuario.tipo_perfil === "admin" ? "bg-purple-100 text-purple-800" : "bg-green-100 text-green-800"
-                    }`}
-                  >
-                    {usuario.tipo_perfil === "admin" ? "Admin" : "Técnico"}
-                  </span>
-                )}
-                <button onClick={onLogout} className="text-gray-500 hover:text-red-600 transition-colors" title="Sair">
-                  <LogOut size={18} />
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  className="flex items-center text-gray-700 hover:text-blue-600 transition-colors p-2 rounded-full hover:bg-gray-100"
+                >
+                  <User size={20} />
                 </button>
+
+                {userDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border z-10">
+                    <div className="p-4 border-b">
+                      <p className="font-medium text-gray-800 truncate">{usuario.nome || usuario.email}</p>
+                      <p className="text-sm text-gray-500 truncate">{usuario.email}</p>
+                    </div>
+                    <div className="py-2">
+                      {usuario.tipo === "cliente" && (
+                        <>
+                          <a
+                            href="/meus-pedidos"
+                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            <ListOrdered size={16} className="mr-3" />
+                            Meus Pedidos
+                          </a>
+                          <a
+                            href="/alterar-senha"
+                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            <Lock size={16} className="mr-3" />
+                            Alterar Senha
+                          </a>
+                        </>
+                      )}
+                      {usuario.tipo === "funcionario" && (
+                        <a
+                          href="/alterar-senha"
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <Lock size={16} className="mr-3" />
+                          Alterar Senha
+                        </a>
+                      )}
+                    </div>
+                    <div className="border-t">
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false)
+                          onLogout()
+                        }}
+                        className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        <LogOut size={16} className="mr-3" />
+                        Sair
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Carrinho - só aparece para clientes ou visitantes */}
             {(!usuario || usuario.tipo === "cliente") && (
               <button
                 onClick={() => navigate("/carrinho")}
@@ -137,7 +268,6 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
               </button>
             )}
 
-            {/* Mobile menu button */}
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-gray-700 p-1">
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -149,7 +279,6 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
       <div className="bg-gray-100 border-t hidden md:block">
         <div className="max-w-7xl mx-auto px-4">
           <nav className="flex space-x-8 py-3">
-            {/* Menu público */}
             <a href="/produtos" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
               <Monitor size={16} className="mr-1" />
               Produtos
@@ -163,12 +292,9 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
               Ajuda
             </a>
 
-            {/* Menu administrativo */}
             {usuario?.tipo === "funcionario" && (
               <>
                 <div className="border-l border-gray-300 mx-4"></div>
-
-                {/* Botão Editar Home - Apenas para Admin e Analista */}
                 {canEditHomePage && (
                   <a
                     href="/editar-home"
@@ -178,7 +304,6 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                     Home
                   </a>
                 )}
-
                 <a
                   href="/gestao/produtos"
                   className="flex items-center text-green-700 hover:text-green-600 transition-colors"
@@ -186,12 +311,10 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   <Package size={16} className="mr-1" />
                   Produtos
                 </a>
-
                 <a href="#" className="flex items-center text-green-700 hover:text-green-600 transition-colors">
                   <Wrench size={16} className="mr-1" />
                   Solicitações
                 </a>
-
                 <a
                   href="/gestao/chamados"
                   className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors"
@@ -200,7 +323,6 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   Chamados
                 </a>
                 <div className="border-l border-gray-300 mx-4"></div>
-
                 {usuario.tipo_perfil === "admin" && (
                   <>
                     <a
@@ -233,7 +355,6 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t shadow-lg">
           <div className="px-4 py-3 space-y-3">
-            {/* Menu público */}
             <div className="space-y-2">
               <h4 className="font-semibold text-gray-800 text-sm">Categorias</h4>
               <a
@@ -255,13 +376,9 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 Ajuda
               </a>
             </div>
-
-            {/* Menu administrativo mobile */}
             {usuario?.tipo === "funcionario" && (
               <div className="border-t pt-3 space-y-2">
                 <h4 className="font-semibold text-gray-800 text-sm">Administração</h4>
-
-                {/* Botão Editar Home Mobile - Apenas para Admin e Analista */}
                 {canEditHomePage && (
                   <a
                     href="/editar-home"
@@ -271,7 +388,6 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                     Home
                   </a>
                 )}
-
                 <a
                   href="/gestao/produtos"
                   className="flex items-center text-green-700 hover:text-green-600 transition-colors py-2"
@@ -279,12 +395,10 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   <Package size={16} className="mr-2" />
                   Produtos
                 </a>
-
                 <a href="#" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2">
                   <Wrench size={16} className="mr-2" />
                   Solicitações
                 </a>
-
                 <a
                   href="/gestao/chamados"
                   className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2"
@@ -308,7 +422,6 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                       <BarChart3 size={16} className="mr-2" />
                       Relatórios
                     </a>
-
                     <a
                       href="/gestao/lgpd"
                       className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2"
