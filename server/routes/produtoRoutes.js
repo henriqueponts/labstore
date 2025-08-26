@@ -110,28 +110,20 @@ router.post("/categorias", verificarFuncionario, async (req, res) => {
   }
 })
 
-// Listar todos os produtos com suas imagens
+// Listar todos os produtos com suas imagens e marca
 router.get("/produtos", async (req, res) => {
   try {
     const db = await connectToDatabase()
 
-    // Buscar produtos
-    const [produtos] = await db.query(`
-      SELECT p.*, c.nome as categoria_nome 
-      FROM Produto p 
-      LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria 
-      ORDER BY p.nome
-    `)
+    // Buscar produtos com marca e categoria
+    const [produtos] = await db.query(
+      `SELECT p.*, c.nome as categoria_nome, m.nome as marca_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria LEFT JOIN Marca m ON p.id_marca = m.id_marca ORDER BY p.nome`,
+    )
 
     // Buscar imagens para cada produto
     for (const produto of produtos) {
       const [imagens] = await db.query(
-        `
-        SELECT id_imagem, url_imagem, nome_arquivo, ordem, is_principal
-        FROM ProdutoImagem 
-        WHERE id_produto = ? 
-        ORDER BY is_principal DESC, ordem ASC
-      `,
+        `SELECT id_imagem, url_imagem, nome_arquivo, ordem, is_principal FROM ProdutoImagem WHERE id_produto = ? ORDER BY is_principal DESC, ordem ASC`,
         [produto.id_produto],
       )
 
@@ -154,12 +146,7 @@ router.get("/produtos/:id", async (req, res) => {
     const db = await connectToDatabase()
 
     const [produtos] = await db.query(
-      `
-      SELECT p.*, c.nome as categoria_nome 
-      FROM Produto p 
-      LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria 
-      WHERE p.id_produto = ?
-    `,
+      `SELECT p.*, c.nome as categoria_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria WHERE p.id_produto = ?`,
       [id],
     )
 
@@ -171,12 +158,7 @@ router.get("/produtos/:id", async (req, res) => {
 
     // Buscar imagens do produto
     const [imagens] = await db.query(
-      `
-      SELECT id_imagem, url_imagem, nome_arquivo, ordem, is_principal
-      FROM ProdutoImagem 
-      WHERE id_produto = ? 
-      ORDER BY is_principal DESC, ordem ASC
-    `,
+      `SELECT id_imagem, url_imagem, nome_arquivo, ordem, is_principal FROM ProdutoImagem WHERE id_produto = ? ORDER BY is_principal DESC, ordem ASC`,
       [id],
     )
 
@@ -192,11 +174,21 @@ router.get("/produtos/:id", async (req, res) => {
 // Criar novo produto com múltiplas imagens
 router.post("/produtos", verificarFuncionario, upload.array("imagens", 10), async (req, res) => {
   try {
-    // 1. Adiciona os novos campos de peso e dimensões
-    const { 
-      nome, descricao, preco, marca, modelo, estoque, id_categoria, 
-      compatibilidade, cor, ano_fabricacao,
-      peso_kg, altura_cm, largura_cm, comprimento_cm 
+    const {
+      nome,
+      descricao,
+      preco,
+      id_marca,
+      modelo,
+      estoque,
+      id_categoria,
+      compatibilidade,
+      cor,
+      ano_fabricacao,
+      peso_kg,
+      altura_cm,
+      largura_cm,
+      comprimento_cm,
     } = req.body
 
     if (!nome || !descricao || !preco || !id_categoria) {
@@ -212,27 +204,26 @@ router.post("/produtos", verificarFuncionario, upload.array("imagens", 10), asyn
       return res.status(400).json({ message: "Categoria não encontrada" })
     }
 
-    // 2. Adiciona os novos campos na query SQL
+    if (id_marca) {
+      const [marca] = await db.query("SELECT id_marca FROM Marca WHERE id_marca = ?", [id_marca])
+      if (marca.length === 0) {
+        return res.status(400).json({ message: "Marca não encontrada" })
+      }
+    }
+
     const [resultado] = await db.query(
-      `
-      INSERT INTO Produto (
-          nome, descricao, preco, marca, modelo, estoque, id_categoria, 
-          compatibilidade, cor, ano_fabricacao,
-          peso_kg, altura_cm, largura_cm, comprimento_cm
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
+      `INSERT INTO Produto (nome, descricao, preco, id_marca, modelo, estoque, id_categoria, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nome,
         descricao,
         Number.parseFloat(preco),
-        marca || null,
+        id_marca || null,
         modelo || null,
         Number.parseInt(estoque) || 0,
         id_categoria,
         compatibilidade || null,
         cor || null,
         ano_fabricacao ? Number.parseInt(ano_fabricacao) : null,
-        // 3. Adiciona os valores (convertendo para número ou null)
         peso_kg ? Number.parseFloat(peso_kg) : null,
         altura_cm ? Number.parseFloat(altura_cm) : null,
         largura_cm ? Number.parseFloat(largura_cm) : null,
@@ -265,17 +256,29 @@ router.post("/produtos", verificarFuncionario, upload.array("imagens", 10), asyn
   }
 })
 
-
 // Atualizar produto existente
 router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 10), async (req, res) => {
   try {
     const { id } = req.params
-    // 1. Adiciona os novos campos de peso e dimensões
     const {
-      nome, descricao, preco, marca, modelo, estoque, id_categoria,
-      compatibilidade, cor, ano_fabricacao, status,
-      peso_kg, altura_cm, largura_cm, comprimento_cm,
-      imagens_removidas, imagem_principal_id, ordens_imagens,
+      nome,
+      descricao,
+      preco,
+      id_marca,
+      modelo,
+      estoque,
+      id_categoria,
+      compatibilidade,
+      cor,
+      ano_fabricacao,
+      status,
+      peso_kg,
+      altura_cm,
+      largura_cm,
+      comprimento_cm,
+      imagens_removidas,
+      imagem_principal_id,
+      ordens_imagens,
     } = req.body
 
     const db = await connectToDatabase()
@@ -290,32 +293,20 @@ router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 
       }
     }
 
-    // Atualizar dados do produto
+    if (id_marca) {
+      const [marca] = await db.query("SELECT id_marca FROM Marca WHERE id_marca = ?", [id_marca])
+      if (marca.length === 0) {
+        return res.status(400).json({ message: "Marca não encontrada" })
+      }
+    }
+
     await db.query(
-      `
-      UPDATE Produto SET 
-          nome = COALESCE(?, nome),
-          descricao = COALESCE(?, descricao),
-          preco = COALESCE(?, preco),
-          marca = COALESCE(?, marca),
-          modelo = COALESCE(?, modelo),
-          estoque = COALESCE(?, estoque),
-          id_categoria = COALESCE(?, id_categoria),
-          compatibilidade = COALESCE(?, compatibilidade),
-          cor = COALESCE(?, cor),
-          ano_fabricacao = COALESCE(?, ano_fabricacao),
-          status = COALESCE(?, status),
-          peso_kg = COALESCE(?, peso_kg),
-          altura_cm = COALESCE(?, altura_cm),
-          largura_cm = COALESCE(?, largura_cm),
-          comprimento_cm = COALESCE(?, comprimento_cm)
-      WHERE id_produto = ?
-      `,
+      `UPDATE Produto SET nome = COALESCE(?, nome), descricao = COALESCE(?, descricao), preco = COALESCE(?, preco), id_marca = COALESCE(?, id_marca), modelo = COALESCE(?, modelo), estoque = COALESCE(?, estoque), id_categoria = COALESCE(?, id_categoria), compatibilidade = COALESCE(?, compatibilidade), cor = COALESCE(?, cor), ano_fabricacao = COALESCE(?, ano_fabricacao), status = COALESCE(?, status), peso_kg = COALESCE(?, peso_kg), altura_cm = COALESCE(?, altura_cm), largura_cm = COALESCE(?, largura_cm), comprimento_cm = COALESCE(?, comprimento_cm) WHERE id_produto = ?`,
       [
         nome || null,
         descricao || null,
         preco ? Number.parseFloat(preco) : null,
-        marca || null,
+        id_marca || null,
         modelo || null,
         estoque ? Number.parseInt(estoque) : null,
         id_categoria || null,
@@ -323,7 +314,6 @@ router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 
         cor || null,
         ano_fabricacao ? Number.parseInt(ano_fabricacao) : null,
         status || null,
-        // 3. Adiciona os valores (convertendo para número ou null)
         peso_kg ? Number.parseFloat(peso_kg) : null,
         altura_cm ? Number.parseFloat(altura_cm) : null,
         largura_cm ? Number.parseFloat(largura_cm) : null,
@@ -332,33 +322,26 @@ router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 
       ],
     )
 
-
-    // Processar remoção de imagens
     if (imagens_removidas) {
       const idsRemover = JSON.parse(imagens_removidas)
       for (const idImagem of idsRemover) {
-        // Buscar dados da imagem antes de remover
         const [dadosImagem] = await db.query("SELECT * FROM ProdutoImagem WHERE id_imagem = ? AND id_produto = ?", [
           idImagem,
           id,
         ])
 
         if (dadosImagem.length > 0) {
-          // Remover arquivo físico
           const caminhoImagem = path.join(process.cwd(), dadosImagem[0].url_imagem)
           if (fs.existsSync(caminhoImagem)) {
             fs.unlinkSync(caminhoImagem)
           }
 
-          // Remover do banco
           await db.query("DELETE FROM ProdutoImagem WHERE id_imagem = ?", [idImagem])
         }
       }
     }
 
-    // Adicionar novas imagens
     if (req.files && req.files.length > 0) {
-      // Buscar a maior ordem atual
       const [ordemMaxima] = await db.query(
         "SELECT COALESCE(MAX(ordem), -1) as ordem_maxima FROM ProdutoImagem WHERE id_produto = ?",
         [id],
@@ -370,8 +353,7 @@ router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 
         const urlImagem = `/uploads/produtos/${arquivo.filename}`
 
         await db.query(
-          `INSERT INTO ProdutoImagem (id_produto, url_imagem, nome_arquivo, ordem, is_principal) 
-           VALUES (?, ?, ?, ?, FALSE)`,
+          `INSERT INTO ProdutoImagem (id_produto, url_imagem, nome_arquivo, ordem, is_principal) VALUES (?, ?, ?, ?, FALSE)`,
           [id, urlImagem, arquivo.filename, proximaOrdem],
         )
 
@@ -379,18 +361,14 @@ router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 
       }
     }
 
-    // Atualizar imagem principal
     if (imagem_principal_id) {
-      // Remover principal de todas as imagens
       await db.query("UPDATE ProdutoImagem SET is_principal = FALSE WHERE id_produto = ?", [id])
-      // Definir a nova imagem principal
       await db.query("UPDATE ProdutoImagem SET is_principal = TRUE WHERE id_imagem = ? AND id_produto = ?", [
         imagem_principal_id,
         id,
       ])
     }
 
-    // Atualizar ordens das imagens
     if (ordens_imagens) {
       const ordens = JSON.parse(ordens_imagens)
       for (const item of ordens) {
@@ -402,14 +380,12 @@ router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 
       }
     }
 
-    // Garantir que sempre há uma imagem principal
     const [imagensPrincipais] = await db.query(
       "SELECT COUNT(*) as total FROM ProdutoImagem WHERE id_produto = ? AND is_principal = TRUE",
       [id],
     )
 
     if (imagensPrincipais[0].total === 0) {
-      // Se não há imagem principal, definir a primeira como principal
       const [primeiraImagem] = await db.query(
         "SELECT id_imagem FROM ProdutoImagem WHERE id_produto = ? ORDER BY ordem LIMIT 1",
         [id],
@@ -438,7 +414,6 @@ router.post("/produtos/:id/imagens", verificarFuncionario, upload.array("imagens
     const { id } = req.params
     const db = await connectToDatabase()
 
-    // Verificar se produto existe
     const [produto] = await db.query("SELECT id_produto FROM Produto WHERE id_produto = ?", [id])
     if (produto.length === 0) {
       return res.status(404).json({ message: "Produto não encontrado" })
@@ -448,7 +423,6 @@ router.post("/produtos/:id/imagens", verificarFuncionario, upload.array("imagens
       return res.status(400).json({ message: "Nenhuma imagem foi enviada" })
     }
 
-    // Buscar a maior ordem atual
     const [ordemMaxima] = await db.query(
       "SELECT COALESCE(MAX(ordem), -1) as ordem_maxima FROM ProdutoImagem WHERE id_produto = ?",
       [id],
@@ -456,13 +430,11 @@ router.post("/produtos/:id/imagens", verificarFuncionario, upload.array("imagens
 
     let proximaOrdem = ordemMaxima[0].ordem_maxima + 1
 
-    // Inserir novas imagens
     for (const arquivo of req.files) {
       const urlImagem = `/uploads/produtos/${arquivo.filename}`
 
       await db.query(
-        `INSERT INTO ProdutoImagem (id_produto, url_imagem, nome_arquivo, ordem, is_principal) 
-         VALUES (?, ?, ?, ?, FALSE)`,
+        `INSERT INTO ProdutoImagem (id_produto, url_imagem, nome_arquivo, ordem, is_principal) VALUES (?, ?, ?, ?, FALSE)`,
         [id, urlImagem, arquivo.filename, proximaOrdem],
       )
 
@@ -485,7 +457,6 @@ router.delete("/produtos/:idProduto/imagens/:idImagem", verificarFuncionario, as
     const { idProduto, idImagem } = req.params
     const db = await connectToDatabase()
 
-    // Buscar a imagem
     const [imagem] = await db.query("SELECT * FROM ProdutoImagem WHERE id_imagem = ? AND id_produto = ?", [
       idImagem,
       idProduto,
@@ -497,16 +468,13 @@ router.delete("/produtos/:idProduto/imagens/:idImagem", verificarFuncionario, as
 
     const dadosImagem = imagem[0]
 
-    // Remover arquivo físico
     const caminhoImagem = path.join(process.cwd(), dadosImagem.url_imagem)
     if (fs.existsSync(caminhoImagem)) {
       fs.unlinkSync(caminhoImagem)
     }
 
-    // Remover do banco
     await db.query("DELETE FROM ProdutoImagem WHERE id_imagem = ?", [idImagem])
 
-    // Se era a imagem principal, definir outra como principal
     if (dadosImagem.is_principal) {
       const [outrasImagens] = await db.query(
         "SELECT id_imagem FROM ProdutoImagem WHERE id_produto = ? ORDER BY ordem LIMIT 1",
@@ -531,7 +499,6 @@ router.put("/produtos/:idProduto/imagens/:idImagem/principal", verificarFunciona
     const { idProduto, idImagem } = req.params
     const db = await connectToDatabase()
 
-    // Verificar se a imagem existe
     const [imagem] = await db.query("SELECT id_imagem FROM ProdutoImagem WHERE id_imagem = ? AND id_produto = ?", [
       idImagem,
       idProduto,
@@ -541,10 +508,8 @@ router.put("/produtos/:idProduto/imagens/:idImagem/principal", verificarFunciona
       return res.status(404).json({ message: "Imagem não encontrada" })
     }
 
-    // Remover principal de todas as imagens do produto
     await db.query("UPDATE ProdutoImagem SET is_principal = FALSE WHERE id_produto = ?", [idProduto])
 
-    // Definir a nova imagem principal
     await db.query("UPDATE ProdutoImagem SET is_principal = TRUE WHERE id_imagem = ?", [idImagem])
 
     res.status(200).json({ message: "Imagem principal definida com sucesso" })
@@ -558,7 +523,7 @@ router.put("/produtos/:idProduto/imagens/:idImagem/principal", verificarFunciona
 router.put("/produtos/:idProduto/imagens/ordem", verificarFuncionario, async (req, res) => {
   try {
     const { idProduto } = req.params
-    const { ordens } = req.body // Array de objetos: [{ id_imagem: 1, ordem: 0 }, ...]
+    const { ordens } = req.body
 
     if (!Array.isArray(ordens)) {
       return res.status(400).json({ message: "Ordens deve ser um array" })
@@ -566,7 +531,6 @@ router.put("/produtos/:idProduto/imagens/ordem", verificarFuncionario, async (re
 
     const db = await connectToDatabase()
 
-    // Atualizar ordem de cada imagem
     for (const item of ordens) {
       await db.query("UPDATE ProdutoImagem SET ordem = ? WHERE id_imagem = ? AND id_produto = ?", [
         item.ordem,
@@ -588,10 +552,8 @@ router.delete("/produtos/:id", verificarFuncionario, async (req, res) => {
     const { id } = req.params
     const db = await connectToDatabase()
 
-    // Buscar todas as imagens do produto
     const [imagens] = await db.query("SELECT url_imagem FROM ProdutoImagem WHERE id_produto = ?", [id])
 
-    // Remover arquivos físicos
     for (const imagem of imagens) {
       const caminhoImagem = path.join(process.cwd(), imagem.url_imagem)
       if (fs.existsSync(caminhoImagem)) {
@@ -599,7 +561,6 @@ router.delete("/produtos/:id", verificarFuncionario, async (req, res) => {
       }
     }
 
-    // Deletar produto (as imagens serão deletadas automaticamente por CASCADE)
     const [resultado] = await db.query("DELETE FROM Produto WHERE id_produto = ?", [id])
 
     if (resultado.affectedRows === 0) {
@@ -609,6 +570,87 @@ router.delete("/produtos/:id", verificarFuncionario, async (req, res) => {
     res.status(200).json({ message: "Produto e suas imagens deletados com sucesso" })
   } catch (err) {
     console.error("Erro ao deletar produto:", err)
+    res.status(500).json({ message: "Erro interno do servidor" })
+  }
+})
+
+// Listar todas as marcas
+router.get("/marcas", async (req, res) => {
+  try {
+    const db = await connectToDatabase()
+    const [marcas] = await db.query("SELECT id_marca, nome, descricao FROM Marca ORDER BY nome")
+    res.status(200).json(marcas)
+  } catch (err) {
+    console.error("Erro ao buscar marcas:", err)
+    res.status(500).json({ message: "Erro interno do servidor" })
+  }
+})
+
+// Buscar produtos com filtros
+router.get("/produtos/buscar", async (req, res) => {
+  try {
+    const { nome, categoria, marca, preco_min, preco_max, status } = req.query
+    const db = await connectToDatabase()
+
+    let query = `
+      SELECT
+        p.*,
+        c.nome as categoria_nome,
+        m.nome as marca_nome
+      FROM Produto p
+      LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria
+      LEFT JOIN Marca m ON p.id_marca = m.id_marca
+      WHERE 1=1
+    `
+    const params = []
+
+    if (nome) {
+      query += ` AND p.nome LIKE ?`
+      params.push(`%${nome}%`)
+    }
+
+    if (categoria) {
+      query += ` AND p.id_categoria = ?`
+      params.push(categoria)
+    }
+
+    if (marca) {
+      query += ` AND p.id_marca = ?`
+      params.push(marca)
+    }
+
+    if (preco_min) {
+      query += ` AND p.preco >= ?`
+      params.push(Number.parseFloat(preco_min))
+    }
+
+    if (preco_max) {
+      query += ` AND p.preco <= ?`
+      params.push(Number.parseFloat(preco_max))
+    }
+
+    if (status) {
+      query += ` AND p.status = ?`
+      params.push(status)
+    }
+
+    query += ` ORDER BY p.nome`
+
+    const [produtos] = await db.query(query, params)
+
+    for (const produto of produtos) {
+      const [imagens] = await db.query(
+        `SELECT id_imagem, url_imagem, nome_arquivo, ordem, is_principal FROM ProdutoImagem WHERE id_produto = ? ORDER BY is_principal DESC, ordem ASC`,
+        [produto.id_produto],
+      )
+
+      produto.imagens = imagens
+      produto.imagemUrl = imagens.find((img) => img.is_principal)?.url_imagem || imagens[0]?.url_imagem || null
+    }
+
+    res.status(200).json(produtos)
+  } catch (err) {
+    console.error("Erro ao buscar produtos:", err)
     res.status(500).json({ message: "Erro interno do servidor" })
   }
 })

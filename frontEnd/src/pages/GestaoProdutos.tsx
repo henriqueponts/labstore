@@ -25,7 +25,7 @@ interface Produto {
   nome: string
   descricao: string
   preco: number
-  marca: string
+  marca_nome: string
   modelo: string
   estoque: number
   status: "ativo" | "inativo"
@@ -40,27 +40,58 @@ interface Categoria {
   nome: string
 }
 
+interface Marca {
+  id_marca: number
+  nome: string
+}
+
 const GestaoProdutos: React.FC = () => {
   const navigate = useNavigate()
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [marcas, setMarcas] = useState<Marca[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
+  const [selectedBrand, setSelectedBrand] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
 
   // Carregar dados
   const fetchData = async () => {
     try {
-      const [produtosRes, categoriasRes] = await Promise.all([
+      console.log("[v0] Iniciando carregamento de dados...")
+
+      const [produtosRes, categoriasRes, marcasRes] = await Promise.all([
         axios.get("http://localhost:3000/produtos/produtos"),
         axios.get("http://localhost:3000/produtos/categorias"),
+        axios.get("http://localhost:3000/gestao/marcas"),
       ])
+
+      console.log("[v0] Produtos recebidos:", produtosRes.data)
+      console.log("[v0] Categorias recebidas:", categoriasRes.data)
+      console.log("[v0] Marcas recebidas:", marcasRes.data)
+
+      produtosRes.data.forEach((produto: Produto, index: number) => {
+        console.log(`[v0] Produto ${index + 1}:`, {
+          nome: produto.nome,
+          marca_nome: produto.marca_nome,
+          id_marca: (produto as any).id_marca, // Verificando se existe id_marca
+        })
+      })
 
       setProdutos(produtosRes.data)
       setCategorias(categoriasRes.data)
+      setMarcas(marcasRes.data)
     } catch (err) {
-      console.error("Erro ao carregar dados:", err)
+      console.error("[v0] Erro ao carregar dados:", err)
+      if (axios.isAxiosError(err)) {
+        console.error("[v0] Detalhes do erro:", {
+          status: err.response?.status,
+          statusText: err.response?.statusText,
+          data: err.response?.data,
+          url: err.config?.url,
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -74,13 +105,28 @@ const GestaoProdutos: React.FC = () => {
   const filteredProdutos = produtos.filter((produto) => {
     const matchesSearch =
       produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      produto.marca?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      produto.marca_nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       produto.modelo?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesCategory = !selectedCategory || produto.categoria_nome === selectedCategory
+
+    const matchesBrand =
+      !selectedBrand ||
+      (produto.marca_nome && produto.marca_nome === selectedBrand) ||
+      (!produto.marca_nome && selectedBrand === "Sem marca")
+
     const matchesStatus = !statusFilter || produto.status === statusFilter
 
-    return matchesSearch && matchesCategory && matchesStatus
+    console.log(`[v0] Filtro para ${produto.nome}:`, {
+      selectedBrand,
+      produto_marca_nome: produto.marca_nome,
+      matchesBrand,
+      matchesSearch,
+      matchesCategory,
+      matchesStatus,
+    })
+
+    return matchesSearch && matchesCategory && matchesBrand && matchesStatus
   })
 
   // Formatar preço
@@ -148,7 +194,7 @@ const GestaoProdutos: React.FC = () => {
 
         {/* Filtros */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Search className="inline mr-1" size={16} />
@@ -180,6 +226,28 @@ const GestaoProdutos: React.FC = () => {
                   </option>
                 ))}
               </select>
+              {categorias.length === 0 && <p className="text-xs text-red-500 mt-1">Nenhuma categoria carregada</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Tag className="inline mr-1" size={16} />
+                Marca
+              </label>
+              <select
+                value={selectedBrand}
+                onChange={(e) => setSelectedBrand(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Todas as marcas</option>
+                <option value="Sem marca">Sem marca</option>
+                {marcas.map((marca) => (
+                  <option key={marca.id_marca} value={marca.nome}>
+                    {marca.nome}
+                  </option>
+                ))}
+              </select>
+              {marcas.length === 0 && <p className="text-xs text-red-500 mt-1">Nenhuma marca carregada</p>}
             </div>
 
             <div>
@@ -203,6 +271,7 @@ const GestaoProdutos: React.FC = () => {
                 onClick={() => {
                   setSearchTerm("")
                   setSelectedCategory("")
+                  setSelectedBrand("")
                   setStatusFilter("")
                 }}
                 className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
@@ -249,6 +318,9 @@ const GestaoProdutos: React.FC = () => {
                       Categoria
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Marca
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Preço
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -282,9 +354,7 @@ const GestaoProdutos: React.FC = () => {
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">{produto.nome}</div>
-                            <div className="text-sm text-gray-500">
-                              {produto.marca} {produto.modelo}
-                            </div>
+                            <div className="text-sm text-gray-500">{produto.modelo}</div>
                           </div>
                         </div>
                       </td>
@@ -292,6 +362,21 @@ const GestaoProdutos: React.FC = () => {
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                           {produto.categoria_nome}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            produto.marca_nome ? "bg-purple-100 text-purple-800" : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {produto.marca_nome || "Sem marca"}
+                        </span>
+                        {/* Temporário para debug - remover depois */}
+                        {!produto.marca_nome && (
+                          <div className="text-xs text-red-500 mt-1">
+                            Debug: marca_nome = {JSON.stringify(produto.marca_nome)}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center text-sm font-medium text-gray-900">
@@ -403,10 +488,10 @@ const GestaoProdutos: React.FC = () => {
 
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
-              <Layers className="h-8 w-8 text-purple-600" />
+              <Tag className="h-8 w-8 text-purple-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Categorias</p>
-                <p className="text-2xl font-semibold text-gray-900">{categorias.length}</p>
+                <p className="text-sm font-medium text-gray-600">Marcas</p>
+                <p className="text-2xl font-semibold text-gray-900">{marcas.length}</p>
               </div>
             </div>
           </div>

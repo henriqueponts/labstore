@@ -4,14 +4,12 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import axios from "axios"
 import Layout from "../components/Layout"
-import MultipleImageUpload from "../components/MultipleImageUpload"
 import { useNavigate } from "react-router-dom"
 import {
   Package,
   Save,
   ArrowLeft,
   Plus,
-  ImageIcon,
   DollarSign,
   Tag,
   Palette,
@@ -22,10 +20,17 @@ import {
   Truck,
   Weight,
   Ruler,
+  ImageIcon,
 } from "lucide-react"
 
 interface Categoria {
   id_categoria: number
+  nome: string
+  descricao: string
+}
+
+interface Marca {
+  id_marca: number
   nome: string
   descricao: string
 }
@@ -40,15 +45,18 @@ const CadastroProdutos: React.FC = () => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [marcas, setMarcas] = useState<Marca[]>([])
   const [showNewCategoryForm, setShowNewCategoryForm] = useState(false)
+  const [showNewBrandForm, setShowNewBrandForm] = useState(false)
   const [newCategory, setNewCategory] = useState({ nome: "", descricao: "" })
+  const [newBrand, setNewBrand] = useState({ nome: "", descricao: "" })
   const [images, setImages] = useState<ImageFile[]>([])
 
   const [formData, setFormData] = useState({
     nome: "",
     descricao: "",
     preco: "",
-    marca: "",
+    id_marca: "",
     modelo: "",
     estoque: "",
     id_categoria: "",
@@ -73,8 +81,20 @@ const CadastroProdutos: React.FC = () => {
     }
   }
 
+  const fetchMarcas = async () => {
+    try {
+      const response = await axios.get("http://localhost:3000/gestao/marcas")
+      setMarcas(response.data)
+    } catch (err) {
+      console.error("Erro ao carregar marcas:", err)
+    }
+  }
+
   useEffect(() => {
-    fetchCategorias()
+    const loadData = async () => {
+      await Promise.all([fetchCategorias(), fetchMarcas()])
+    }
+    loadData()
   }, [])
 
   // Validar formulário
@@ -97,10 +117,13 @@ const CadastroProdutos: React.FC = () => {
     ) {
       newErrors.ano_fabricacao = "Ano de fabricação inválido"
     }
-    if (formData.peso_kg && Number.parseFloat(formData.peso_kg) <= 0) newErrors.peso_kg = "Peso deve ser maior que zero";
-    if (formData.altura_cm && Number.parseFloat(formData.altura_cm) <= 0) newErrors.altura_cm = "Altura deve ser maior que zero";
-    if (formData.largura_cm && Number.parseFloat(formData.largura_cm) <= 0) newErrors.largura_cm = "Largura deve ser maior que zero";
-    if (formData.comprimento_cm && Number.parseFloat(formData.comprimento_cm) <= 0) newErrors.comprimento_cm = "Comprimento deve ser maior que zero";
+    if (formData.peso_kg && Number.parseFloat(formData.peso_kg) <= 0) newErrors.peso_kg = "Peso deve ser maior que zero"
+    if (formData.altura_cm && Number.parseFloat(formData.altura_cm) <= 0)
+      newErrors.altura_cm = "Altura deve ser maior que zero"
+    if (formData.largura_cm && Number.parseFloat(formData.largura_cm) <= 0)
+      newErrors.largura_cm = "Largura deve ser maior que zero"
+    if (formData.comprimento_cm && Number.parseFloat(formData.comprimento_cm) <= 0)
+      newErrors.comprimento_cm = "Comprimento deve ser maior que zero"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -139,6 +162,32 @@ const CadastroProdutos: React.FC = () => {
         alert(err.response.data.message || "Erro ao criar categoria")
       } else {
         alert("Erro ao criar categoria")
+      }
+    }
+  }
+
+  const handleCreateBrand = async () => {
+    if (!newBrand.nome.trim()) {
+      alert("Nome da marca é obrigatório")
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("token")
+      await axios.post("http://localhost:3000/gestao/marcas", newBrand, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      await fetchMarcas()
+      setNewBrand({ nome: "", descricao: "" })
+      setShowNewBrandForm(false)
+      alert("Marca criada com sucesso!")
+    } catch (err) {
+      console.error("Erro ao criar marca:", err)
+      if (axios.isAxiosError(err) && err.response) {
+        alert(err.response.data.message || "Erro ao criar marca")
+      } else {
+        alert("Erro ao criar marca")
       }
     }
   }
@@ -278,14 +327,14 @@ const CadastroProdutos: React.FC = () => {
             </div>
           </div>
 
-          {/* Categoria */}
+          {/* Categoria e Marca */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
               <Layers className="mr-2" size={24} />
-              Categoria
+              Categoria e Marca
             </h2>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Categoria *</label>
                 <div className="flex gap-2">
@@ -316,44 +365,109 @@ const CadastroProdutos: React.FC = () => {
                 {errors.id_categoria && <p className="text-red-500 text-sm mt-1">{errors.id_categoria}</p>}
               </div>
 
-              {showNewCategoryForm && (
-                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                  <h3 className="font-medium text-gray-800 mb-3">Nova Categoria</h3>
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Nome da categoria"
-                      value={newCategory.nome}
-                      onChange={(e) => setNewCategory((prev) => ({ ...prev, nome: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <textarea
-                      placeholder="Descrição (opcional)"
-                      value={newCategory.descricao}
-                      onChange={(e) => setNewCategory((prev) => ({ ...prev, descricao: e.target.value }))}
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleCreateCategory}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Criar Categoria
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowNewCategoryForm(false)}
-                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Marca</label>
+                <div className="flex gap-2">
+                  <select
+                    name="id_marca"
+                    value={formData.id_marca}
+                    onChange={handleInputChange}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Selecione uma marca</option>
+                    {marcas.map((marca) => (
+                      <option key={marca.id_marca} value={marca.id_marca}>
+                        {marca.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewBrandForm(!showNewBrandForm)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                  >
+                    <Plus size={16} className="mr-1" />
+                    Nova
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {showNewCategoryForm && (
+              <div className="mt-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <h3 className="font-medium text-gray-800 mb-3">Nova Categoria</h3>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Nome da categoria"
+                    value={newCategory.nome}
+                    onChange={(e) => setNewCategory((prev) => ({ ...prev, nome: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <textarea
+                    placeholder="Descrição (opcional)"
+                    value={newCategory.descricao}
+                    onChange={(e) => setNewCategory((prev) => ({ ...prev, descricao: e.target.value }))}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCreateCategory}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Criar Categoria
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewCategoryForm(false)}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {showNewBrandForm && (
+              <div className="mt-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <h3 className="font-medium text-gray-800 mb-3">Nova Marca</h3>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Nome da marca"
+                    value={newBrand.nome}
+                    onChange={(e) => setNewBrand((prev) => ({ ...prev, nome: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <textarea
+                    placeholder="Descrição (opcional)"
+                    value={newBrand.descricao}
+                    onChange={(e) => setNewBrand((prev) => ({ ...prev, descricao: e.target.value }))}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCreateBrand}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Criar Marca
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewBrandForm(false)}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Detalhes do Produto */}
@@ -364,18 +478,6 @@ const CadastroProdutos: React.FC = () => {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Marca</label>
-                <input
-                  type="text"
-                  name="marca"
-                  value={formData.marca}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ex: Dell, HP, Lenovo"
-                />
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Modelo</label>
                 <input
@@ -552,7 +654,55 @@ const CadastroProdutos: React.FC = () => {
               Imagens do Produto
             </h2>
 
-            <MultipleImageUpload images={images} onImagesChange={setImages} maxImages={10} maxSizePerImage={5} />
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <ImageIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <p className="text-gray-600 mb-2">Arraste e solte imagens aqui ou clique para selecionar</p>
+              <p className="text-sm text-gray-500">Máximo de 10 imagens, até 5MB cada</p>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || [])
+                  const newImages = files.map((file) => ({
+                    file,
+                    preview: URL.createObjectURL(file),
+                    id: Math.random().toString(36).substr(2, 9),
+                  }))
+                  setImages((prev) => [...prev, ...newImages].slice(0, 10))
+                }}
+                className="hidden"
+                id="image-upload"
+              />
+              <label
+                htmlFor="image-upload"
+                className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors"
+              >
+                <Plus className="mr-2" size={16} />
+                Selecionar Imagens
+              </label>
+            </div>
+
+            {images.length > 0 && (
+              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                {images.map((image) => (
+                  <div key={image.id} className="relative">
+                    <img
+                      src={image.preview || "/placeholder.svg"}
+                      alt="Preview"
+                      className="w-full h-24 object-cover rounded-lg border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setImages((prev) => prev.filter((img) => img.id !== image.id))}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Botões de Ação */}
