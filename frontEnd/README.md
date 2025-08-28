@@ -40,14 +40,21 @@ CREATE TABLE Categoria (
     descricao TEXT
 );
 
+-- Tabela de Marcas de Produtos
+CREATE TABLE Marca (
+    id_marca INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(100) NOT NULL UNIQUE,
+    descricao TEXT
+);
+
 -- Tabela de Produtos
 CREATE TABLE Produto (
     id_produto INT PRIMARY KEY AUTO_INCREMENT,
     id_categoria INT NOT NULL,
+    id_marca INT NOT NULL,
     nome VARCHAR(100) NOT NULL,
     descricao TEXT NOT NULL,
     preco DECIMAL(10,2) NOT NULL,
-    marca VARCHAR(50),
     modelo VARCHAR(50),
     estoque INT NOT NULL DEFAULT 0,
     status ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
@@ -58,7 +65,8 @@ CREATE TABLE Produto (
     altura_cm DECIMAL(10, 2) NULL,
     largura_cm DECIMAL(10, 2) NULL,
     comprimento_cm DECIMAL(10, 2) NULL,
-    FOREIGN KEY (id_categoria) REFERENCES Categoria(id_categoria)
+    FOREIGN KEY (id_categoria) REFERENCES Categoria(id_categoria),
+    FOREIGN KEY (id_marca) REFERENCES Marca(id_marca)
 );
 
 
@@ -276,6 +284,374 @@ CREATE TABLE carousel_images (
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+CREATE TABLE TempFrete (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    payment_link_id VARCHAR(255) NOT NULL UNIQUE,
+    frete_nome VARCHAR(50),
+    frete_valor DECIMAL(10,2),
+    frete_prazo_dias INT,
+    cliente_id INT,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_payment_link_id (payment_link_id)
+);
+
+-- Script para adicionar TRIM (left e right) nos campos texto
+-- Este script cria triggers para aplicar TRIM automaticamente em todos os campos VARCHAR e TEXT
+
+USE labstore;
+
+-- Trigger para tabela Usuario
+DELIMITER //
+CREATE TRIGGER usuario_trim_before_insert
+BEFORE INSERT ON Usuario
+FOR EACH ROW
+BEGIN
+    SET NEW.nome = TRIM(NEW.nome);
+    SET NEW.email = TRIM(NEW.email);
+END//
+
+CREATE TRIGGER usuario_trim_before_update
+BEFORE UPDATE ON Usuario
+FOR EACH ROW
+BEGIN
+    SET NEW.nome = TRIM(NEW.nome);
+    SET NEW.email = TRIM(NEW.email);
+END//
+DELIMITER ;
+
+-- Trigger para tabela Cliente
+DELIMITER //
+CREATE TRIGGER cliente_trim_before_insert
+BEFORE INSERT ON Cliente
+FOR EACH ROW
+BEGIN
+    SET NEW.nome = TRIM(NEW.nome);
+    SET NEW.email = TRIM(NEW.email);
+    SET NEW.cpf_cnpj = TRIM(NEW.cpf_cnpj);
+    SET NEW.endereco = TRIM(IFNULL(NEW.endereco, ''));
+    SET NEW.telefone = TRIM(IFNULL(NEW.telefone, ''));
+END//
+
+CREATE TRIGGER cliente_trim_before_update
+BEFORE UPDATE ON Cliente
+FOR EACH ROW
+BEGIN
+    SET NEW.nome = TRIM(NEW.nome);
+    SET NEW.email = TRIM(NEW.email);
+    SET NEW.cpf_cnpj = TRIM(NEW.cpf_cnpj);
+    SET NEW.endereco = TRIM(IFNULL(NEW.endereco, ''));
+    SET NEW.telefone = TRIM(IFNULL(NEW.telefone, ''));
+END//
+DELIMITER ;
+
+-- Trigger para tabela Categoria
+DELIMITER //
+CREATE TRIGGER categoria_trim_before_insert
+BEFORE INSERT ON Categoria
+FOR EACH ROW
+BEGIN
+    SET NEW.nome = TRIM(NEW.nome);
+    SET NEW.descricao = TRIM(IFNULL(NEW.descricao, ''));
+END//
+
+CREATE TRIGGER categoria_trim_before_update
+BEFORE UPDATE ON Categoria
+FOR EACH ROW
+BEGIN
+    SET NEW.nome = TRIM(NEW.nome);
+    SET NEW.descricao = TRIM(IFNULL(NEW.descricao, ''));
+END//
+DELIMITER ;
+
+-- Trigger para tabela Marca
+DELIMITER //
+CREATE TRIGGER marca_trim_before_insert
+BEFORE INSERT ON Marca
+FOR EACH ROW
+BEGIN
+    SET NEW.nome = TRIM(NEW.nome);
+    SET NEW.descricao = TRIM(IFNULL(NEW.descricao, ''));
+END//
+
+CREATE TRIGGER marca_trim_before_update
+BEFORE UPDATE ON Marca
+FOR EACH ROW
+BEGIN
+    SET NEW.nome = TRIM(NEW.nome);
+    SET NEW.descricao = TRIM(IFNULL(NEW.descricao, ''));
+END//
+DELIMITER ;
+
+-- Trigger para tabela Produto
+DELIMITER //
+CREATE TRIGGER produto_trim_before_insert
+BEFORE INSERT ON Produto
+FOR EACH ROW
+BEGIN
+    SET NEW.nome = TRIM(NEW.nome);
+    SET NEW.descricao = TRIM(NEW.descricao);
+    SET NEW.modelo = TRIM(IFNULL(NEW.modelo, ''));
+    SET NEW.compatibilidade = TRIM(IFNULL(NEW.compatibilidade, ''));
+    SET NEW.cor = TRIM(IFNULL(NEW.cor, ''));
+END//
+
+CREATE TRIGGER produto_trim_before_update
+BEFORE UPDATE ON Produto
+FOR EACH ROW
+BEGIN
+    SET NEW.nome = TRIM(NEW.nome);
+    SET NEW.descricao = TRIM(NEW.descricao);
+    SET NEW.modelo = TRIM(IFNULL(NEW.modelo, ''));
+    SET NEW.compatibilidade = TRIM(IFNULL(NEW.compatibilidade, ''));
+    SET NEW.cor = TRIM(IFNULL(NEW.cor, ''));
+END//
+DELIMITER ;
+
+-- Trigger para tabela SolicitacaoServico
+DELIMITER //
+CREATE TRIGGER solicitacao_trim_before_insert
+BEFORE INSERT ON SolicitacaoServico
+FOR EACH ROW
+BEGIN
+    SET NEW.marca = TRIM(NEW.marca);
+    SET NEW.modelo = TRIM(NEW.modelo);
+    SET NEW.descricao_problema = TRIM(NEW.descricao_problema);
+    SET NEW.forma_envio = TRIM(IFNULL(NEW.forma_envio, ''));
+    SET NEW.motivo_recusa_orcamento = TRIM(IFNULL(NEW.motivo_recusa_orcamento, ''));
+END//
+
+CREATE TRIGGER solicitacao_trim_before_update
+BEFORE UPDATE ON SolicitacaoServico
+FOR EACH ROW
+BEGIN
+    SET NEW.marca = TRIM(NEW.marca);
+    SET NEW.modelo = TRIM(NEW.modelo);
+    SET NEW.descricao_problema = TRIM(NEW.descricao_problema);
+    SET NEW.forma_envio = TRIM(IFNULL(NEW.forma_envio, ''));
+    SET NEW.motivo_recusa_orcamento = TRIM(IFNULL(NEW.motivo_recusa_orcamento, ''));
+END//
+DELIMITER ;
+
+-- Trigger para tabela Orcamento
+DELIMITER //
+CREATE TRIGGER orcamento_trim_before_insert
+BEFORE INSERT ON Orcamento
+FOR EACH ROW
+BEGIN
+    SET NEW.diagnostico = TRIM(NEW.diagnostico);
+    SET NEW.observacoes_tecnicas = TRIM(IFNULL(NEW.observacoes_tecnicas, ''));
+END//
+
+CREATE TRIGGER orcamento_trim_before_update
+BEFORE UPDATE ON Orcamento
+FOR EACH ROW
+BEGIN
+    SET NEW.diagnostico = TRIM(NEW.diagnostico);
+    SET NEW.observacoes_tecnicas = TRIM(IFNULL(NEW.observacoes_tecnicas, ''));
+END//
+DELIMITER ;
+
+-- Trigger para tabela ChamadoSuporte
+DELIMITER //
+CREATE TRIGGER chamado_trim_before_insert
+BEFORE INSERT ON ChamadoSuporte
+FOR EACH ROW
+BEGIN
+    SET NEW.assunto = TRIM(NEW.assunto);
+    SET NEW.descricao = TRIM(NEW.descricao);
+    SET NEW.categoria = TRIM(IFNULL(NEW.categoria, ''));
+    SET NEW.ultima_resposta = TRIM(IFNULL(NEW.ultima_resposta, ''));
+END//
+
+CREATE TRIGGER chamado_trim_before_update
+BEFORE UPDATE ON ChamadoSuporte
+FOR EACH ROW
+BEGIN
+    SET NEW.assunto = TRIM(NEW.assunto);
+    SET NEW.descricao = TRIM(NEW.descricao);
+    SET NEW.categoria = TRIM(IFNULL(NEW.categoria, ''));
+    SET NEW.ultima_resposta = TRIM(IFNULL(NEW.ultima_resposta, ''));
+END//
+DELIMITER ;
+
+-- Trigger para tabela RespostaChamado
+DELIMITER //
+CREATE TRIGGER resposta_chamado_trim_before_insert
+BEFORE INSERT ON RespostaChamado
+FOR EACH ROW
+BEGIN
+    SET NEW.resposta = TRIM(NEW.resposta);
+END//
+
+CREATE TRIGGER resposta_chamado_trim_before_update
+BEFORE UPDATE ON RespostaChamado
+FOR EACH ROW
+BEGIN
+    SET NEW.resposta = TRIM(NEW.resposta);
+END//
+DELIMITER ;
+
+-- Trigger para tabela carousel_images
+DELIMITER //
+CREATE TRIGGER carousel_trim_before_insert
+BEFORE INSERT ON carousel_images
+FOR EACH ROW
+BEGIN
+    SET NEW.titulo = TRIM(NEW.titulo);
+    SET NEW.subtitulo = TRIM(IFNULL(NEW.subtitulo, ''));
+    SET NEW.url_imagem = TRIM(IFNULL(NEW.url_imagem, ''));
+    SET NEW.link_destino = TRIM(IFNULL(NEW.link_destino, ''));
+END//
+
+CREATE TRIGGER carousel_trim_before_update
+BEFORE UPDATE ON carousel_images
+FOR EACH ROW
+BEGIN
+    SET NEW.titulo = TRIM(NEW.titulo);
+    SET NEW.subtitulo = TRIM(IFNULL(NEW.subtitulo, ''));
+    SET NEW.url_imagem = TRIM(IFNULL(NEW.url_imagem, ''));
+    SET NEW.link_destino = TRIM(IFNULL(NEW.link_destino, ''));
+END//
+DELIMITER ;
+
+-- Trigger para tabela TermoConsentimento
+DELIMITER //
+CREATE TRIGGER termo_trim_before_insert
+BEFORE INSERT ON TermoConsentimento
+FOR EACH ROW
+BEGIN
+    SET NEW.conteudo = TRIM(NEW.conteudo);
+    SET NEW.versao = TRIM(NEW.versao);
+END//
+
+CREATE TRIGGER termo_trim_before_update
+BEFORE UPDATE ON TermoConsentimento
+FOR EACH ROW
+BEGIN
+    SET NEW.conteudo = TRIM(NEW.conteudo);
+    SET NEW.versao = TRIM(NEW.versao);
+END//
+DELIMITER ;
+
+-- Trigger para tabela ProdutoImagem
+DELIMITER //
+CREATE TRIGGER produto_imagem_trim_before_insert
+BEFORE INSERT ON ProdutoImagem
+FOR EACH ROW
+BEGIN
+    SET NEW.url_imagem = TRIM(NEW.url_imagem);
+    SET NEW.nome_arquivo = TRIM(NEW.nome_arquivo);
+END//
+
+CREATE TRIGGER produto_imagem_trim_before_update
+BEFORE UPDATE ON ProdutoImagem
+FOR EACH ROW
+BEGIN
+    SET NEW.url_imagem = TRIM(NEW.url_imagem);
+    SET NEW.nome_arquivo = TRIM(NEW.nome_arquivo);
+END//
+DELIMITER ;
+
+-- Trigger para tabela LogAuditoria
+DELIMITER //
+CREATE TRIGGER log_auditoria_trim_before_insert
+BEFORE INSERT ON LogAuditoria
+FOR EACH ROW
+BEGIN
+    SET NEW.tipo_acao = TRIM(NEW.tipo_acao);
+    SET NEW.detalhes_acao = TRIM(NEW.detalhes_acao);
+    SET NEW.ip_address = TRIM(IFNULL(NEW.ip_address, ''));
+END//
+
+CREATE TRIGGER log_auditoria_trim_before_update
+BEFORE UPDATE ON LogAuditoria
+FOR EACH ROW
+BEGIN
+    SET NEW.tipo_acao = TRIM(NEW.tipo_acao);
+    SET NEW.detalhes_acao = TRIM(NEW.detalhes_acao);
+    SET NEW.ip_address = TRIM(IFNULL(NEW.ip_address, ''));
+END//
+DELIMITER ;
+
+-- Trigger para tabela reset_senha
+DELIMITER //
+CREATE TRIGGER reset_senha_trim_before_insert
+BEFORE INSERT ON reset_senha
+FOR EACH ROW
+BEGIN
+    SET NEW.email = TRIM(NEW.email);
+    SET NEW.token = TRIM(NEW.token);
+END//
+
+CREATE TRIGGER reset_senha_trim_before_update
+BEFORE UPDATE ON reset_senha
+FOR EACH ROW
+BEGIN
+    SET NEW.email = TRIM(NEW.email);
+    SET NEW.token = TRIM(NEW.token);
+END//
+DELIMITER ;
+
+-- Trigger para tabela Pedido
+DELIMITER //
+CREATE TRIGGER pedido_trim_before_insert
+BEFORE INSERT ON Pedido
+FOR EACH ROW
+BEGIN
+    SET NEW.frete_nome = TRIM(IFNULL(NEW.frete_nome, ''));
+    SET NEW.endereco_entrega = TRIM(IFNULL(NEW.endereco_entrega, ''));
+END//
+
+CREATE TRIGGER pedido_trim_before_update
+BEFORE UPDATE ON Pedido
+FOR EACH ROW
+BEGIN
+    SET NEW.frete_nome = TRIM(IFNULL(NEW.frete_nome, ''));
+    SET NEW.endereco_entrega = TRIM(IFNULL(NEW.endereco_entrega, ''));
+END//
+DELIMITER ;
+
+-- Trigger para tabela TransacaoPagamento
+DELIMITER //
+CREATE TRIGGER transacao_trim_before_insert
+BEFORE INSERT ON TransacaoPagamento
+FOR EACH ROW
+BEGIN
+    SET NEW.transaction_id_pagarme = TRIM(NEW.transaction_id_pagarme);
+    SET NEW.status = TRIM(NEW.status);
+    SET NEW.metodo_pagamento = TRIM(NEW.metodo_pagamento);
+    SET NEW.payment_link_id = TRIM(IFNULL(NEW.payment_link_id, ''));
+END//
+
+CREATE TRIGGER transacao_trim_before_update
+BEFORE UPDATE ON TransacaoPagamento
+FOR EACH ROW
+BEGIN
+    SET NEW.transaction_id_pagarme = TRIM(NEW.transaction_id_pagarme);
+    SET NEW.status = TRIM(NEW.status);
+    SET NEW.metodo_pagamento = TRIM(NEW.metodo_pagamento);
+    SET NEW.payment_link_id = TRIM(IFNULL(NEW.payment_link_id, ''));
+END//
+DELIMITER ;
+
+-- Trigger para tabela TempFrete
+DELIMITER //
+CREATE TRIGGER temp_frete_trim_before_insert
+BEFORE INSERT ON TempFrete
+FOR EACH ROW
+BEGIN
+    SET NEW.payment_link_id = TRIM(NEW.payment_link_id);
+    SET NEW.frete_nome = TRIM(IFNULL(NEW.frete_nome, ''));
+END//
+
+CREATE TRIGGER temp_frete_trim_before_update
+BEFORE UPDATE ON TempFrete
+FOR EACH ROW
+BEGIN
+    SET NEW.payment_link_id = TRIM(NEW.payment_link_id);
+    SET NEW.frete_nome = TRIM(IFNULL(NEW.frete_nome, ''));
+END//
+DELIMITER ;
 
 DELIMITER //
 CREATE PROCEDURE AdicionarItemCarrinho(
@@ -478,15 +854,22 @@ INSERT INTO Categoria (id_categoria, nome, descricao) VALUES
 (2, 'Notebooks', 'Computadores portáteis de diversas marcas e modelos.'),
 (3, 'PCs Gamer', 'Computadores de mesa montados e otimizados para jogos.');
 
+INSERT INTO Marca (id_marca, nome, descricao) VALUES
+(1, 'LG', 'Marca LG'),
+(2, 'ASUS', 'Marca ASUS'),
+(3, 'MSI', 'Marca MSI'),
+(4, 'Ludic by BluePC', 'Marca Ludic by BluePC');
+
+
 -- Produto 1: Monitor LG
 INSERT INTO Produto 
-(id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) 
+(id_categoria, id_marca, nome, descricao, preco, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) 
 VALUES (
+    1,
     1,
     'Monitor Gamer LG 26" UltraWide',
     'Monitor Gamer LG 26 polegadas Full HD, 75Hz, 1ms, IPS, HDMI, AMD FreeSync Premium, HDR 10, 99% sRGB, VESA.',
     899.99,
-    'LG',
     '26WQ500',
     50,
     'ativo',
@@ -501,13 +884,13 @@ VALUES (
 
 -- Produto 2: Notebook ASUS
 INSERT INTO Produto 
-(id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) 
+(id_categoria, id_marca, nome, descricao, preco, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) 
 VALUES (
+    2,
     2,
     'Notebook Gamer ASUS ROG Strix G16',
     'Intel Core i9-13980HX, 16GB RAM DDR5, RTX 4060 8GB, SSD 512GB NVMe, Tela 16" FHD 165Hz IPS, Windows 11.',
     12999.90,
-    'ASUS',
     'G614JV-N3094W',
     20,
     'ativo',
@@ -522,13 +905,13 @@ VALUES (
 
 -- Produto 3: Notebook MSI
 INSERT INTO Produto 
-(id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) 
+(id_categoria, id_marca, nome, descricao, preco, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm)
 VALUES (
     2,
+    3,
     'Notebook Gamer MSI Alpha 17',
     'AMD Ryzen 9 7945HX, 16GB RAM, SSD 1TB, Tela 17.3" QHD 240Hz, RTX 4060, Windows 11 Home.',
     14599.99,
-    'MSI',
     '9S7-17KK11-058',
     15,
     'ativo',
@@ -543,13 +926,13 @@ VALUES (
 
 -- Produto 4: PC Gamer Ludic
 INSERT INTO Produto 
-(id_categoria, nome, descricao, preco, marca, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) 
+(id_categoria, id_marca, nome, descricao, preco, modelo, estoque, status, compatibilidade, cor, ano_fabricacao, peso_kg, altura_cm, largura_cm, comprimento_cm) 
 VALUES (
     3,
+    4,
     'PC Gamer Ludic by BluePC',
     'AMD Ryzen 5 5500, GeForce RTX 3050 8GB, 16GB RAM, SSD 512GB M.2 NVMe, Fonte 600W 80 Plus.',
     3899.99,
-    'Ludic by BluePC',
     'PGBP-1205LUD',
     30,
     'ativo',
@@ -640,13 +1023,3 @@ INSERT INTO carousel_images (titulo, subtitulo, url_imagem, link_destino, ordem,
 ('Setup Gamer Completo', 'Monte seu setup dos sonhos com nossa linha gamer', '/uploads/carousel/default2.jpg', '/produtos?categoria=PCs Gamer', 2, TRUE),
 ('Assistência Técnica Especializada', 'Reparo rápido e confiável para seus equipamentos', '/uploads/carousel/default3.jpg', '/central-ajuda', 3, TRUE);
 
-CREATE TABLE TempFrete (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    payment_link_id VARCHAR(255) NOT NULL UNIQUE,
-    frete_nome VARCHAR(50),
-    frete_valor DECIMAL(10,2),
-    frete_prazo_dias INT,
-    cliente_id INT,
-    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_payment_link_id (payment_link_id)
-);

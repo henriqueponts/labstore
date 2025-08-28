@@ -1,823 +1,838 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
 import axios from "axios"
 import Layout from "../components/Layout"
+import GaleriaImagensEditavel from "../components/GaleriaImagensEditavel"
+import { useNavigate, useParams } from "react-router-dom"
 import {
-  Save,
-  Plus,
-  Upload,
-  Eye,
-  EyeOff,
-  ArrowUp,
-  ArrowDown,
-  ImageIcon,
   Package,
-  ExternalLink,
-  Loader2,
-  Crown,
+  Save,
+  ArrowLeft,
+  Plus,
+  ImageIcon,
+  DollarSign,
+  Tag,
+  Palette,
+  Calendar,
+  Layers,
+  FileText,
   Hash,
+  Truck,
+  AlertCircle,
+  Weight,
+  Ruler,
 } from "lucide-react"
 
-interface CarouselImage {
-  id_carousel: number
-  titulo: string
-  subtitulo: string
-  url_imagem: string | null
-  link_destino?: string
+interface Categoria {
+  id_categoria: number
+  nome: string
+  descricao: string
+}
+
+interface Marca {
+  id_marca: number
+  nome: string
+  descricao: string
+}
+
+interface ImagemExistente {
+  id_imagem: number
+  url_imagem: string
+  nome_arquivo: string
   ordem: number
-  ativo: boolean
+  is_principal: boolean
+}
+
+interface NovaImagemArquivo {
+  arquivo: File
+  visualizacao: string
+  id: string
 }
 
 interface Produto {
   id_produto: number
   nome: string
+  descricao: string
   preco: number
   marca: string
-  imagemUrl: string | null
-  categoria_nome: string
+  id_marca: number // Added id_marca field for brand integration
+  modelo: string
   estoque: number
+  id_categoria: number
+  compatibilidade: string
+  cor: string
+  ano_fabricacao: number
+  status: "ativo" | "inativo"
+  categoria_nome: string
+  imagens: ImagemExistente[]
+  peso_kg: number | null
+  altura_cm: number | null
+  largura_cm: number | null
+  comprimento_cm: number | null
 }
 
-const EditarHome: React.FC = () => {
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [uploadingImages, setUploadingImages] = useState<{ [key: number]: boolean }>({})
-  const [carouselImages, setCarouselImages] = useState<CarouselImage[]>([])
-  const [produtos, setProdutos] = useState<Produto[]>([])
-  const [produtosDestaque, setProdutosDestaque] = useState<number[]>([])
-  const [reordering, setReordering] = useState(false)
-  const navigate = useNavigate()
+const EditarProduto: React.FC = () => {
+  const navegar = useNavigate()
+  const { id } = useParams<{ id: string }>()
+  const [carregando, setCarregando] = useState(true)
+  const [salvando, setSalvando] = useState(false)
+  const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [marcas, setMarcas] = useState<Marca[]>([]) // Added marcas state
+  const [mostrarFormularioNovaCategoria, setMostrarFormularioNovaCategoria] = useState(false)
+  const [mostrarFormularioNovaMarca, setMostrarFormularioNovaMarca] = useState(false) // Added nova marca form state
+  const [novaCategoria, setNovaCategoria] = useState({ nome: "", descricao: "" })
+  const [novaMarca, setNovaMarca] = useState({ nome: "", descricao: "" }) // Added nova marca state
+  const [imagensExistentes, setImagensExistentes] = useState<ImagemExistente[]>([])
+  const [novasImagens, setNovasImagens] = useState<NovaImagemArquivo[]>([])
+  const [imagensParaRemover, setImagensParaRemover] = useState<number[]>([])
 
-  // Refs para inputs de arquivo
-  const fileInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({})
+  const [dadosFormulario, setDadosFormulario] = useState({
+    nome: "",
+    descricao: "",
+    preco: "",
+    id_marca: "", // Changed from marca to id_marca for brand integration
+    modelo: "",
+    estoque: "",
+    id_categoria: "",
+    compatibilidade: "",
+    cor: "",
+    ano_fabricacao: "",
+    status: "ativo" as "ativo" | "inativo",
+    peso_kg: "",
+    altura_cm: "",
+    largura_cm: "",
+    comprimento_cm: "",
+  })
 
-  // Carregar dados da home
-  const loadHomeData = async () => {
+  const [erros, setErros] = useState<Record<string, string>>({})
+
+  // Carregar dados do produto
+  const buscarProduto = async () => {
     try {
-      // Verificar autenticação
-      const token = localStorage.getItem("token")
-      if (!token) {
-        navigate("/login")
-        return
-      }
+      const resposta = await axios.get(`http://localhost:3000/produtos/produtos/${id}`)
+      const produto: Produto = resposta.data
 
-      // Verificar se é admin ou analista
-      const response = await axios.get("http://localhost:3000/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
+      setDadosFormulario({
+        nome: produto.nome || "",
+        descricao: produto.descricao || "",
+        preco: produto.preco?.toString() || "",
+        id_marca: produto.id_marca?.toString() || "", // Updated to use id_marca
+        modelo: produto.modelo || "",
+        estoque: produto.estoque?.toString() || "",
+        id_categoria: produto.id_categoria?.toString() || "",
+        compatibilidade: produto.compatibilidade || "",
+        cor: produto.cor || "",
+        ano_fabricacao: produto.ano_fabricacao?.toString() || "",
+        status: produto.status || "ativo",
+        peso_kg: produto.peso_kg?.toString() || "",
+        altura_cm: produto.altura_cm?.toString() || "",
+        largura_cm: produto.largura_cm?.toString() || "",
+        comprimento_cm: produto.comprimento_cm?.toString() || "",
       })
 
-      const userData = response.data
-      if (userData.tipo !== "funcionario" || !["admin", "analista"].includes(userData.tipo_perfil)) {
-        navigate("/")
-        return
-      }
-
-      // Carregar imagens do carrossel do banco
-      try {
-        const carouselResponse = await axios.get("http://localhost:3000/api/carousel")
-        // Ordenar por ordem crescente para exibição correta
-        const sortedImages = carouselResponse.data.sort((a: CarouselImage, b: CarouselImage) => a.ordem - b.ordem)
-        setCarouselImages(sortedImages)
-        console.log("🎠 Imagens carregadas e ordenadas:", sortedImages)
-      } catch (err) {
-        console.error("Erro ao carregar carrossel:", err)
-        setCarouselImages([])
-      }
-
-      // Carregar produtos
-      const produtosResponse = await axios.get("http://localhost:3000/produtos/produtos")
-      const produtosAtivos = produtosResponse.data.filter((p: Produto) => p.estoque > 0)
-      setProdutos(produtosAtivos)
-
-      // Carregar produtos em destaque salvos ou usar padrão
-      const produtosDestaqueSalvos = localStorage.getItem("produtosDestaque")
-      if (produtosDestaqueSalvos) {
-        const idsDestaque = JSON.parse(produtosDestaqueSalvos)
-        setProdutosDestaque(idsDestaque)
-      } else {
-        setProdutosDestaque(produtosAtivos.slice(0, 8).map((p: Produto) => p.id_produto))
-      }
+      setImagensExistentes(produto.imagens || [])
     } catch (err) {
-      console.error("Erro ao carregar dados:", err)
-      navigate("/login")
-    } finally {
-      setLoading(false)
+      console.error("Erro ao carregar produto:", err)
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        alert("Produto não encontrado")
+        navegar("/gestao/produtos")
+      } else {
+        alert("Erro ao carregar produto")
+      }
+    }
+  }
+
+  // Carregar categorias
+  const buscarCategorias = async () => {
+    try {
+      const resposta = await axios.get("http://localhost:3000/produtos/categorias")
+      setCategorias(resposta.data)
+    } catch (err) {
+      console.error("Erro ao carregar categorias:", err)
+    }
+  }
+
+  const buscarMarcas = async () => {
+    try {
+      const resposta = await axios.get("http://localhost:3000/gestao/marcas")
+      setMarcas(resposta.data)
+    } catch (err) {
+      console.error("Erro ao carregar marcas:", err)
     }
   }
 
   useEffect(() => {
-    loadHomeData()
-  }, [])
-
-  // Função para lidar com upload de arquivo
-  const handleFileUpload = async (imageId: number, file: File) => {
-    if (!file || !file.type.startsWith("image/")) {
-      alert("Por favor, selecione apenas arquivos de imagem.")
+    if (!id) {
+      navegar("/gestao/produtos")
       return
     }
 
-    setUploadingImages((prev) => ({ ...prev, [imageId]: true }))
+    const carregarDados = async () => {
+      setCarregando(true)
+      await Promise.all([buscarProduto(), buscarCategorias(), buscarMarcas()]) // Added buscarMarcas to Promise.all
+      setCarregando(false)
+    }
 
-    try {
-      const formData = new FormData()
-      formData.append("imagem", file)
+    carregarDados()
+  }, [id])
 
-      const image = carouselImages.find((img) => img.id_carousel === imageId)
-      if (image) {
-        formData.append("titulo", image.titulo)
-        formData.append("subtitulo", image.subtitulo)
-        formData.append("link_destino", image.link_destino || "")
-        formData.append("ordem", image.ordem.toString())
-        formData.append("ativo", image.ativo.toString())
+  // Validar formulário
+  const validarFormulario = () => {
+    const novosErros: Record<string, string> = {}
 
-        const response = await axios.put(`http://localhost:3000/api/carousel/${imageId}`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        })
+    if (!dadosFormulario.nome.trim()) novosErros.nome = "Nome é obrigatório"
+    if (!dadosFormulario.descricao.trim()) novosErros.descricao = "Descrição é obrigatória"
+    if (!dadosFormulario.preco || Number.parseFloat(dadosFormulario.preco) <= 0) {
+      novosErros.preco = "Preço deve ser maior que zero"
+    }
+    if (!dadosFormulario.id_categoria) novosErros.id_categoria = "Categoria é obrigatória"
+    if (!dadosFormulario.id_marca) novosErros.id_marca = "Marca é obrigatória" // Added marca validation
+    if (dadosFormulario.estoque && Number.parseInt(dadosFormulario.estoque) < 0) {
+      novosErros.estoque = "Estoque não pode ser negativo"
+    }
+    if (
+      dadosFormulario.ano_fabricacao &&
+      (Number.parseInt(dadosFormulario.ano_fabricacao) < 1900 ||
+        Number.parseInt(dadosFormulario.ano_fabricacao) > new Date().getFullYear())
+    ) {
+      novosErros.ano_fabricacao = "Ano de fabricação inválido"
+    }
+    if (dadosFormulario.peso_kg && Number.parseFloat(dadosFormulario.peso_kg) <= 0)
+      novosErros.peso_kg = "Peso deve ser maior que zero"
+    if (dadosFormulario.altura_cm && Number.parseFloat(dadosFormulario.altura_cm) <= 0)
+      novosErros.altura_cm = "Altura deve ser maior que zero"
+    if (dadosFormulario.largura_cm && Number.parseFloat(dadosFormulario.largura_cm) <= 0)
+      novosErros.largura_cm = "Largura deve ser maior que zero"
+    if (dadosFormulario.comprimento_cm && Number.parseFloat(dadosFormulario.comprimento_cm) <= 0)
+      novosErros.comprimento_cm = "Comprimento deve ser maior que zero"
 
-        // Atualizar a imagem na lista
-        setCarouselImages((prev) => prev.map((img) => (img.id_carousel === imageId ? response.data : img)))
+    setErros(novosErros)
+    return Object.keys(novosErros).length === 0
+  }
 
-        alert("Imagem carregada com sucesso!")
-      }
-    } catch (error) {
-      console.error("Erro ao fazer upload:", error)
-      alert("Erro ao carregar imagem. Tente novamente.")
-    } finally {
-      setUploadingImages((prev) => ({ ...prev, [imageId]: false }))
+  // Processar mudanças nos inputs
+  const processarMudancaInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setDadosFormulario((anterior) => ({ ...anterior, [name]: value }))
+
+    if (erros[name]) {
+      setErros((anterior) => ({ ...anterior, [name]: "" }))
     }
   }
 
-  // Adicionar nova imagem ao carrossel
-  const addCarouselImage = async () => {
-    try {
-      const newImageData = {
-        titulo: "Novo Slide",
-        subtitulo: "Descrição do novo slide",
-        link_destino: "/produtos",
-        ordem: carouselImages.length + 1,
-        ativo: true,
-      }
-
-      const response = await axios.post("http://localhost:3000/api/carousel", newImageData)
-      setCarouselImages([...carouselImages, response.data])
-    } catch (error) {
-      console.error("Erro ao adicionar slide:", error)
-      alert("Erro ao adicionar novo slide.")
+  // Processar remoção de imagem
+  const processarRemocaoImagem = (idImagem: number) => {
+    if (confirm("Tem certeza que deseja remover esta imagem? Esta ação não pode ser desfeita.")) {
+      setImagensParaRemover((anterior) => [...anterior, idImagem])
+      setImagensExistentes((anterior) => anterior.filter((img) => img.id_imagem !== idImagem))
     }
   }
 
-  // Atualizar imagem do carrossel
-  const updateCarouselImage = async (id: number, field: keyof CarouselImage, value: any) => {
-    try {
-      const image = carouselImages.find((img) => img.id_carousel === id)
-      if (!image) return
-
-      const updatedImage = { ...image, [field]: value }
-
-      const response = await axios.put(`http://localhost:3000/api/carousel/${id}`, {
-        titulo: updatedImage.titulo,
-        subtitulo: updatedImage.subtitulo,
-        link_destino: updatedImage.link_destino,
-        ordem: updatedImage.ordem,
-        ativo: updatedImage.ativo,
-      })
-
-      setCarouselImages((prev) => prev.map((img) => (img.id_carousel === id ? response.data : img)))
-    } catch (error) {
-      console.error("Erro ao atualizar slide:", error)
-    }
-  }
-
-  // Mover imagem para cima (diminuir ordem - aparecer antes)
-  const moveImageUp = async (id: number) => {
-    const currentIndex = carouselImages.findIndex((img) => img.id_carousel === id)
-
-    if (currentIndex <= 0) {
-      console.log("Imagem já está na primeira posição")
+  // Criar nova categoria
+  const processarCriarCategoria = async () => {
+    if (!novaCategoria.nome.trim()) {
+      alert("Nome da categoria é obrigatório")
       return
     }
 
-    setReordering(true)
-
     try {
-      const newImages = [...carouselImages]
-      const currentImage = newImages[currentIndex]
-      const previousImage = newImages[currentIndex - 1]
-
-      // Trocar as ordens
-      const tempOrdem = currentImage.ordem
-      currentImage.ordem = previousImage.ordem
-      previousImage.ordem = tempOrdem
-
-      // Trocar posições no array
-      newImages[currentIndex] = previousImage
-      newImages[currentIndex - 1] = currentImage
-
-      // Atualizar no banco de dados
-      await axios.put("http://localhost:3000/api/carousel/reorder", {
-        images: [
-          { id: currentImage.id_carousel, ordem: currentImage.ordem },
-          { id: previousImage.id_carousel, ordem: previousImage.ordem },
-        ],
+      const token = localStorage.getItem("token")
+      await axios.post("http://localhost:3000/produtos/categorias", novaCategoria, {
+        headers: { Authorization: `Bearer ${token}` },
       })
 
-      // Atualizar estado local
-      setCarouselImages(newImages)
-
-      console.log(`✅ Imagem "${currentImage.titulo}" movida para posição ${currentImage.ordem}`)
-
-      // Feedback visual
-      if (currentImage.ordem === 1) {
-        alert(`"${currentImage.titulo}" agora é a primeira imagem do carrossel!`)
-      }
-    } catch (error) {
-      console.error("Erro ao reordenar:", error)
-      alert("Erro ao alterar ordem. Tente novamente.")
-      // Recarregar dados em caso de erro
-      loadHomeData()
-    } finally {
-      setReordering(false)
-    }
-  }
-
-  // Mover imagem para baixo (aumentar ordem - aparecer depois)
-  const moveImageDown = async (id: number) => {
-    const currentIndex = carouselImages.findIndex((img) => img.id_carousel === id)
-
-    if (currentIndex >= carouselImages.length - 1) {
-      console.log("Imagem já está na última posição")
-      return
-    }
-
-    setReordering(true)
-
-    try {
-      const newImages = [...carouselImages]
-      const currentImage = newImages[currentIndex]
-      const nextImage = newImages[currentIndex + 1]
-
-      // Trocar as ordens
-      const tempOrdem = currentImage.ordem
-      currentImage.ordem = nextImage.ordem
-      nextImage.ordem = tempOrdem
-
-      // Trocar posições no array
-      newImages[currentIndex] = nextImage
-      newImages[currentIndex + 1] = currentImage
-
-      // Atualizar no banco de dados
-      await axios.put("http://localhost:3000/api/carousel/reorder", {
-        images: [
-          { id: currentImage.id_carousel, ordem: currentImage.ordem },
-          { id: nextImage.id_carousel, ordem: nextImage.ordem },
-        ],
-      })
-
-      // Atualizar estado local
-      setCarouselImages(newImages)
-
-      console.log(`✅ Imagem "${currentImage.titulo}" movida para posição ${currentImage.ordem}`)
-    } catch (error) {
-      console.error("Erro ao reordenar:", error)
-      alert("Erro ao alterar ordem. Tente novamente.")
-      // Recarregar dados em caso de erro
-      loadHomeData()
-    } finally {
-      setReordering(false)
-    }
-  }
-
-  // Definir como primeira imagem
-  const setAsFirstImage = async (id: number) => {
-    const targetImage = carouselImages.find((img) => img.id_carousel === id)
-    if (!targetImage || targetImage.ordem === 1) return
-
-    setReordering(true)
-
-    try {
-      const newImages = [...carouselImages]
-
-      // Encontrar todas as imagens que precisam ter a ordem ajustada
-      const imagesToUpdate = newImages
-        .filter((img) => img.ordem < targetImage.ordem)
-        .map((img) => ({
-          ...img,
-          ordem: img.ordem + 1,
-        }))
-
-      // Definir a imagem alvo como ordem 1
-      const updatedTargetImage = { ...targetImage, ordem: 1 }
-
-      // Preparar dados para atualização no banco
-      const updateData = [
-        { id: updatedTargetImage.id_carousel, ordem: 1 },
-        ...imagesToUpdate.map((img) => ({ id: img.id_carousel, ordem: img.ordem })),
-      ]
-
-      // Atualizar no banco
-      await axios.put("http://localhost:3000/api/carousel/reorder", {
-        images: updateData,
-      })
-
-      // Recarregar dados para garantir consistência
-      await loadHomeData()
-
-      alert(`"${targetImage.titulo}" agora é a primeira imagem do carrossel!`)
-    } catch (error) {
-      console.error("Erro ao definir como primeira:", error)
-      alert("Erro ao definir como primeira imagem. Tente novamente.")
-    } finally {
-      setReordering(false)
-    }
-  }
-
-  // Toggle produto em destaque
-  const toggleProdutoDestaque = (produtoId: number) => {
-    setProdutosDestaque((prev) => {
-      if (prev.includes(produtoId)) {
-        return prev.filter((id) => id !== produtoId)
-      } else {
-        return [...prev, produtoId]
-      }
-    })
-  }
-
-  // Validar URL
-  const isValidUrl = (url: string) => {
-    if (!url) return true
-    try {
-      if (url.startsWith("/")) return true
-      new URL(url)
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  // Função para construir URL da imagem para preview
-  const getImageUrl = (image: CarouselImage) => {
-    if (!image.url_imagem) return null
-
-    // Se já é uma URL completa, usar diretamente
-    if (image.url_imagem.startsWith("http")) {
-      return image.url_imagem
-    }
-
-    // Se começa com /, construir URL completa
-    if (image.url_imagem.startsWith("/")) {
-      return `http://localhost:3000${image.url_imagem}`
-    }
-
-    // Caso contrário, assumir que é um caminho relativo
-    return `http://localhost:3000/uploads/carousel/${image.url_imagem}`
-  }
-
-  // Salvar alterações
-  const handleSave = async () => {
-    // Validar dados antes de salvar
-    const invalidImages = carouselImages.filter(
-      (img) =>
-        img.ativo &&
-        (!img.titulo.trim() || !img.subtitulo.trim() || (img.link_destino && !isValidUrl(img.link_destino))),
-    )
-
-    if (invalidImages.length > 0) {
-      alert(
-        "Por favor, preencha todos os campos obrigatórios dos slides ativos e verifique se os links estão corretos.",
-      )
-      return
-    }
-
-    setSaving(true)
-    try {
-      // Salvar produtos em destaque no localStorage (posteriormente será uma chamada à API)
-      localStorage.setItem("produtosDestaque", JSON.stringify(produtosDestaque))
-
-      // Simular delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      const totalSlides = carouselImages.filter((img) => img.ativo).length
-      const totalProdutos = produtosDestaque.length
-      const primeiraImagem = carouselImages.find((img) => img.ordem === 1)
-
-      alert(
-        `Alterações salvas com sucesso!\n\n• ${totalSlides} slide(s) ativo(s) no carrossel\n• ${totalProdutos} produto(s) em destaque\n• Primeira imagem: "${primeiraImagem?.titulo || "Nenhuma"}"`,
-      )
-
-      navigate("/")
+      await buscarCategorias()
+      setNovaCategoria({ nome: "", descricao: "" })
+      setMostrarFormularioNovaCategoria(false)
+      alert("Categoria criada com sucesso!")
     } catch (err) {
-      console.error("Erro ao salvar:", err)
-      alert("Erro ao salvar alterações. Tente novamente.")
-    } finally {
-      setSaving(false)
+      console.error("Erro ao criar categoria:", err)
+      if (axios.isAxiosError(err) && err.response) {
+        alert(err.response.data.message || "Erro ao criar categoria")
+      } else {
+        alert("Erro ao criar categoria")
+      }
     }
   }
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(price)
+  const processarCriarMarca = async () => {
+    if (!novaMarca.nome.trim()) {
+      alert("Nome da marca é obrigatório")
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("token")
+      await axios.post("http://localhost:3000/gestao/marcas", novaMarca, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      await buscarMarcas()
+      setNovaMarca({ nome: "", descricao: "" })
+      setMostrarFormularioNovaMarca(false)
+      alert("Marca criada com sucesso!")
+    } catch (err) {
+      console.error("Erro ao criar marca:", err)
+      if (axios.isAxiosError(err) && err.response) {
+        alert(err.response.data.message || "Erro ao criar marca")
+      } else {
+        alert("Erro ao criar marca")
+      }
+    }
+  }
+
+  // Enviar formulário
+  const processarEnvio = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!validarFormulario()) {
+      return
+    }
+
+    setSalvando(true)
+
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        navegar("/login")
+        return
+      }
+
+      const dadosEnvio = new FormData()
+
+      Object.entries(dadosFormulario).forEach(([chave, valor]) => {
+        if (valor !== null && valor !== "") {
+          dadosEnvio.append(chave, valor.toString())
+        }
+      })
+
+      novasImagens.forEach((arquivoImagem) => {
+        dadosEnvio.append("novas_imagens", arquivoImagem.arquivo)
+      })
+
+      if (imagensParaRemover.length > 0) {
+        dadosEnvio.append("imagens_removidas", JSON.stringify(imagensParaRemover))
+      }
+
+      const imagemPrincipal = imagensExistentes.find((img) => img.is_principal)
+      if (imagemPrincipal) {
+        dadosEnvio.append("imagem_principal_id", imagemPrincipal.id_imagem.toString())
+      }
+
+      const ordensImagens = imagensExistentes.map((img) => ({
+        id_imagem: img.id_imagem,
+        ordem: img.ordem,
+      }))
+      if (ordensImagens.length > 0) {
+        dadosEnvio.append("ordens_imagens", JSON.stringify(ordensImagens))
+      }
+
+      await axios.put(`http://localhost:3000/produtos/produtos/${id}`, dadosEnvio, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      })
+
+      alert("Produto atualizado com sucesso!")
+      navegar("/gestao/produtos")
+    } catch (err) {
+      console.error("Erro ao atualizar produto:", err)
+      if (axios.isAxiosError(err) && err.response) {
+        alert(err.response.data.message || "Erro ao atualizar produto")
+      } else {
+        alert("Erro ao atualizar produto")
+      }
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  if (carregando) {
+    return (
+      <Layout showLoading={true}>
+        <div></div>
+      </Layout>
+    )
   }
 
   return (
-    <Layout showLoading={loading}>
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
+    <Layout>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Cabeçalho */}
+        <div className="mb-8">
+          <div className="flex items-center mb-4">
+            <button
+              onClick={() => navegar("/gestao/produtos")}
+              className="flex items-center text-gray-600 hover:text-gray-800 mr-4"
+            >
+              <ArrowLeft size={20} className="mr-1" />
+              Voltar
+            </button>
+            <h1 className="text-3xl font-bold text-gray-800">Editar Produto</h1>
+          </div>
+          <p className="text-gray-600">Modifique as informações do produto</p>
+        </div>
+
+        <form onSubmit={processarEnvio} className="space-y-8">
+          {/* Informações Básicas */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+              <Package className="mr-2" size={24} />
+              Informações Básicas
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Editar Página Inicial</h1>
-                <p className="text-gray-600 mt-2">Gerencie o carrossel de imagens e produtos em destaque</p>
-                {carouselImages.length > 0 && (
-                  <p className="text-sm text-blue-600 mt-1">
-                    💡 Use as setas para alterar a ordem. A primeira imagem será exibida primeiro no carrossel.
-                  </p>
-                )}
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Tag className="inline mr-1" size={16} />
+                  Nome do Produto *
+                </label>
+                <input
+                  type="text"
+                  name="nome"
+                  value={dadosFormulario.nome}
+                  onChange={processarMudancaInput}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.nome ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: Notebook Dell Inspiron 15"
+                />
+                {erros.nome && <p className="text-red-500 text-sm mt-1">{erros.nome}</p>}
               </div>
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => navigate("/")}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar Alterações
-                    </>
-                  )}
-                </button>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <DollarSign className="inline mr-1" size={16} />
+                  Preço (R$) *
+                </label>
+                <input
+                  type="number"
+                  name="preco"
+                  value={dadosFormulario.preco}
+                  onChange={processarMudancaInput}
+                  step="0.01"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.preco ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="0.00"
+                />
+                {erros.preco && <p className="text-red-500 text-sm mt-1">{erros.preco}</p>}
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FileText className="inline mr-1" size={16} />
+                  Descrição *
+                </label>
+                <textarea
+                  name="descricao"
+                  value={dadosFormulario.descricao}
+                  onChange={processarMudancaInput}
+                  rows={4}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.descricao ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Descreva as características e especificações do produto..."
+                />
+                {erros.descricao && <p className="text-red-500 text-sm mt-1">{erros.descricao}</p>}
               </div>
             </div>
           </div>
 
-          {/* Carrossel de Imagens */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">Carrossel de Imagens</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Organize a ordem das imagens. A primeira imagem será exibida primeiro no carrossel.
-                </p>
-              </div>
-              <button
-                onClick={addCarouselImage}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Imagem
-              </button>
-            </div>
-
-            {reordering && (
-              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex items-center">
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin text-yellow-600" />
-                  <span className="text-yellow-800">Reordenando imagens...</span>
-                </div>
-              </div>
-            )}
+          {/* Categoria, Marca e Status */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+              <Layers className="mr-2" size={24} />
+              Categoria, Marca e Status {/* Updated title to include Marca */}
+            </h2>
 
             <div className="space-y-6">
-              {carouselImages.map((image, index) => (
-                <div
-                  key={image.id_carousel}
-                  className={`border rounded-lg p-4 transition-all duration-200 ${
-                    image.ordem === 1 ? "border-blue-500 bg-blue-50 shadow-md" : "border-gray-200"
-                  }`}
-                >
-                  {/* Input de arquivo oculto */}
-                  <input
-                    type="file"
-                    ref={(el) => {
-                      fileInputRefs.current[image.id_carousel] = el
-                    }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        handleFileUpload(image.id_carousel, file)
-                      }
-                    }}
-                    accept="image/*"
-                    className="hidden"
-                  />
-
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-2">
-                        <Hash className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-600">Posição {image.ordem}</span>
-                      </div>
-
-                      {image.ordem === 1 && (
-                        <div className="flex items-center space-x-1 bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                          <Crown className="h-3 w-3" />
-                          <span>Primeira Imagem</span>
-                        </div>
-                      )}
-
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {image.titulo}
-                        {!image.ativo && <span className="ml-2 text-sm text-gray-500">(Inativo)</span>}
-                      </h3>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      {/* Botão para definir como primeira */}
-                      {image.ordem !== 1 && (
-                        <button
-                          onClick={() => setAsFirstImage(image.id_carousel)}
-                          disabled={reordering}
-                          className="p-1 text-yellow-600 hover:text-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Definir como primeira imagem"
-                        >
-                          <Crown className="h-4 w-4" />
-                        </button>
-                      )}
-
-                      {/* Seta para cima */}
-                      <button
-                        onClick={() => moveImageUp(image.id_carousel)}
-                        disabled={index === 0 || reordering}
-                        className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Mover para cima (aparecer antes)"
-                      >
-                        <ArrowUp className="h-4 w-4" />
-                      </button>
-
-                      {/* Seta para baixo */}
-                      <button
-                        onClick={() => moveImageDown(image.id_carousel)}
-                        disabled={index === carouselImages.length - 1 || reordering}
-                        className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Mover para baixo (aparecer depois)"
-                      >
-                        <ArrowDown className="h-4 w-4" />
-                      </button>
-
-                      {/* Toggle ativo/inativo */}
-                      <button
-                        onClick={() => updateCarouselImage(image.id_carousel, "ativo", !image.ativo)}
-                        className={`p-1 ${image.ativo ? "text-green-600" : "text-gray-400"} hover:text-green-700`}
-                        title={image.ativo ? "Inativar" : "Ativar"}
-                      >
-                        {image.ativo ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Imagem *</label>
-                      <div className="flex">
-                        <div className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg bg-gray-50 text-gray-500 text-sm">
-                          {image.url_imagem ? "Imagem carregada" : "Nenhuma imagem"}
-                        </div>
-                        <button
-                          onClick={() => fileInputRefs.current[image.id_carousel]?.click()}
-                          disabled={uploadingImages[image.id_carousel]}
-                          className="px-3 py-2 bg-blue-600 text-white border border-l-0 border-blue-600 rounded-r-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                          title="Alterar imagem"
-                        >
-                          {uploadingImages[image.id_carousel] ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Upload className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Link de Destino
-                        {image.link_destino && (
-                          <a
-                            href={image.link_destino}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="ml-2 text-blue-600 hover:text-blue-800"
-                            title="Testar link"
-                          >
-                            <ExternalLink className="h-3 w-3 inline" />
-                          </a>
-                        )}
-                      </label>
-                      <input
-                        type="text"
-                        value={image.link_destino || ""}
-                        onChange={(e) => updateCarouselImage(image.id_carousel, "link_destino", e.target.value)}
-                        placeholder="/produtos ou https://exemplo.com"
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          image.link_destino && !isValidUrl(image.link_destino) ? "border-red-300" : "border-gray-300"
-                        }`}
-                      />
-                      {image.link_destino && !isValidUrl(image.link_destino) && (
-                        <p className="text-red-500 text-xs mt-1">URL inválida</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Título *</label>
-                      <input
-                        type="text"
-                        value={image.titulo}
-                        onChange={(e) => updateCarouselImage(image.id_carousel, "titulo", e.target.value)}
-                        placeholder="Título do slide"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Subtítulo *</label>
-                      <input
-                        type="text"
-                        value={image.subtitulo}
-                        onChange={(e) => updateCarouselImage(image.id_carousel, "subtitulo", e.target.value)}
-                        placeholder="Subtítulo do slide"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Preview da imagem */}
-                  {image.url_imagem && (
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Preview</label>
-                      <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
-                        <img
-                          src={getImageUrl(image) || "/placeholder.svg"}
-                          alt={image.titulo}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.style.display = "none"
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                          <div className="text-center text-white">
-                            <h4 className="font-semibold">{image.titulo}</h4>
-                            <p className="text-sm">{image.subtitulo}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {carouselImages.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <ImageIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <p>Nenhuma imagem no carrossel. Clique em "Adicionar Imagem" para começar.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Resumo da ordem */}
-            {carouselImages.length > 0 && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <h3 className="font-medium text-gray-900 mb-2">📋 Ordem de Exibição no Carrossel:</h3>
-                <div className="space-y-1">
-                  {carouselImages
-                    .filter((img) => img.ativo)
-                    .sort((a, b) => a.ordem - b.ordem)
-                    .map((img, index) => (
-                      <div key={img.id_carousel} className="flex items-center space-x-2 text-sm">
-                        <span className="font-medium text-gray-600">{index + 1}°</span>
-                        <span className="text-gray-900">{img.titulo}</span>
-                        {index === 0 && (
-                          <span title="Primeira imagem">
-                            <Crown className="h-3 w-3 text-yellow-500" />
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Produtos em Destaque */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Produtos em Destaque</h2>
-              <p className="text-gray-600">
-                Selecione os produtos que aparecerão na seção de destaque da página inicial
-              </p>
-            </div>
-
-            {produtos.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p>Nenhum produto disponível.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {produtos.map((produto) => {
-                  const isDestaque = produtosDestaque.includes(produto.id_produto)
-                  return (
-                    <div
-                      key={produto.id_produto}
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 ${
-                        isDestaque
-                          ? "border-blue-500 bg-blue-50 shadow-md"
-                          : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
+              {/* Categoria e Marca juntos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Categoria *</label>
+                  <div className="flex gap-2">
+                    <select
+                      name="id_categoria"
+                      value={dadosFormulario.id_categoria}
+                      onChange={processarMudancaInput}
+                      className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                        erros.id_categoria ? "border-red-500" : "border-gray-300"
                       }`}
-                      onClick={() => toggleProdutoDestaque(produto.id_produto)}
                     >
-                      <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden">
-                        {produto.imagemUrl ? (
-                          <img
-                            src={`http://localhost:3000/produtos${produto.imagemUrl}`}
-                            alt={produto.nome}
-                            className="w-full h-full object-contain"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="h-8 w-8 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
+                      <option value="">Selecione uma categoria</option>
+                      {categorias.map((categoria) => (
+                        <option key={categoria.id_categoria} value={categoria.id_categoria}>
+                          {categoria.nome}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setMostrarFormularioNovaCategoria(!mostrarFormularioNovaCategoria)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center font-medium shadow-sm"
+                    >
+                      <Plus size={16} className="mr-1" />
+                      Nova
+                    </button>
+                  </div>
+                  {erros.id_categoria && <p className="text-red-500 text-sm mt-1">{erros.id_categoria}</p>}
+                </div>
 
-                      <div className="text-center">
-                        <h4 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">{produto.nome}</h4>
-                        <p className="text-xs text-gray-500 mb-2">{produto.marca}</p>
-                        <p className="font-semibold text-blue-600 text-sm">{formatPrice(produto.preco)}</p>
-                        <p className="text-xs text-gray-500 mt-1">{produto.estoque} em estoque</p>
-                      </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Marca</label>
+                  <div className="flex gap-2">
+                    <select
+                      name="id_marca"
+                      value={dadosFormulario.id_marca}
+                      onChange={processarMudancaInput}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    >
+                      <option value="">Selecione uma marca</option>
+                      {marcas.map((marca) => (
+                        <option key={marca.id_marca} value={marca.id_marca}>
+                          {marca.nome}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setMostrarFormularioNovaMarca(!mostrarFormularioNovaMarca)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center font-medium shadow-sm"
+                    >
+                      <Plus size={16} className="mr-1" />
+                      Nova
+                    </button>
+                  </div>
+                  {erros.id_marca && <p className="text-red-500 text-sm mt-1">{erros.id_marca}</p>}
+                </div>
+              </div>
 
-                      <div className="mt-3 text-center">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleProdutoDestaque(produto.id_produto)
-                          }}
-                          className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
-                            isDestaque
-                              ? "bg-blue-600 text-white hover:bg-blue-700"
-                              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                          }`}
-                        >
-                          {isDestaque ? "Em Destaque" : "Adicionar"}
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
+              {/* Status separado */}
+              <div className="max-w-xs">
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  <AlertCircle className="mr-1" size={16} />
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={dadosFormulario.status}
+                  onChange={processarMudancaInput}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                >
+                  <option value="ativo">Ativo</option>
+                  <option value="inativo">Inativo</option>
+                </select>
+              </div>
+            </div>
+
+            {mostrarFormularioNovaMarca && (
+              <div className="mt-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <h3 className="font-medium text-gray-800 mb-3">Nova Marca</h3>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Nome da marca"
+                    value={novaMarca.nome}
+                    onChange={(e) => setNovaMarca((anterior) => ({ ...anterior, nome: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <textarea
+                    placeholder="Descrição (opcional)"
+                    value={novaMarca.descricao}
+                    onChange={(e) => setNovaMarca((anterior) => ({ ...anterior, descricao: e.target.value }))}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={processarCriarMarca}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Criar Marca
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMostrarFormularioNovaMarca(false)}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <div className="flex items-center justify-between text-sm">
-                <div className="text-blue-800">
-                  <strong>{produtosDestaque.length}</strong> produto(s) selecionado(s) para destaque
+            {mostrarFormularioNovaCategoria && (
+              <div className="mt-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <h3 className="font-medium text-gray-800 mb-3">Nova Categoria</h3>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Nome da categoria"
+                    value={novaCategoria.nome}
+                    onChange={(e) => setNovaCategoria((anterior) => ({ ...anterior, nome: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <textarea
+                    placeholder="Descrição (opcional)"
+                    value={novaCategoria.descricao}
+                    onChange={(e) => setNovaCategoria((anterior) => ({ ...anterior, descricao: e.target.value }))}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={processarCriarCategoria}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Criar Categoria
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMostrarFormularioNovaCategoria(false)}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
-                {produtosDestaque.length > 0 && (
-                  <button
-                    onClick={() => setProdutosDestaque([])}
-                    className="text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    Limpar seleção
-                  </button>
-                )}
               </div>
-              <p className="text-blue-700 text-xs mt-1">Clique nos produtos para adicionar ou remover do destaque</p>
+            )}
+          </div>
+
+          {/* Detalhes do Produto */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+              <Hash className="mr-2" size={24} />
+              Detalhes do Produto
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Modelo</label>
+                <input
+                  type="text"
+                  name="modelo"
+                  value={dadosFormulario.modelo}
+                  onChange={processarMudancaInput}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ex: Inspiron 15 3000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Truck className="inline mr-1" size={16} />
+                  Estoque
+                </label>
+                <input
+                  type="number"
+                  name="estoque"
+                  value={dadosFormulario.estoque}
+                  onChange={processarMudancaInput}
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.estoque ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="0"
+                />
+                {erros.estoque && <p className="text-red-500 text-sm mt-1">{erros.estoque}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Palette className="inline mr-1" size={16} />
+                  Cor
+                </label>
+                <input
+                  type="text"
+                  name="cor"
+                  value={dadosFormulario.cor}
+                  onChange={processarMudancaInput}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ex: Preto, Prata, Azul"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Calendar className="inline mr-1" size={16} />
+                  Ano de Fabricação
+                </label>
+                <input
+                  type="number"
+                  name="ano_fabricacao"
+                  value={dadosFormulario.ano_fabricacao}
+                  onChange={processarMudancaInput}
+                  min="1900"
+                  max={new Date().getFullYear()}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.ano_fabricacao ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder={new Date().getFullYear().toString()}
+                />
+                {erros.ano_fabricacao && <p className="text-red-500 text-sm mt-1">{erros.ano_fabricacao}</p>}
+              </div>
+
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Compatibilidade</label>
+                <textarea
+                  name="compatibilidade"
+                  value={dadosFormulario.compatibilidade}
+                  onChange={processarMudancaInput}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Descreva com quais sistemas, dispositivos ou componentes este produto é compatível..."
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <style>{`
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      `}</style>
+          {/* Informações de Envio */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+              <Truck className="mr-2" size={24} />
+              Informações de Envio
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Essas informações são essenciais para o cálculo automático do frete.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Weight className="inline mr-1" size={16} />
+                  Peso (kg)
+                </label>
+                <input
+                  type="number"
+                  name="peso_kg"
+                  value={dadosFormulario.peso_kg}
+                  onChange={processarMudancaInput}
+                  step="0.001"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.peso_kg ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 0.850"
+                />
+                {erros.peso_kg && <p className="text-red-500 text-sm mt-1">{erros.peso_kg}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Ruler className="inline mr-1" size={16} />
+                  Altura (cm)
+                </label>
+                <input
+                  type="number"
+                  name="altura_cm"
+                  value={dadosFormulario.altura_cm}
+                  onChange={processarMudancaInput}
+                  step="0.01"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.altura_cm ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 15.5"
+                />
+                {erros.altura_cm && <p className="text-red-500 text-sm mt-1">{erros.altura_cm}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Ruler className="inline mr-1" size={16} />
+                  Largura (cm)
+                </label>
+                <input
+                  type="number"
+                  name="largura_cm"
+                  value={dadosFormulario.largura_cm}
+                  onChange={processarMudancaInput}
+                  step="0.01"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.largura_cm ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 25.0"
+                />
+                {erros.largura_cm && <p className="text-red-500 text-sm mt-1">{erros.largura_cm}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Ruler className="inline mr-1" size={16} />
+                  Comprimento (cm)
+                </label>
+                <input
+                  type="number"
+                  name="comprimento_cm"
+                  value={dadosFormulario.comprimento_cm}
+                  onChange={processarMudancaInput}
+                  step="0.01"
+                  min="0"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.comprimento_cm ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Ex: 35.0"
+                />
+                {erros.comprimento_cm && <p className="text-red-500 text-sm mt-1">{erros.comprimento_cm}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Galeria de Imagens */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+              <ImageIcon className="mr-2" size={24} />
+              Imagens do Produto
+            </h2>
+
+            <GaleriaImagensEditavel
+              imagensExistentes={imagensExistentes}
+              novasImagens={novasImagens}
+              aoAlterarImagensExistentes={setImagensExistentes}
+              aoAlterarNovasImagens={setNovasImagens}
+              aoRemoverImagem={processarRemocaoImagem}
+              maximoImagens={10}
+              tamanhoMaximoPorImagem={5}
+            />
+          </div>
+
+          {/* Botões de Ação */}
+          <div className="flex justify-end space-x-4">
+            <button
+              type="button"
+              onClick={() => navegar("/gestao/produtos")}
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={salvando}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {salvando ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2" size={16} />
+                  Atualizar Produto
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </Layout>
   )
 }
 
-export default EditarHome
+export default EditarProduto

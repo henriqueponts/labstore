@@ -4,7 +4,6 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import axios from "axios"
 import Layout from "../components/Layout"
-import { useNavigate, useSearchParams } from "react-router-dom"
 import {
   Search,
   Filter,
@@ -17,14 +16,14 @@ import {
   TrendingUp,
   X,
 } from "lucide-react"
-import { useCart } from "../context/CartContext" // <-- IMPORTADO
+import { useCart } from "../context/CartContext"
 
 interface Produto {
   id_produto: number
   nome: string
   descricao: string
   preco: number
-  marca: string
+  marca_nome: string // Changed from 'marca' to 'marca_nome' to match JOIN result
   modelo: string
   estoque: number
   status: "ativo" | "inativo"
@@ -49,27 +48,25 @@ type TipoVisualizacao = "grid" | "lista"
 type OrdenacaoTipo = "nome" | "preco_asc" | "preco_desc" | "mais_recente"
 
 const ListagemProdutos: React.FC = () => {
-  const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const { adicionarAoCarrinho } = useCart() // <-- ADICIONADO
+  const { adicionarAoCarrinho } = useCart()
 
   // Estados principais
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Estados de filtros
-  const [termoBusca, setTermoBusca] = useState(searchParams.get("busca") || "")
-  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<string[]>(
-    searchParams.get("categoria")?.split(",").filter(Boolean) || [],
-  )
+  const [inputBusca, setInputBusca] = useState("")
+  const [inputPrecoMin, setInputPrecoMin] = useState("")
+  const [inputPrecoMax, setInputPrecoMax] = useState("")
+
+  // Estados de filtro que realmente afetam a busca
+  const [termoBusca, setTermoBusca] = useState("")
+  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<string[]>([])
   const [faixaPreco, setFaixaPreco] = useState({
-    min: searchParams.get("preco_min") || "",
-    max: searchParams.get("preco_max") || "",
+    min: "",
+    max: "",
   })
-  const [marcasSelecionadas, setMarcasSelecionadas] = useState<string[]>(
-    searchParams.get("marca")?.split(",").filter(Boolean) || [],
-  )
+  const [marcasSelecionadas, setMarcasSelecionadas] = useState<string[]>([])
 
   // Estados de interface
   const [tipoVisualizacao, setTipoVisualizacao] = useState<TipoVisualizacao>("grid")
@@ -77,6 +74,29 @@ const ListagemProdutos: React.FC = () => {
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
   const [produtosPorPagina] = useState(12)
   const [paginaAtual, setPaginaAtual] = useState(1)
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setTermoBusca(inputBusca)
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [inputBusca])
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setFaixaPreco({
+        min: inputPrecoMin,
+        max: inputPrecoMax,
+      })
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [inputPrecoMin, inputPrecoMax])
+
+  useEffect(() => {
+    setPaginaAtual(1)
+  }, [termoBusca, categoriasSelecionadas, faixaPreco, marcasSelecionadas])
 
   // Carregar dados
   const carregarDados = async () => {
@@ -102,7 +122,7 @@ const ListagemProdutos: React.FC = () => {
   }, [])
 
   // Obter marcas únicas
-  const marcasDisponiveis = [...new Set(produtos.map((p) => p.marca).filter(Boolean))].sort()
+  const marcasDisponiveis = [...new Set(produtos.map((p) => p.marca_nome).filter(Boolean))].sort()
 
   // Filtrar produtos
   const produtosFiltrados = produtos.filter((produto) => {
@@ -110,7 +130,7 @@ const ListagemProdutos: React.FC = () => {
     const matchBusca =
       !termoBusca ||
       produto.nome.toLowerCase().includes(termoBusca.toLowerCase()) ||
-      produto.marca?.toLowerCase().includes(termoBusca.toLowerCase()) ||
+      produto.marca_nome?.toLowerCase().includes(termoBusca.toLowerCase()) ||
       produto.modelo?.toLowerCase().includes(termoBusca.toLowerCase()) ||
       produto.descricao.toLowerCase().includes(termoBusca.toLowerCase())
 
@@ -124,7 +144,8 @@ const ListagemProdutos: React.FC = () => {
       (!faixaPreco.max || produto.preco <= Number.parseFloat(faixaPreco.max))
 
     // Filtro de marca
-    const matchMarca = marcasSelecionadas.length === 0 || (produto.marca && marcasSelecionadas.includes(produto.marca))
+    const matchMarca =
+      marcasSelecionadas.length === 0 || (produto.marca_nome && marcasSelecionadas.includes(produto.marca_nome))
 
     return matchBusca && matchCategoria && matchPreco && matchMarca
   })
@@ -148,38 +169,14 @@ const ListagemProdutos: React.FC = () => {
   const indiceInicio = (paginaAtual - 1) * produtosPorPagina
   const produtosPaginados = produtosOrdenados.slice(indiceInicio, indiceInicio + produtosPorPagina)
 
-  // Atualizar URL com filtros
-  const atualizarURL = () => {
-    const params = new URLSearchParams()
-    if (termoBusca) params.set("busca", termoBusca)
-    if (categoriasSelecionadas.length > 0) params.set("categoria", categoriasSelecionadas.join(","))
-    if (faixaPreco.min) params.set("preco_min", faixaPreco.min)
-    if (faixaPreco.max) params.set("preco_max", faixaPreco.max)
-    if (marcasSelecionadas.length > 0) params.set("marca", marcasSelecionadas.join(","))
-
-    setSearchParams(params)
-  }
-
-  useEffect(() => {
-    atualizarURL()
-    setPaginaAtual(1)
-  }, [termoBusca, categoriasSelecionadas, faixaPreco, marcasSelecionadas])
-
-  // Formatação de preço
-  const formatarPreco = (preco: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(preco)
-  }
-
-  // Limpar filtros
   const limparFiltros = () => {
+    setInputBusca("")
+    setInputPrecoMin("")
+    setInputPrecoMax("")
     setTermoBusca("")
     setCategoriasSelecionadas([])
     setFaixaPreco({ min: "", max: "" })
     setMarcasSelecionadas([])
-    setSearchParams(new URLSearchParams())
   }
 
   // Toggle categoria
@@ -197,6 +194,11 @@ const ListagemProdutos: React.FC = () => {
   // Verificar se há filtros ativos
   const temFiltrosAtivos =
     termoBusca || categoriasSelecionadas.length > 0 || faixaPreco.min || faixaPreco.max || marcasSelecionadas.length > 0
+
+  const navegarParaProduto = (id: number) => {
+    // Simple navigation without router - you can implement this based on your routing setup
+    window.location.href = `/produto/${id}`
+  }
 
   if (loading) {
     return (
@@ -253,8 +255,8 @@ const ListagemProdutos: React.FC = () => {
                     <input
                       type="text"
                       placeholder="Nome, marca, modelo..."
-                      value={termoBusca}
-                      onChange={(e) => setTermoBusca(e.target.value)}
+                      value={inputBusca}
+                      onChange={(e) => setInputBusca(e.target.value)}
                       className="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-200 placeholder-slate-400"
                     />
                   </div>
@@ -297,8 +299,8 @@ const ListagemProdutos: React.FC = () => {
                       <input
                         type="number"
                         placeholder="Mínimo"
-                        value={faixaPreco.min}
-                        onChange={(e) => setFaixaPreco((prev) => ({ ...prev, min: e.target.value }))}
+                        value={inputPrecoMin}
+                        onChange={(e) => setInputPrecoMin(e.target.value)}
                         className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-200 text-sm"
                       />
                     </div>
@@ -306,8 +308,8 @@ const ListagemProdutos: React.FC = () => {
                       <input
                         type="number"
                         placeholder="Máximo"
-                        value={faixaPreco.max}
-                        onChange={(e) => setFaixaPreco((prev) => ({ ...prev, max: e.target.value }))}
+                        value={inputPrecoMax}
+                        onChange={(e) => setInputPrecoMax(e.target.value)}
                         className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all duration-200 text-sm"
                       />
                     </div>
@@ -334,7 +336,7 @@ const ListagemProdutos: React.FC = () => {
                             {marca}
                           </span>
                           <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                            {produtos.filter((p) => p.marca === marca).length}
+                            {produtos.filter((p) => p.marca_nome === marca).length}
                           </span>
                         </label>
                       ))}
@@ -409,261 +411,261 @@ const ListagemProdutos: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Lista de produtos */}
-              {produtosPaginados.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-12 max-w-md mx-auto">
-                    <Package className="mx-auto h-20 w-20 text-slate-400 mb-6" />
-                    <h3 className="text-xl font-bold text-slate-900 mb-3">Nenhum produto encontrado</h3>
-                    <p className="text-slate-600 mb-6">
-                      Tente ajustar os filtros ou termos de busca para encontrar o que procura.
-                    </p>
-                    <button
-                      onClick={limparFiltros}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                    >
-                      Limpar filtros
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {/* Grid de produtos */}
-                  <div
-                    className={
-                      tipoVisualizacao === "grid"
-                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                        : "space-y-6"
-                    }
-                  >
-                    {produtosPaginados.map((produto) => (
-                      <div
-                        key={produto.id_produto}
-                        className={`bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 group ${
-                          tipoVisualizacao === "lista" ? "flex p-6" : "overflow-hidden"
-                        }`}
+                {/* Lista de produtos */}
+                {produtosPaginados.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-12 max-w-md mx-auto">
+                      <Package className="mx-auto h-20 w-20 text-slate-400 mb-6" />
+                      <h3 className="text-xl font-bold text-slate-900 mb-3">Nenhum produto encontrado</h3>
+                      <p className="text-slate-600 mb-6">
+                        Tente ajustar os filtros ou termos de busca para encontrar o que procura.
+                      </p>
+                      <button
+                        onClick={limparFiltros}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                       >
-                        {tipoVisualizacao === "grid" ? (
-                          // Visualização em grid
-                          <>
-                            <div
-                              className="aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden cursor-pointer"
-                              onClick={() => navigate(`/produto/${produto.id_produto}`)}
-                            >
-                              {produto.imagemUrl ? (
-                                <img
-                                  src={`http://localhost:3000/produtos${produto.imagemUrl}`}
-                                  alt={produto.nome}
-                                  className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <Package className="h-16 w-16 text-slate-400" />
-                                </div>
-                              )}
-
-                              {/* Badge de estoque baixo */}
-                              {produto.estoque <= 5 && produto.estoque > 0 && (
-                                <div className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                                  Últimas unidades
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="p-6">
-                              <div className="mb-4">
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                                  {produto.categoria_nome}
-                                </span>
-                              </div>
-                              <h3
-                                className="font-bold text-slate-900 mb-3 line-clamp-2 text-lg group-hover:text-blue-600 transition-colors duration-200 cursor-pointer"
-                                onClick={() => navigate(`/produto/${produto.id_produto}`)}
+                        Limpar filtros
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Grid de produtos */}
+                    <div
+                      className={
+                        tipoVisualizacao === "grid"
+                          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                          : "space-y-6"
+                      }
+                    >
+                      {produtosPaginados.map((produto) => (
+                        <div
+                          key={produto.id_produto}
+                          className={`bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 group ${
+                            tipoVisualizacao === "lista" ? "flex p-6" : "overflow-hidden"
+                          }`}
+                        >
+                          {tipoVisualizacao === "grid" ? (
+                            // Visualização em grid
+                            <>
+                              <div
+                                className="aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden cursor-pointer"
+                                onClick={() => navegarParaProduto(produto.id_produto)}
                               >
-                                {produto.nome}
-                              </h3>
-                              {produto.marca && (
-                                <p className="text-sm text-slate-600 mb-4 font-medium">{produto.marca}</p>
-                              )}
+                                {produto.imagemUrl ? (
+                                  <img
+                                    src={`http://localhost:3000/produtos${produto.imagemUrl}`}
+                                    alt={produto.nome}
+                                    className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Package className="h-16 w-16 text-slate-400" />
+                                  </div>
+                                )}
 
-                              <div className="mb-4">
-                                <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                  {formatarPreco(produto.preco)}
-                                </span>
+                                {/* Badge de estoque baixo */}
+                                {produto.estoque <= 5 && produto.estoque > 0 && (
+                                  <div className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                    Últimas unidades
+                                  </div>
+                                )}
                               </div>
 
-                              <div className="mb-6">
-                                <span
-                                  className={`inline-block text-xs font-medium px-3 py-1 rounded-full ${
-                                    produto.estoque > 10
-                                      ? "bg-green-100 text-green-800"
-                                      : produto.estoque > 0
-                                        ? "bg-orange-100 text-orange-800"
-                                        : "bg-red-100 text-red-800"
+                              <div className="p-6">
+                                <div className="mb-4">
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                                    {produto.categoria_nome}
+                                  </span>
+                                </div>
+                                <h3
+                                  className="font-bold text-slate-900 mb-3 line-clamp-2 text-lg group-hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+                                  onClick={() => navegarParaProduto(produto.id_produto)}
+                                >
+                                  {produto.nome}
+                                </h3>
+                                {produto.marca_nome && (
+                                  <p className="text-sm text-slate-600 mb-4 font-medium">{produto.marca_nome}</p>
+                                )}
+
+                                <div className="mb-4">
+                                  <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                    {formatarPreco(produto.preco)}
+                                  </span>
+                                </div>
+
+                                <div className="mb-6">
+                                  <span
+                                    className={`inline-block text-xs font-medium px-3 py-1 rounded-full ${
+                                      produto.estoque > 10
+                                        ? "bg-green-100 text-green-800"
+                                        : produto.estoque > 0
+                                          ? "bg-orange-100 text-orange-800"
+                                          : "bg-red-100 text-red-800"
+                                    }`}
+                                  >
+                                    {produto.estoque > 0 ? `${produto.estoque} em estoque` : "Esgotado"}
+                                  </span>
+                                </div>
+
+                                {/* Botões de ação */}
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => navegarParaProduto(produto.id_produto)}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl font-medium transition-all duration-200 text-sm"
+                                  >
+                                    Ver Detalhes
+                                  </button>
+                                  <button
+                                    onClick={() => adicionarAoCarrinho(produto.id_produto, 1)}
+                                    disabled={produto.estoque <= 0}
+                                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Adicionar ao carrinho"
+                                  >
+                                    <ShoppingCart size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            // Visualização em lista
+                            <>
+                              <div
+                                className="w-32 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex-shrink-0 mr-6 overflow-hidden cursor-pointer"
+                                onClick={() => navegarParaProduto(produto.id_produto)}
+                              >
+                                {produto.imagemUrl ? (
+                                  <img
+                                    src={`http://localhost:3000/produtos${produto.imagemUrl}`}
+                                    alt={produto.nome}
+                                    className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Package className="h-12 w-12 text-slate-400" />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex-1">
+                                <div className="flex items-start justify-between h-full">
+                                  <div className="flex-1 pr-4">
+                                    <div className="mb-2">
+                                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                                        {produto.categoria_nome}
+                                      </span>
+                                    </div>
+                                    <h3
+                                      className="font-bold text-slate-900 mb-2 text-xl group-hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+                                      onClick={() => navegarParaProduto(produto.id_produto)}
+                                    >
+                                      {produto.nome}
+                                    </h3>
+                                    {produto.marca_nome && (
+                                      <p className="text-sm text-slate-600 mb-3 font-medium">{produto.marca_nome}</p>
+                                    )}
+                                    <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+                                      {produto.descricao}
+                                    </p>
+                                  </div>
+
+                                  <div className="text-right flex flex-col items-end justify-between h-full">
+                                    <div className="mb-4">
+                                      <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+                                        {formatarPreco(produto.preco)}
+                                      </div>
+                                      <span
+                                        className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                          produto.estoque > 10
+                                            ? "bg-green-100 text-green-800"
+                                            : produto.estoque > 0
+                                              ? "bg-orange-100 text-orange-800"
+                                              : "bg-red-100 text-red-800"
+                                        }`}
+                                      >
+                                        {produto.estoque > 0 ? `${produto.estoque} em estoque` : "Esgotado"}
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-col space-y-2">
+                                      <button
+                                        onClick={() => navegarParaProduto(produto.id_produto)}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl font-medium transition-all duration-200 text-sm"
+                                      >
+                                        Ver Detalhes
+                                      </button>
+                                      <button
+                                        onClick={() => adicionarAoCarrinho(produto.id_produto, 1)}
+                                        disabled={produto.estoque <= 0}
+                                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title="Adicionar ao carrinho"
+                                      >
+                                        <ShoppingCart size={16} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Paginação */}
+                    {totalPaginas > 1 && (
+                      <div className="mt-12 flex justify-center">
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-2">
+                          <div className="flex items-center space-x-1">
+                            <button
+                              onClick={() => setPaginaAtual((prev) => Math.max(prev - 1, 1))}
+                              disabled={paginaAtual === 1}
+                              className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                            >
+                              Anterior
+                            </button>
+
+                            {Array.from({ length: Math.min(totalPaginas, 7) }, (_, i) => {
+                              let pagina: number
+                              if (totalPaginas <= 7) {
+                                pagina = i + 1
+                              } else if (paginaAtual <= 4) {
+                                pagina = i + 1
+                              } else if (paginaAtual >= totalPaginas - 3) {
+                                pagina = totalPaginas - 6 + i
+                              } else {
+                                pagina = paginaAtual - 3 + i
+                              }
+
+                              return (
+                                <button
+                                  key={pagina}
+                                  onClick={() => setPaginaAtual(pagina)}
+                                  className={`px-4 py-2 rounded-xl transition-all duration-200 font-medium ${
+                                    pagina === paginaAtual
+                                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                                      : "border border-slate-200 hover:bg-slate-50 text-slate-700"
                                   }`}
                                 >
-                                  {produto.estoque > 0 ? `${produto.estoque} em estoque` : "Esgotado"}
-                                </span>
-                              </div>
+                                  {pagina}
+                                </button>
+                              )
+                            })}
 
-                              {/* Botões de ação */}
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => navigate(`/produto/${produto.id_produto}`)}
-                                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl font-medium transition-all duration-200 text-sm"
-                                >
-                                  Ver Detalhes
-                                </button>
-                                <button
-                                  onClick={() => adicionarAoCarrinho(produto.id_produto, 1)}
-                                  disabled={produto.estoque <= 0}
-                                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  title="Adicionar ao carrinho"
-                                >
-                                  <ShoppingCart size={16} />
-                                </button>
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          // Visualização em lista
-                          <>
-                            <div
-                              className="w-32 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex-shrink-0 mr-6 overflow-hidden cursor-pointer"
-                              onClick={() => navigate(`/produto/${produto.id_produto}`)}
+                            <button
+                              onClick={() => setPaginaAtual((prev) => Math.min(prev + 1, totalPaginas))}
+                              disabled={paginaAtual === totalPaginas}
+                              className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
                             >
-                              {produto.imagemUrl ? (
-                                <img
-                                  src={`http://localhost:3000/produtos${produto.imagemUrl}`}
-                                  alt={produto.nome}
-                                  className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <Package className="h-12 w-12 text-slate-400" />
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between h-full">
-                                <div className="flex-1 pr-4">
-                                  <div className="mb-2">
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                                      {produto.categoria_nome}
-                                    </span>
-                                  </div>
-                                  <h3
-                                    className="font-bold text-slate-900 mb-2 text-xl group-hover:text-blue-600 transition-colors duration-200 cursor-pointer"
-                                    onClick={() => navigate(`/produto/${produto.id_produto}`)}
-                                  >
-                                    {produto.nome}
-                                  </h3>
-                                  {produto.marca && (
-                                    <p className="text-sm text-slate-600 mb-3 font-medium">{produto.marca}</p>
-                                  )}
-                                  <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
-                                    {produto.descricao}
-                                  </p>
-                                </div>
-
-                                <div className="text-right flex flex-col items-end justify-between h-full">
-                                  <div className="mb-4">
-                                    <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-                                      {formatarPreco(produto.preco)}
-                                    </div>
-                                    <span
-                                      className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                        produto.estoque > 10
-                                          ? "bg-green-100 text-green-800"
-                                          : produto.estoque > 0
-                                            ? "bg-orange-100 text-orange-800"
-                                            : "bg-red-100 text-red-800"
-                                      }`}
-                                    >
-                                      {produto.estoque > 0 ? `${produto.estoque} em estoque` : "Esgotado"}
-                                    </span>
-                                  </div>
-                                  <div className="flex flex-col space-y-2">
-                                    <button
-                                      onClick={() => navigate(`/produto/${produto.id_produto}`)}
-                                      className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl font-medium transition-all duration-200 text-sm"
-                                    >
-                                      Ver Detalhes
-                                    </button>
-                                    <button
-                                      onClick={() => adicionarAoCarrinho(produto.id_produto, 1)}
-                                      disabled={produto.estoque <= 0}
-                                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title="Adicionar ao carrinho"
-                                    >
-                                      <ShoppingCart size={16} />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Paginação */}
-                  {totalPaginas > 1 && (
-                    <div className="mt-12 flex justify-center">
-                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-2">
-                        <div className="flex items-center space-x-1">
-                          <button
-                            onClick={() => setPaginaAtual((prev) => Math.max(prev - 1, 1))}
-                            disabled={paginaAtual === 1}
-                            className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
-                          >
-                            Anterior
-                          </button>
-
-                          {Array.from({ length: Math.min(totalPaginas, 7) }, (_, i) => {
-                            let pagina: number
-                            if (totalPaginas <= 7) {
-                              pagina = i + 1
-                            } else if (paginaAtual <= 4) {
-                              pagina = i + 1
-                            } else if (paginaAtual >= totalPaginas - 3) {
-                              pagina = totalPaginas - 6 + i
-                            } else {
-                              pagina = paginaAtual - 3 + i
-                            }
-
-                            return (
-                              <button
-                                key={pagina}
-                                onClick={() => setPaginaAtual(pagina)}
-                                className={`px-4 py-2 rounded-xl transition-all duration-200 font-medium ${
-                                  pagina === paginaAtual
-                                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                                    : "border border-slate-200 hover:bg-slate-50 text-slate-700"
-                                }`}
-                              >
-                                {pagina}
-                              </button>
-                            )
-                          })}
-
-                          <button
-                            onClick={() => setPaginaAtual((prev) => Math.min(prev + 1, totalPaginas))}
-                            disabled={paginaAtual === totalPaginas}
-                            className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
-                          >
-                            Próxima
-                          </button>
+                              Próxima
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </>
-              )}
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -695,4 +697,13 @@ const ListagemProdutos: React.FC = () => {
   )
 }
 
+// Formatação de preço
+const formatarPreco = (preco: number) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(preco)
+}
+
+export { ListagemProdutos }
 export default ListagemProdutos
