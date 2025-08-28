@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   ShoppingCart,
@@ -19,6 +19,7 @@ import {
   Monitor,
   X,
   Edit3,
+  ShoppingBag,
 } from "lucide-react"
 import { useCart } from "../context/CartContext"
 
@@ -40,12 +41,23 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearchChange }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const { totalItens } = useCart()
 
-  // Verificar se o usuário pode editar a home page
-  const canEditHomePage =
-    usuario?.tipo === "funcionario" && (usuario?.tipo_perfil === "admin" || usuario?.tipo_perfil === "analista")
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,6 +67,9 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
       navigate("/produtos")
     }
   }
+
+  const canEditHomePage =
+    usuario?.tipo === "funcionario" && (usuario?.tipo_perfil === "admin" || usuario?.tipo_perfil === "analista")
 
   return (
     <header className="bg-white shadow-md relative z-50">
@@ -101,12 +116,20 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
               </>
             ) : (
               <div className="flex items-center space-x-2 md:space-x-3">
-                <div className="text-sm">
-                  <span className="text-gray-700 hidden md:inline">Olá, </span>
-                  <span className="font-medium text-blue-600">
-                    {usuario.nome?.split(" ")[0] || usuario.email.split("@")[0]}
-                  </span>
-                </div>
+                {usuario.tipo === "cliente" && (
+                  <button
+                    onClick={() => navigate("/carrinho")}
+                    className="relative flex items-center text-gray-700 hover:text-blue-600 transition-colors"
+                  >
+                    <ShoppingCart size={20} />
+                    {totalItens > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {totalItens}
+                      </span>
+                    )}
+                  </button>
+                )}
+
                 {usuario.tipo === "funcionario" && (
                   <span
                     className={`px-2 py-1 text-xs rounded-full ${
@@ -116,14 +139,62 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                     {usuario.tipo_perfil === "admin" ? "Admin" : "Técnico"}
                   </span>
                 )}
-                <button onClick={onLogout} className="text-gray-500 hover:text-red-600 transition-colors" title="Sair">
-                  <LogOut size={18} />
-                </button>
+
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center text-gray-700 hover:text-blue-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                    title="Menu do usuário"
+                  >
+                    <User size={20} />
+                  </button>
+
+                  {userDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                      <div className="px-4 py-2 text-sm text-gray-500 border-b border-gray-200">
+                        Olá,{" "}
+                        <span className="font-medium text-blue-600">
+                          {usuario.nome?.split(" ")[0] || usuario.email.split("@")[0]}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigate("/meus-pedidos")
+                          setUserDropdownOpen(false)
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <ShoppingBag size={16} className="mr-2" />
+                        Meus Pedidos
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigate("/alterar-senha")
+                          setUserDropdownOpen(false)
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <Edit3 size={16} className="mr-2" />
+                        Alterar Senha
+                      </button>
+                      <hr className="my-1 border-gray-200" />
+                      <button
+                        onClick={() => {
+                          onLogout()
+                          setUserDropdownOpen(false)
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut size={16} className="mr-2" />
+                        Sair
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Carrinho - só aparece para clientes ou visitantes */}
-            {(!usuario || usuario.tipo === "cliente") && (
+            {!usuario && (
               <button
                 onClick={() => navigate("/carrinho")}
                 className="relative flex items-center text-gray-700 hover:text-blue-600 transition-colors"
@@ -148,81 +219,106 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
       {/* Desktop Navigation Menu */}
       <div className="bg-gray-100 border-t hidden md:block">
         <div className="max-w-7xl mx-auto px-4">
-          <nav className="flex space-x-8 py-3">
-            {/* Menu público */}
-            <a href="/produtos" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
-              <Monitor size={16} className="mr-1" />
-              Produtos
-            </a>
-            <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
-              <Wrench size={16} className="mr-1" />
-              Assistência Técnica
-            </a>
-            <a href="/central-ajuda" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
-              <CircleQuestionMark size={16} className="mr-1" />
-              Ajuda
-            </a>
+          {/* A <nav> agora apenas alinha os itens. O espaçamento é feito nos <div> internos */}
+          <nav className="flex items-center py-3">
+            {/* Grupo de Menu Público */}
+            <div className="flex items-center space-x-6">
+              <a href="/produtos" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
+                <Monitor size={16} className="mr-1" />
+                Produtos
+              </a>
+              <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
+                <Wrench size={16} className="mr-1" />
+                Assistência Técnica
+              </a>
+              {!canEditHomePage && (
+                <a
+                  href="/central-ajuda"
+                  className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
+                >
+                  <CircleQuestionMark size={16} className="mr-1" />
+                  Ajuda
+                </a>
+              )}
+            </div>
 
             {/* Menu administrativo */}
             {usuario?.tipo === "funcionario" && (
+              // Usamos um Fragment <> para agrupar a lógica do menu de funcionário
               <>
-                <div className="border-l border-gray-300 mx-4"></div>
+                {/* Separador 1 (restaurado) */}
+                <div className="border-l border-gray-300 h-6 mx-6"></div>
 
-                {/* Botão Editar Home - Apenas para Admin e Analista */}
-                {canEditHomePage && (
+                {/* Grupo de Menu Administrativo */}
+                <div className="flex items-center space-x-6">
+                  {/* Menu específico para Admin e Analista */}
+                  {canEditHomePage && (
+                    <>
+                      <a
+                        href="/editar-home"
+                        className="flex items-center text-orange-700 hover:text-orange-600 transition-colors"
+                      >
+                        <Edit3 size={16} className="mr-1" />
+                        Home
+                      </a>
+                      <a
+                        href="/meus-pedidos"
+                        className="flex items-center text-blue-700 hover:text-blue-600 transition-colors"
+                      >
+                        <ShoppingBag size={16} className="mr-1" />
+                        Pedidos
+                      </a>
+                    </>
+                  )}
+
                   <a
-                    href="/editar-home"
-                    className="flex items-center text-orange-700 hover:text-orange-600 transition-colors"
+                    href="/gestao/produtos"
+                    className="flex items-center text-green-700 hover:text-green-600 transition-colors"
                   >
-                    <Edit3 size={16} className="mr-1" />
-                    Home
+                    <Package size={16} className="mr-1" />
+                    Produtos
                   </a>
-                )}
 
-                <a
-                  href="/gestao/produtos"
-                  className="flex items-center text-green-700 hover:text-green-600 transition-colors"
-                >
-                  <Package size={16} className="mr-1" />
-                  Produtos
-                </a>
+                  <a href="#" className="flex items-center text-green-700 hover:text-green-600 transition-colors">
+                    <Wrench size={16} className="mr-1" />
+                    Solicitações
+                  </a>
 
-                <a href="#" className="flex items-center text-green-700 hover:text-green-600 transition-colors">
-                  <Wrench size={16} className="mr-1" />
-                  Solicitações
-                </a>
+                  <a
+                    href="/gestao/chamados"
+                    className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors"
+                  >
+                    <Headphones size={16} className="mr-1" />
+                    Chamados
+                  </a>
 
-                <a
-                  href="/gestao/chamados"
-                  className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors"
-                >
-                  <Headphones size={16} className="mr-1" />
-                  Chamados
-                </a>
-                <div className="border-l border-gray-300 mx-4"></div>
+                  {/* Menu exclusivo para Admin */}
+                  {usuario.tipo_perfil === "admin" && (
+                    <>
+                      {/* Separador 2 (restaurado) */}
+                      <div className="border-l border-gray-300 h-6 mx-0"></div>
 
-                {usuario.tipo_perfil === "admin" && (
-                  <>
-                    <a
-                      href="/gestao/usuarios"
-                      className="flex items-center text-purple-700 hover:text-purple-600 transition-colors"
-                    >
-                      <Users size={16} className="mr-1" />
-                      Usuários
-                    </a>
-                    <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
-                      <BarChart3 size={16} className="mr-1" />
-                      Relatórios
-                    </a>
-                    <a
-                      href="/gestao/lgpd"
-                      className="flex items-center text-purple-700 hover:text-purple-600 transition-colors"
-                    >
-                      <Scale size={16} className="mr-1" />
-                      LGPD
-                    </a>
-                  </>
-                )}
+                      <a
+                        href="/gestao/usuarios"
+                        className="flex items-center text-purple-700 hover:text-purple-600 transition-colors"
+                      >
+                        <Users size={16} className="mr-1" />
+                        Usuários
+                      </a>
+                      <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
+                        <BarChart3 size={16} className="mr-1" />
+                        Relatórios
+                      </a>
+                      <a
+                        href="/gestao/lgpd"
+                        className="flex items-center text-purple-700 hover:text-purple-600 transition-colors"
+                      >
+                        <Scale size={16} className="mr-1" />
+                        LGPD
+                      </a>
+                    </>
+                  )}
+                </div>
               </>
             )}
           </nav>
@@ -247,13 +343,15 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 <Wrench size={16} className="mr-2" />
                 Assistência Técnica
               </a>
-              <a
-                href="/central-ajuda"
-                className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2"
-              >
-                <CircleQuestionMark size={16} className="mr-2" />
-                Ajuda
-              </a>
+              {!canEditHomePage && (
+                <a
+                  href="/central-ajuda"
+                  className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2"
+                >
+                  <CircleQuestionMark size={16} className="mr-2" />
+                  Ajuda
+                </a>
+              )}
             </div>
 
             {/* Menu administrativo mobile */}
@@ -261,15 +359,24 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
               <div className="border-t pt-3 space-y-2">
                 <h4 className="font-semibold text-gray-800 text-sm">Administração</h4>
 
-                {/* Botão Editar Home Mobile - Apenas para Admin e Analista */}
+                {/* Menu específico para Admin e Analista Mobile */}
                 {canEditHomePage && (
-                  <a
-                    href="/editar-home"
-                    className="flex items-center text-orange-700 hover:text-orange-600 transition-colors py-2"
-                  >
-                    <Edit3 size={16} className="mr-2" />
-                    Home
-                  </a>
+                  <>
+                    <a
+                      href="/editar-home"
+                      className="flex items-center text-orange-700 hover:text-orange-600 transition-colors py-2"
+                    >
+                      <Edit3 size={16} className="mr-2" />
+                      Home
+                    </a>
+                    <a
+                      href="/gestao/pedidos"
+                      className="flex items-center text-blue-700 hover:text-blue-600 transition-colors py-2"
+                    >
+                      <ShoppingBag size={16} className="mr-2" />
+                      Pedidos
+                    </a>
+                  </>
                 )}
 
                 <a

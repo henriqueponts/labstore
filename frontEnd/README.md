@@ -1,3 +1,7 @@
+ngrok http 3000
+
+Cartão de crédito (Sucesso)
+4000000000000010	
 
 
 -- Cria o banco de dados se ele não existir
