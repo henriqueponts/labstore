@@ -71,7 +71,6 @@ const GestaoUsuarios: React.FC = () => {
   })
   const [editingClienteData, setEditingClienteData] = useState({
     nome: "",
-    email: "",
     telefone: "",
   })
 
@@ -197,7 +196,6 @@ const GestaoUsuarios: React.FC = () => {
 
       setEditingClienteData({
         nome: response.data.nome,
-        email: response.data.email,
         telefone: response.data.telefone || "",
       })
       setEditingClienteId(clienteId)
@@ -666,19 +664,10 @@ const GestaoUsuarios: React.FC = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {editingClienteId === cliente.id_cliente ? (
-                          <input
-                            type="email"
-                            value={editingClienteData.email}
-                            onChange={(e) => setEditingClienteData({ ...editingClienteData, email: e.target.value })}
-                            className="text-sm text-gray-900 border border-gray-300 rounded px-2 py-1 w-full"
-                          />
-                        ) : (
-                          <div className="flex items-center">
-                            <Mail size={16} className="text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-900">{cliente.email}</span>
-                          </div>
-                        )}
+                        <div className="flex items-center">
+                          <Mail size={16} className="text-gray-400 mr-2" />
+                          <span className="text-sm text-gray-900">{cliente.email}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {editingClienteId === cliente.id_cliente ? (

@@ -146,7 +146,7 @@ router.get("/produtos/:id", async (req, res) => {
     const db = await connectToDatabase()
 
     const [produtos] = await db.query(
-      `SELECT p.*, c.nome as categoria_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria WHERE p.id_produto = ?`,
+      `SELECT p.*, c.nome as categoria_nome, m.nome as marca_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria LEFT JOIN Marca m ON p.id_marca = m.id_marca WHERE p.id_produto = ?`,
       [id],
     )
 
@@ -592,16 +592,7 @@ router.get("/produtos/buscar", async (req, res) => {
     const { nome, categoria, marca, preco_min, preco_max, status } = req.query
     const db = await connectToDatabase()
 
-    let query = `
-      SELECT
-        p.*,
-        c.nome as categoria_nome,
-        m.nome as marca_nome
-      FROM Produto p
-      LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria
-      LEFT JOIN Marca m ON p.id_marca = m.id_marca
-      WHERE 1=1
-    `
+    let query = `SELECT p.*, c.nome as categoria_nome, m.nome as marca_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria LEFT JOIN Marca m ON p.id_marca = m.id_marca WHERE 1=1`
     const params = []
 
     if (nome) {

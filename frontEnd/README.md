@@ -1,8 +1,7 @@
 ngrok http 3000
 
 Cartão de crédito (Sucesso)
-4000000000000010	
-
+4000000000000010
 
 -- Cria o banco de dados se ele não existir
 
@@ -1022,4 +1021,3 @@ INSERT INTO carousel_images (titulo, subtitulo, url_imagem, link_destino, ordem,
 ('Tecnologia que Transforma', 'Encontre os melhores produtos com preços incríveis', '/uploads/carousel/default1.jpg', '/produtos', 1, TRUE),
 ('Setup Gamer Completo', 'Monte seu setup dos sonhos com nossa linha gamer', '/uploads/carousel/default2.jpg', '/produtos?categoria=PCs Gamer', 2, TRUE),
 ('Assistência Técnica Especializada', 'Reparo rápido e confiável para seus equipamentos', '/uploads/carousel/default3.jpg', '/central-ajuda', 3, TRUE);
-
