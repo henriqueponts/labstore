@@ -9,7 +9,7 @@ import {
   Search,
   Menu,
   Wrench,
-  FileQuestion as CircleQuestionMark,
+  CircleQuestionMark,
   Scale,
   Users,
   LogOut,
