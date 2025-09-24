@@ -36,7 +36,7 @@ interface Chamado {
   assunto: string
   descricao: string
   categoria: string | null
-  status: "aberto" | "aguardando_cliente" | "aguardando_funcionario" | "resolvido" | "encerrado"
+  status: "aberto" | "aguardando_cliente" | "aguardando_funcionario" | "encerrado"
   data_abertura: string
   cliente_nome: string
   cliente_email: string
@@ -63,7 +63,6 @@ interface Estatisticas {
     abertos: number
     aguardando_cliente: number
     aguardando_funcionario: number
-    resolvidos: number
     encerrados: number
   }
   categorias: Array<{
@@ -122,7 +121,6 @@ const AdminChamadosPage: React.FC = () => {
     { value: "aberto", label: "Aberto", color: "blue" },
     { value: "aguardando_cliente", label: "Aguardando Cliente", color: "orange" },
     { value: "aguardando_funcionario", label: "Aguardando Funcionário", color: "indigo" },
-    { value: "resolvido", label: "Resolvido", color: "green" },
     { value: "encerrado", label: "Encerrado", color: "gray" },
   ]
 
@@ -365,8 +363,6 @@ const AdminChamadosPage: React.FC = () => {
         return "text-orange-600 bg-orange-100"
       case "aguardando_funcionario":
         return "text-indigo-600 bg-indigo-100"
-      case "resolvido":
-        return "text-green-600 bg-green-100"
       case "encerrado":
         return "text-gray-600 bg-gray-100"
       default:
@@ -382,8 +378,6 @@ const AdminChamadosPage: React.FC = () => {
         return "Aguardando Cliente"
       case "aguardando_funcionario":
         return "Aguardando Funcionário"
-      case "resolvido":
-        return "Resolvido"
       case "encerrado":
         return "Encerrado"
       default:
@@ -399,8 +393,6 @@ const AdminChamadosPage: React.FC = () => {
         return <User className="w-4 h-4" />
       case "aguardando_funcionario":
         return <Clock className="w-4 h-4" />
-      case "resolvido":
-        return <CheckCircle className="w-4 h-4" />
       case "encerrado":
         return <X className="w-4 h-4" />
       default:
@@ -674,11 +666,10 @@ const AdminChamadosPage: React.FC = () => {
                       >
                         <option value="">Selecione um novo status</option>
                         {statusOptions.slice(1).map((status) => {
-                          // Allow "aberto" if current status is "encerrado" or "resolvido"
+                          // Allow "aberto" if current status is "encerrado"
                           if (
                             status.value === "aberto" &&
-                            chamadoSelecionado.status !== "encerrado" &&
-                            chamadoSelecionado.status !== "resolvido"
+                            chamadoSelecionado.status !== "encerrado"
                           ) {
                             return null
                           }

@@ -245,20 +245,15 @@ router.get("/clientes/:id", verifyAdmin, async (req, res) => {
   }
 })
 
-// Editar dados de cliente (endereço, telefone) - apenas admin
+// Editar dados de cliente (nome e telefone) - apenas admin
 router.put("/clientes/:id/editar", verifyAdmin, async (req, res) => {
   try {
     const { id } = req.params
-    const { nome, email, telefone, endereco } = req.body
+    const { nome, telefone } = req.body
 
     // Validação básica
-    if (!nome || !email) {
-      return res.status(400).json({ message: "Nome e email são obrigatórios" })
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: "Email inválido" })
+    if (!nome) {
+      return res.status(400).json({ message: "Nome é obrigatório" })
     }
 
     const db = await connectToDatabase()
@@ -269,23 +264,8 @@ router.put("/clientes/:id/editar", verifyAdmin, async (req, res) => {
       return res.status(404).json({ message: "Cliente não encontrado" })
     }
 
-    // Verificar se o email já está em uso por outro cliente
-    const [emailExists] = await db.query("SELECT id_cliente FROM Cliente WHERE email = ? AND id_cliente != ?", [
-      email,
-      id,
-    ])
-    if (emailExists.length > 0) {
-      return res.status(400).json({ message: "Este email já está em uso por outro cliente" })
-    }
-
-    // Atualizar dados do cliente
-    await db.query("UPDATE Cliente SET nome = ?, email = ?, telefone = ?, endereco = ? WHERE id_cliente = ?", [
-      nome,
-      email,
-      telefone || null,
-      endereco || null,
-      id,
-    ])
+    // Atualizar dados do cliente (sem email)
+    await db.query("UPDATE Cliente SET nome = ?, telefone = ? WHERE id_cliente = ?", [nome, telefone || null, id])
 
     console.log(`✅ Dados do cliente ${id} atualizados`)
     res.status(200).json({ message: "Dados do cliente atualizados com sucesso" })

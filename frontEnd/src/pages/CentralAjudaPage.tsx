@@ -456,6 +456,16 @@ const CentralAjudaPage: React.FC = () => {
     }
   }
 
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      // Show confirmation dialog before sending
+      if (window.confirm("Deseja enviar esta mensagem?")) {
+        handleClienteResponder()
+      }
+    }
+  }
+
   // Tela de Detalhes do Chamado
   if (showChamadoDetalhes && chamadoDetalhado) {
     return (
@@ -537,7 +547,7 @@ const CentralAjudaPage: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Atendido por</label>
                     <div className="flex items-center text-gray-900">
                       <User className="w-4 h-4 mr-2" />
-                      {chamadoDetalhado.funcionario_nome}
+                      {chamadoDetalhado.funcionario_nome.split(" ")[0]}
                     </div>
                   </div>
                 )}
@@ -572,7 +582,9 @@ const CentralAjudaPage: React.FC = () => {
                             <MessageSquare className="w-4 h-4 text-blue-600 mr-2" />
                           )}
                           <span className="text-sm font-medium text-gray-900">
-                            {resposta.tipo_usuario === "cliente" ? "Você" : `${resposta.nome_usuario} (Suporte)`}
+                            {resposta.tipo_usuario === "cliente"
+                              ? "Você"
+                              : `${resposta.nome_usuario?.split(" ")[0]} (Suporte)`}
                           </span>
                         </div>
                         <span className="text-xs text-gray-500">{formatDate(resposta.data_resposta)}</span>
@@ -609,22 +621,32 @@ const CentralAjudaPage: React.FC = () => {
                     <textarea
                       value={respostaCliente}
                       onChange={(e) => setRespostaCliente(e.target.value)}
+                      onKeyPress={handleKeyPress}
                       rows={4}
                       maxLength={1000}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Digite sua resposta ou forneça informações adicionais..."
+                      placeholder="Digite sua resposta ou forneça informações adicionais... (Pressione Enter para enviar ou Shift+Enter para nova linha)"
                     />
                     <p className="text-xs text-gray-500 mt-1">{respostaCliente.length}/1000 caracteres</p>
                   </div>
 
-                  <button
-                    onClick={handleClienteResponder}
-                    disabled={enviandoResposta || !respostaCliente.trim()}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    {enviandoResposta ? "Enviando..." : "Enviar Resposta"}
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleClienteResponder}
+                      disabled={enviandoResposta || !respostaCliente.trim()}
+                      className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      {enviandoResposta ? "Enviando..." : "Enviar"}
+                    </button>
+                    <button
+                      onClick={() => setRespostaCliente("")}
+                      disabled={enviandoResposta || !respostaCliente.trim()}
+                      className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Limpar
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

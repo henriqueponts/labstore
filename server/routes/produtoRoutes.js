@@ -130,98 +130,21 @@ router.get("/busca-rapida", async (req, res) => {
     const searchTerm = `%${termo}%`
 
     const [produtos] = await db.query(
-      `SELECT
-        p.id_produto,
-        p.nome,
-        p.preco
-      FROM Produto p
-      WHERE (LOWER(p.nome) LIKE LOWER(?) OR LOWER(p.modelo) LIKE LOWER(?))
-        AND p.status = 'ativo'
-      ORDER BY p.nome
-      LIMIT 5`,
-      [searchTerm, searchTerm],
+      `SELECT p.*, c.nome as categoria_nome, m.nome as marca_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria LEFT JOIN Marca m ON p.id_marca = m.id_marca WHERE p.id_produto = ?`,
+      [id],
     )
 
-    for (const produto of produtos) {
-      const [imagemPrincipal] = await db.query(
-        `SELECT url_imagem FROM ProdutoImagem WHERE id_produto = ? AND is_principal = TRUE LIMIT 1`,
-        [produto.id_produto],
-      )
-      if (imagemPrincipal.length > 0) {
-        produto.imagemUrl = imagemPrincipal[0].url_imagem
-      } else {
-        const [primeiraImagem] = await db.query(
-          `SELECT url_imagem FROM ProdutoImagem WHERE id_produto = ? ORDER BY ordem ASC LIMIT 1`,
-          [produto.id_produto],
-        )
-        produto.imagemUrl = primeiraImagem.length > 0 ? primeiraImagem[0].url_imagem : null
-      }
-    }
-    res.status(200).json(produtos)
-  } catch (err) {
-    console.error("Erro na busca rápida:", err)
-    res.status(500).json({ message: "Erro interno do servidor" })
-  }
-})
-
-
-// Buscar produtos com filtros
-router.get("/produtos/buscar", async (req, res) => {
-  try {
-    const { nome, categoria, marca, preco_min, preco_max, status } = req.query
-    const db = await connectToDatabase()
-
-    let query = `
-      SELECT
-        p.*,
-        c.nome as categoria_nome,
-        m.nome as marca_nome
-      FROM Produto p
-      LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria
-      LEFT JOIN Marca m ON p.id_marca = m.id_marca
-      WHERE 1=1
-    `
-    const params = []
-
-    if (nome) {
-      query += ` AND p.nome LIKE ?`
-      params.push(`%${nome}%`)
+    if (produtos.length === 0) {
+      return res.status(404).json({ message: "Produto não encontrado" })
     }
 
-    if (categoria) {
-      query += ` AND p.id_categoria = ?`
-      params.push(categoria)
-    }
+    const produto = produtos[0]
 
-    if (marca) {
-      query += ` AND p.id_marca = ?`
-      params.push(marca)
-    }
-
-    if (preco_min) {
-      query += ` AND p.preco >= ?`
-      params.push(Number.parseFloat(preco_min))
-    }
-
-    if (preco_max) {
-      query += ` AND p.preco <= ?`
-      params.push(Number.parseFloat(preco_max))
-    }
-
-    if (status) {
-      query += ` AND p.status = ?`
-      params.push(status)
-    }
-
-    query += ` ORDER BY p.nome`
-
-    const [produtos] = await db.query(query, params)
-
-    for (const produto of produtos) {
-      const [imagens] = await db.query(
-        `SELECT id_imagem, url_imagem, nome_arquivo, ordem, is_principal FROM ProdutoImagem WHERE id_produto = ? ORDER BY is_principal DESC, ordem ASC`,
-        [produto.id_produto],
-      )
+    // Buscar imagens do produto
+    const [imagens] = await db.query(
+      `SELECT id_imagem, url_imagem, nome_arquivo, ordem, is_principal FROM ProdutoImagem WHERE id_produto = ? ORDER BY is_principal DESC, ordem ASC`,
+      [id],
+    )
 
       produto.imagens = imagens
       produto.imagemUrl = imagens.find((img) => img.is_principal)?.url_imagem || imagens[0]?.url_imagem || null
@@ -708,14 +631,105 @@ router.put("/produtos/:idProduto/imagens/ordem", verificarFuncionario, async (re
   }
 })
 
+// Deletar produto (com suas imagens)
+router.delete("/produtos/:id", verificarFuncionario, async (req, res) => {
+  try {
+    const { id } = req.params
+    const db = await connectToDatabase()
 
+    const [imagens] = await db.query("SELECT url_imagem FROM ProdutoImagem WHERE id_produto = ?", [id])
 
+    for (const imagem of imagens) {
+      const caminhoImagem = path.join(process.cwd(), imagem.url_imagem)
+      if (fs.existsSync(caminhoImagem)) {
+        fs.unlinkSync(caminhoImagem)
+      }
+    }
 
+    const [resultado] = await db.query("DELETE FROM Produto WHERE id_produto = ?", [id])
 
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ message: "Produto não encontrado" })
+    }
 
+    res.status(200).json({ message: "Produto e suas imagens deletados com sucesso" })
+  } catch (err) {
+    console.error("Erro ao deletar produto:", err)
+    res.status(500).json({ message: "Erro interno do servidor" })
+  }
+})
 
+// Listar todas as marcas
+router.get("/marcas", async (req, res) => {
+  try {
+    const db = await connectToDatabase()
+    const [marcas] = await db.query("SELECT id_marca, nome, descricao FROM Marca ORDER BY nome")
+    res.status(200).json(marcas)
+  } catch (err) {
+    console.error("Erro ao buscar marcas:", err)
+    res.status(500).json({ message: "Erro interno do servidor" })
+  }
+})
 
+// Buscar produtos com filtros
+router.get("/produtos/buscar", async (req, res) => {
+  try {
+    const { nome, categoria, marca, preco_min, preco_max, status } = req.query
+    const db = await connectToDatabase()
 
+    let query = `SELECT p.*, c.nome as categoria_nome, m.nome as marca_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria LEFT JOIN Marca m ON p.id_marca = m.id_marca WHERE 1=1`
+    const params = []
+
+    if (nome) {
+      query += ` AND p.nome LIKE ?`
+      params.push(`%${nome}%`)
+    }
+
+    if (categoria) {
+      query += ` AND p.id_categoria = ?`
+      params.push(categoria)
+    }
+
+    if (marca) {
+      query += ` AND p.id_marca = ?`
+      params.push(marca)
+    }
+
+    if (preco_min) {
+      query += ` AND p.preco >= ?`
+      params.push(Number.parseFloat(preco_min))
+    }
+
+    if (preco_max) {
+      query += ` AND p.preco <= ?`
+      params.push(Number.parseFloat(preco_max))
+    }
+
+    if (status) {
+      query += ` AND p.status = ?`
+      params.push(status)
+    }
+
+    query += ` ORDER BY p.nome`
+
+    const [produtos] = await db.query(query, params)
+
+    for (const produto of produtos) {
+      const [imagens] = await db.query(
+        `SELECT id_imagem, url_imagem, nome_arquivo, ordem, is_principal FROM ProdutoImagem WHERE id_produto = ? ORDER BY is_principal DESC, ordem ASC`,
+        [produto.id_produto],
+      )
+
+      produto.imagens = imagens
+      produto.imagemUrl = imagens.find((img) => img.is_principal)?.url_imagem || imagens[0]?.url_imagem || null
+    }
+
+    res.status(200).json(produtos)
+  } catch (err) {
+    console.error("Erro ao buscar produtos:", err)
+    res.status(500).json({ message: "Erro interno do servidor" })
+  }
+})
 
 // Servir imagens estáticas
 router.use("/uploads", express.static("uploads"))

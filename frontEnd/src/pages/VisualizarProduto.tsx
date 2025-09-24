@@ -15,7 +15,7 @@ import {
   Check,
   AlertCircle,
   Home,
-  ChevronRightIcon as ChevronRightBreadcrumb,
+  ChevronRightSquare as ChevronRightBreadcrumb,
   Zap,
   Calendar,
   Palette,
@@ -23,6 +23,8 @@ import {
   Package,
   Weight,
   Ruler,
+  Award,
+  Hash,
 } from "lucide-react"
 import { useCart } from "../context/CartContext" // <-- IMPORTADO
 
@@ -40,6 +42,7 @@ interface Produto {
   descricao: string
   preco: number
   marca: string
+  marca_nome?: string
   modelo: string
   estoque: number
   id_categoria: number
@@ -98,7 +101,6 @@ const VisualizarProduto: React.FC = () => {
       currency: "BRL",
     }).format(preco)
   }
-
 
   // Navegar entre imagens
   const proximaImagem = () => {
@@ -203,10 +205,14 @@ const VisualizarProduto: React.FC = () => {
             <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group">
               {imagemPrincipal ? (
                 <img
-                    src={imagemPrincipal.url_imagem ? `http://localhost:3000/produtos${imagemPrincipal.url_imagem}` : "/placeholder.svg"}
-                    alt={produto.nome}
-                    className="w-full h-full object-cover"
-                  />
+                  src={
+                    imagemPrincipal.url_imagem
+                      ? `http://localhost:3000/produtos${imagemPrincipal.url_imagem}`
+                      : "/placeholder.svg"
+                  }
+                  alt={produto.nome}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Package className="h-24 w-24 text-gray-400" />
@@ -259,7 +265,9 @@ const VisualizarProduto: React.FC = () => {
                     }`}
                   >
                     <img
-                      src={imagem.url_imagem ? `http://localhost:3000/produtos${imagem.url_imagem}` : "/placeholder.svg"}
+                      src={
+                        imagem.url_imagem ? `http://localhost:3000/produtos${imagem.url_imagem}` : "/placeholder.svg"
+                      }
                       alt={`${produto.nome} - Imagem ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
@@ -285,9 +293,9 @@ const VisualizarProduto: React.FC = () => {
                 </div>
               </div>
 
-              {produto.marca && (
+              {(produto.marca_nome || produto.marca) && (
                 <p className="text-lg text-gray-600 mb-2">
-                  {produto.marca} {produto.modelo && `- ${produto.modelo}`}
+                  {produto.marca_nome || produto.marca} {produto.modelo && `- ${produto.modelo}`}
                 </p>
               )}
             </div>
@@ -392,21 +400,25 @@ const VisualizarProduto: React.FC = () => {
             )}
           </div>
 
-
-
           {/* Informações do Produto (antiga Especificações) */}
           <div>
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Informações do Produto</h3>
             <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-200">
-              {produto.marca && (
+              {(produto.marca_nome || produto.marca) && (
                 <div className="px-4 py-3 flex justify-between">
-                  <span className="text-sm font-medium text-gray-600">Marca</span>
-                  <span className="text-sm text-gray-900">{produto.marca}</span>
+                  <span className="text-sm font-medium text-gray-600 flex items-center">
+                    <Award size={14} className="mr-1" />
+                    Marca
+                  </span>
+                  <span className="text-sm text-gray-900">{produto.marca_nome || produto.marca}</span>
                 </div>
               )}
               {produto.modelo && (
                 <div className="px-4 py-3 flex justify-between">
-                  <span className="text-sm font-medium text-gray-600">Modelo</span>
+                  <span className="text-sm font-medium text-gray-600 flex items-center">
+                    <Hash size={14} className="mr-1" />
+                    Modelo
+                  </span>
                   <span className="text-sm text-gray-900">{produto.modelo}</span>
                 </div>
               )}
@@ -429,7 +441,6 @@ const VisualizarProduto: React.FC = () => {
                 </div>
               )}
 
-              
               <div className="px-4 py-3 flex justify-between">
                 <span className="text-sm font-medium text-gray-600 flex items-center">
                   <Tag size={14} className="mr-1" />
@@ -438,7 +449,7 @@ const VisualizarProduto: React.FC = () => {
                 <span className="text-sm text-gray-900">{produto.categoria_nome}</span>
               </div>
             </div>
-            
+
             {(produto.peso_kg || produto.altura_cm) && (
               <div className="mt-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4">Informações de Envio</h3>
@@ -451,7 +462,7 @@ const VisualizarProduto: React.FC = () => {
                       <span className="text-sm text-gray-900">{produto.peso_kg} kg</span>
                     </div>
                   )}
-                  {(produto.altura_cm && produto.largura_cm && produto.comprimento_cm) && (
+                  {produto.altura_cm && produto.largura_cm && produto.comprimento_cm && (
                     <div className="px-4 py-3 flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-600 flex items-center">
                         <Ruler size={14} className="mr-2" /> Dimensões
