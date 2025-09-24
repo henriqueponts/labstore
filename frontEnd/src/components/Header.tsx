@@ -9,7 +9,7 @@ import {
   Search,
   Menu,
   Wrench,
-  FileQuestion as CircleQuestionMark,
+  CircleQuestionMark,
   Scale,
   Users,
   LogOut,
@@ -20,9 +20,12 @@ import {
   X,
   Edit3,
   ShoppingBag,
+  ImageIcon,
 } from "lucide-react"
 import { useCart } from "../context/CartContext"
+import axios from "axios"
 
+// Interfaces locais para os dados
 interface UsuarioData {
   id_cliente?: number
   id_usuario?: number
@@ -30,6 +33,13 @@ interface UsuarioData {
   email: string
   tipo: "cliente" | "funcionario"
   tipo_perfil?: "admin" | "analista"
+}
+
+interface ProdutoBusca {
+  id_produto: number
+  nome: string
+  preco: number
+  imagemUrl: string | null
 }
 
 interface HeaderProps {
@@ -43,29 +53,82 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const searchContainerRef = useRef<HTMLDivElement>(null) // Ref para o container da busca
   const navigate = useNavigate()
   const { totalItens } = useCart()
 
+  // --- NOVOS ESTADOS PARA A BUSCA DINÂMICA ---
+  const [searchResults, setSearchResults] = useState<ProdutoBusca[]>([])
+  const [isSearchLoading, setIsSearchLoading] = useState(false)
+  const [isResultsVisible, setIsResultsVisible] = useState(false)
+
+  // Efeito para buscar produtos com debounce (espera o usuário parar de digitar)
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setUserDropdownOpen(false)
+    // Se o termo de busca for muito curto, limpa os resultados e esconde o painel
+    if (searchTerm.trim().length < 2) {
+      setSearchResults([])
+      setIsResultsVisible(false)
+      return
+    }
+
+    const fetchResults = async () => {
+      console.log(`[BUSCA] Iniciando busca por: "${searchTerm.trim()}"`)
+      setIsSearchLoading(true)
+      try {
+        const response = await axios.get(
+          `http://localhost:3000/produtos/busca-rapida?termo=${encodeURIComponent(searchTerm.trim())}`,
+        )
+        const data = response.data
+        console.log("[BUSCA] API retornou:", data)
+
+        setSearchResults(data)
+        setIsResultsVisible(true) // Sempre mostra o painel para dar feedback (mesmo que seja "nenhum resultado")
+
+      } catch (error) {
+        console.error("[BUSCA] Erro na API:", error)
+        setSearchResults([])
+        setIsResultsVisible(true) // Mostra o painel com erro também
+      } finally {
+        setIsSearchLoading(false)
       }
     }
 
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
+    // Debounce: A busca só acontece 300ms após o usuário parar de digitar
+    const timerId = setTimeout(fetchResults, 300)
+
+    // Função de limpeza: cancela o timer se o usuário digitar novamente
+    return () => clearTimeout(timerId)
+  }, [searchTerm])
+
+  // Efeito para fechar o painel de busca ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsResultsVisible(false)
+      }
     }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const handleSearch = (e: React.FormEvent) => {
+  // Remove a navegação antiga. Agora a busca é dinâmica.
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchTerm.trim()) {
+      // Navega para a página de listagem completa com o termo
       navigate(`/produtos?busca=${encodeURIComponent(searchTerm.trim())}`)
-    } else {
-      navigate("/produtos")
+      setIsResultsVisible(false) // Esconde o painel após submeter
     }
+  }
+
+  const handleProductClick = (id: number) => {
+    navigate(`/produto/${id}`)
+    setIsResultsVisible(false) // Esconde o painel
+    onSearchChange("") // Limpa a barra de pesquisa
+  }
+  
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
   }
 
   const canEditHomePage =
@@ -73,10 +136,8 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
 
   return (
     <header className="bg-white shadow-md relative z-50">
-      {/* Main header */}
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          {/* Logo */}
           <div className="flex items-center">
             <h1 className="text-2xl font-bold text-blue-600 cursor-pointer" onClick={() => navigate("/")}>
               LabStore
@@ -84,15 +145,16 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
             <span className="text-sm text-gray-500 ml-2 hidden md:block">Tecnologia & Inovação</span>
           </div>
 
-          {/* Search bar */}
-          <div className="flex-1 max-w-xl mx-4 md:mx-8">
-            <form onSubmit={handleSearch}>
+          {/* --- CONTAINER DA BARRA DE PESQUISA --- */}
+          <div ref={searchContainerRef} className="flex-1 max-w-xl mx-4 md:mx-8 relative">
+            <form onSubmit={handleSearchSubmit}>
               <div className="relative">
                 <input
                   type="text"
                   placeholder="Buscar produtos..."
                   value={searchTerm}
                   onChange={(e) => onSearchChange(e.target.value)}
+                  onFocus={() => {if (searchTerm.length > 1) setIsResultsVisible(true)}}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <button type="submit" className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600">
@@ -100,11 +162,60 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 </button>
               </div>
             </form>
+
+            {/* --- PAINEL DE RESULTADOS DA BUSCA --- */}
+            {isResultsVisible && (
+              <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+                {isSearchLoading ? (
+                  <div className="p-4 text-center text-gray-500">Buscando...</div>
+                ) : searchResults.length > 0 ? (
+                  <ul>
+                    {searchResults.map((produto) => (
+                      <li key={produto.id_produto}>
+                        <div
+                          onClick={() => handleProductClick(produto.id_produto)}
+                          className="flex items-center p-3 hover:bg-gray-100 cursor-pointer transition-colors"
+                        >
+                          {produto.imagemUrl ? (
+                            <img
+                              src={`http://localhost:3000/produtos${produto.imagemUrl}`}
+                              alt={produto.nome}
+                              className="w-12 h-12 object-cover rounded-md mr-4"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-gray-200 rounded-md mr-4 flex items-center justify-center">
+                              <ImageIcon className="h-6 w-6 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-800 truncate">{produto.nome}</p>
+                            <p className="text-sm text-blue-600 font-semibold">{formatPrice(produto.preco)}</p>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                     {searchTerm.trim() && (
+                      <li>
+                        <button
+                          onClick={handleSearchSubmit}
+                          className="w-full text-center p-3 bg-gray-50 hover:bg-gray-200 text-sm font-medium text-blue-600 transition-colors"
+                        >
+                          Ver todos os resultados
+                        </button>
+                      </li>
+                    )}
+                  </ul>
+                ) : (
+                  <div className="p-4 text-center text-gray-500">Nenhum resultado encontrado.</div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* User actions */}
+          {/* User actions (sem alterações) */}
           <div className="flex items-center space-x-2 md:space-x-4">
-            {!usuario ? (
+             {/* ... o resto do seu código de ações do usuário permanece aqui ... */}
+             {!usuario ? (
               <>
                 <button
                   onClick={() => navigate("/login")}
@@ -208,7 +319,6 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
               </button>
             )}
 
-            {/* Mobile menu button */}
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-gray-700 p-1">
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>

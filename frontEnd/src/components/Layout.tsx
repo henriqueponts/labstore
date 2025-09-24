@@ -1,14 +1,14 @@
+// Salve como: frontEnd/src/components/Layout.tsx
+
 "use client"
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// Salvar como: frontEnd/src/components/Layout.tsx
-
 import axios from "axios"
 import type React from "react"
 import { useEffect, useState, useCallback } from "react"
 import type { ReactNode } from "react"
 import Header from "./Header"
-import { useNavigate, useLocation } from "react-router-dom" // <-- useLocation IMPORTADO
+import { useNavigate, useLocation } from "react-router-dom"
 import { useCart } from "../context/CartContext"
 
 interface UsuarioData {
@@ -34,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({
   showLoading = true,
 }) => {
   const navigate = useNavigate()
-  const location = useLocation() // <-- OBTENDO A LOCALIZAÇÃO ATUAL DA ROTA
+  const location = useLocation()
   const [usuario, setUsuario] = useState<UsuarioData | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
@@ -42,7 +42,9 @@ const Layout: React.FC<LayoutProps> = ({
 
   // Usamos useCallback para garantir que a função checkUser não mude a cada render
   const checkUser = useCallback(async () => {
-    setLoading(true)
+    // A lógica de setLoading é movida para dentro para evitar flashes
+    // e só é ativada se showLoading for true
+    if (showLoading) setLoading(true)
     try {
       const token = localStorage.getItem("token")
       if (token) {
@@ -66,15 +68,14 @@ const Layout: React.FC<LayoutProps> = ({
       handleLogoutAndClearCart()
       setUsuario(null)
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
-  }, [handleLogoutAndClearCart]) // A função depende do logout do contexto
+  }, [handleLogoutAndClearCart, showLoading]) // A função depende do logout do contexto e da prop showLoading
 
-  // ESTE É O PONTO CRÍTICO DA CORREÇÃO
-  // O useEffect agora roda na montagem inicial E toda vez que a URL (location) muda.
+  // O useEffect agora roda na montagem inicial E toda vez que o pathname da URL muda.
   useEffect(() => {
     checkUser()
-  }, [location, checkUser]) // <-- DEPENDÊNCIA DE ROTA ADICIONADA
+  }, [location.pathname, checkUser]) // Dependência de rota ajustada para pathname para evitar re-renders desnecessários em mudanças de query params
 
   const handleLogout = () => {
     handleLogoutAndClearCart() // Chama a função do contexto que limpa o carrinho e o localStorage
