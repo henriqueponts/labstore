@@ -130,21 +130,16 @@ router.get("/busca-rapida", async (req, res) => {
     const searchTerm = `%${termo}%`
 
     const [produtos] = await db.query(
-      `SELECT p.*, c.nome as categoria_nome, m.nome as marca_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria LEFT JOIN Marca m ON p.id_marca = m.id_marca WHERE p.id_produto = ?`,
-      [id],
+      `SELECT p.*, c.nome as categoria_nome, m.nome as marca_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria LEFT JOIN Marca m ON p.id_marca = m.id_marca WHERE p.nome LIKE ?`,
+      [searchTerm],
     )
 
-    if (produtos.length === 0) {
-      return res.status(404).json({ message: "Produto não encontrado" })
-    }
-
-    const produto = produtos[0]
-
-    // Buscar imagens do produto
-    const [imagens] = await db.query(
-      `SELECT id_imagem, url_imagem, nome_arquivo, ordem, is_principal FROM ProdutoImagem WHERE id_produto = ? ORDER BY is_principal DESC, ordem ASC`,
-      [id],
-    )
+    // Buscar imagens para cada produto
+    for (const produto of produtos) {
+      const [imagens] = await db.query(
+        `SELECT id_imagem, url_imagem, nome_arquivo, ordem, is_principal FROM ProdutoImagem WHERE id_produto = ? ORDER BY is_principal DESC, ordem ASC`,
+        [produto.id_produto],
+      )
 
       produto.imagens = imagens
       produto.imagemUrl = imagens.find((img) => img.is_principal)?.url_imagem || imagens[0]?.url_imagem || null
@@ -677,7 +672,16 @@ router.get("/produtos/buscar", async (req, res) => {
     const { nome, categoria, marca, preco_min, preco_max, status } = req.query
     const db = await connectToDatabase()
 
-    let query = `SELECT p.*, c.nome as categoria_nome, m.nome as marca_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria LEFT JOIN Marca m ON p.id_marca = m.id_marca WHERE 1=1`
+    let query = `
+      SELECT
+        p.*,
+        c.nome as categoria_nome,
+        m.nome as marca_nome
+      FROM Produto p
+      LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria
+      LEFT JOIN Marca m ON p.id_marca = m.id_marca
+      WHERE 1=1
+    `
     const params = []
 
     if (nome) {
