@@ -13,7 +13,7 @@ import produtoRoutes from "./routes/produtoRoutes.js"
 import lgpdRoutes from "./routes/lgpdRoutes.js"
 import carrinhoRoutes from "./routes/carrinhoRoutes.js"
 import freteRoutes from "./routes/freteRoutes.js"
-import carouselRoutes from "./routes/carouselRoutes.js"
+import carrosselRoutes from "./routes/carrosselRoutes.js"
 import testRoutes from "./routes/testRoutes.js"
 import pagamentoRoutes from './routes/pagamentoRoutes.js'
 import pedidoRoutes from './routes/pedidoRoutes.js';
@@ -210,7 +210,7 @@ app.use("/uploads", express.static(uploadsPath))
 
 // Middleware de log geral
 app.use((req, res, next) => {
-  if (req.url.includes("/api/carousel") || req.url.includes("/uploads")) {
+  if (req.url.includes("/api/carrossel") || req.url.includes("/uploads")) {
     console.log(`🌐 ${req.method} ${req.url}`)
   }
   next()
@@ -236,8 +236,8 @@ app.get("/", (req, res) => {
         "/carrinho/remover/:id",
         "/carrinho/limpar",
       ],
-      carousel: ["/api/carousel", "/api/carousel/:id"],
-      test: ["/test/db", "/test/carousel"],
+      carrossel: ["/api/carrossel", "/api/carrossel/:id"],
+      test: ["/test/db", "/test/carrossel"],
       chamados: [
         "/chamados/meus-chamados",
         "/chamados/criar",
@@ -260,7 +260,7 @@ app.get("/", (req, res) => {
     },
     status: "online",
     uploads: {
-      carousel: "/uploads/carousel/",
+      carrossel: "/uploads/carrossel/",
       produtos: "/uploads/produtos/"
     }
   })
@@ -278,7 +278,7 @@ app.use("/carrinho", carrinhoRoutes)
 app.use("/frete", freteRoutes)
 app.use('/pagamento', pagamentoRoutes);
 app.use("/pedido", pedidoRoutes);
-app.use("/api/carousel", carouselRoutes)
+app.use("/api/carrossel", carrosselRoutes)
 app.use("/test", testRoutes)
 console.log("✅ Rotas registradas!")
 
@@ -291,9 +291,9 @@ app.listen(PORT, () => {
   console.log(`🌐 Server running on http://localhost:${PORT}`)
   console.log("📋 Rotas de teste disponíveis:")
   console.log("  - GET  /test/db (testar conexão com banco)")
-  console.log("  - GET  /test/carousel (testar dados do carrossel)")
-  console.log("  - GET  /api/carousel (listar imagens do carrossel)")
-  console.log("  - GET  /uploads/carousel/ (servir imagens do carrossel)")
+  console.log("  - GET  /test/carrossel (testar dados do carrossel)")
+  console.log("  - GET  /api/carrossel (listar imagens do carrossel)")
+  console.log("  - GET  /uploads/carrossel/ (servir imagens do carrossel)")
   console.log("  - GET  /uploads/produtos/ (servir imagens dos produtos)")
   console.log("")
   console.log("🗄️ Conecte ao banco MySQL e configure JWT_SECRET no .env")

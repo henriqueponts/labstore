@@ -1,4 +1,4 @@
-// Arquivo: server/routes/carouselRoutes.js (VERSÃO CORRIGIDA)
+// Arquivo: server/routes/carrosselRoutes.js (VERSÃO CORRIGIDA)
 
 import express from "express"
 import multer from "multer"
@@ -14,7 +14,7 @@ const router = express.Router()
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, "../uploads/carousel")
+    const uploadPath = path.join(__dirname, "../uploads/carrossel")
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true })
     }
@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9)
-    cb(null, "carousel-" + uniqueSuffix + path.extname(file.originalname))
+    cb(null, "carrossel-" + uniqueSuffix + path.extname(file.originalname))
   },
 })
 
@@ -43,7 +43,7 @@ router.get("/", async (req, res) => {
   try {
     const db = await connectToDatabase()
     const [rows] = await db.execute(
-      "SELECT id_carousel, titulo, subtitulo, url_imagem, link_destino, ordem, ativo FROM carousel_images ORDER BY ordem ASC",
+      "SELECT id_carrossel, titulo, subtitulo, url_imagem, link_destino, ordem, ativo FROM carrossel_imagens ORDER BY ordem ASC",
     )
     
     // Normalizar URLs das imagens
@@ -53,7 +53,7 @@ router.get("/", async (req, res) => {
       url_imagem: row.url_imagem ? (
         row.url_imagem.startsWith('http') ? row.url_imagem : 
         row.url_imagem.startsWith('/') ? row.url_imagem :
-        `/uploads/carousel/${row.url_imagem}`
+        `/uploads/carrossel/${row.url_imagem}`
       ) : null
     }))
     
@@ -78,16 +78,16 @@ router.post("/", upload.single("imagem"), async (req, res) => {
       return res.status(400).json({ message: "Título e subtítulo são obrigatórios" })
     }
     
-    const url_imagem = `/uploads/carousel/${req.file.filename}`
+    const url_imagem = `/uploads/carrossel/${req.file.filename}`
     
     const db = await connectToDatabase()
     const [result] = await db.execute(
-      "INSERT INTO carousel_images (titulo, subtitulo, url_imagem, link_destino, ordem, ativo) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO carrossel_imagens (titulo, subtitulo, url_imagem, link_destino, ordem, ativo) VALUES (?, ?, ?, ?, ?, ?)",
       [titulo, subtitulo, url_imagem, link_destino || null, parseInt(ordem) || 1, true]
     )
     
     const [newImage] = await db.execute(
-      "SELECT * FROM carousel_images WHERE id_carousel = ?", 
+      "SELECT * FROM carrossel_imagens WHERE id_carrossel = ?", 
       [result.insertId]
     )
     
@@ -118,7 +118,7 @@ router.put("/:id", upload.single("imagem"), async (req, res) => {
     console.log(`🔄 Atualizando imagem ${id}:`, { titulo, subtitulo, link_destino, ordem, ativo })
     
     const db = await connectToDatabase()
-    const [existing] = await db.execute("SELECT * FROM carousel_images WHERE id_carousel = ?", [id])
+    const [existing] = await db.execute("SELECT * FROM carrossel_imagens WHERE id_carrossel = ?", [id])
     
     if (existing.length === 0) {
       return res.status(404).json({ message: "Imagem não encontrada" })
@@ -138,18 +138,18 @@ router.put("/:id", upload.single("imagem"), async (req, res) => {
           console.log(`🗑 Imagem antiga removida: ${oldImagePath}`)
         }
       }
-      url_imagem = `/uploads/carousel/${req.file.filename}`
+      url_imagem = `/uploads/carrossel/${req.file.filename}`
     }
     
     // Lógica robusta para converter 'ativo' para booleano
     let finalAtivo = Boolean(ativo === 'true' || ativo === true || ativo === 1 || ativo === '1')
 
     await db.execute(
-      "UPDATE carousel_images SET titulo = ?, subtitulo = ?, url_imagem = ?, link_destino = ?, ordem = ?, ativo = ? WHERE id_carousel = ?",
+      "UPDATE carrossel_imagens SET titulo = ?, subtitulo = ?, url_imagem = ?, link_destino = ?, ordem = ?, ativo = ? WHERE id_carrossel = ?",
       [titulo, subtitulo, url_imagem, link_destino || null, parseInt(ordem) || 1, finalAtivo, id]
     )
 
-    const [updated] = await db.execute("SELECT * FROM carousel_images WHERE id_carousel = ?", [id])
+    const [updated] = await db.execute("SELECT * FROM carrossel_imagens WHERE id_carrossel = ?", [id])
     
     console.log(`✅ Imagem ${id} atualizada com sucesso`)
     res.json({
@@ -175,7 +175,7 @@ router.delete("/:id", async (req, res) => {
     const { id } = req.params
     
     const db = await connectToDatabase()
-    const [existing] = await db.execute("SELECT * FROM carousel_images WHERE id_carousel = ?", [id])
+    const [existing] = await db.execute("SELECT * FROM carrossel_imagens WHERE id_carrossel = ?", [id])
     
     if (existing.length === 0) {
       return res.status(404).json({ message: "Imagem não encontrada" })
@@ -191,7 +191,7 @@ router.delete("/:id", async (req, res) => {
     }
     
     // Remover do banco
-    await db.execute("DELETE FROM carousel_images WHERE id_carousel = ?", [id])
+    await db.execute("DELETE FROM carrossel_imagens WHERE id_carrossel = ?", [id])
     
     console.log(`🗑 Imagem ${id} removida do banco de dados`)
     res.json({ message: "Imagem removida com sucesso" })
@@ -208,7 +208,7 @@ router.get("/:id", async (req, res) => {
     
     const db = await connectToDatabase()
     const [rows] = await db.execute(
-      "SELECT * FROM carousel_images WHERE id_carousel = ?", 
+      "SELECT * FROM carrossel_imagens WHERE id_carrossel = ?", 
       [id]
     )
     

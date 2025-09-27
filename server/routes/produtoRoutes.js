@@ -282,8 +282,9 @@ router.get("/produtos/:id", async (req, res) => {
     const { id } = req.params
     const db = await connectToDatabase()
 
+    // CONSULTA MODIFICADA AQUI: Adicionado LEFT JOIN com Marca para obter marca_nome
     const [produtos] = await db.query(
-      `SELECT p.*, c.nome as categoria_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria WHERE p.id_produto = ?`,
+      `SELECT p.*, c.nome as categoria_nome, m.nome as marca_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria LEFT JOIN Marca m ON p.id_marca = m.id_marca WHERE p.id_produto = ?`,
       [id],
     )
 

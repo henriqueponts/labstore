@@ -271,8 +271,8 @@ CREATE TABLE IF NOT EXISTS RespostaChamado (
 );
 
 -- Tabela para armazenar as imagens do carrossel
-CREATE TABLE carousel_images (
-    id_carousel INT PRIMARY KEY AUTO_INCREMENT,
+CREATE TABLE carrossel_imagens (
+    id_carrossel INT PRIMARY KEY AUTO_INCREMENT,
     titulo VARCHAR(255) NOT NULL,
     subtitulo TEXT,
     url_imagem VARCHAR(500),
@@ -490,10 +490,10 @@ BEGIN
 END//
 DELIMITER ;
 
--- Trigger para tabela carousel_images
+-- Trigger para tabela carrossel_imagens
 DELIMITER //
-CREATE TRIGGER carousel_trim_before_insert
-BEFORE INSERT ON carousel_images
+CREATE TRIGGER carrossel_trim_before_insert
+BEFORE INSERT ON carrossel_imagens
 FOR EACH ROW
 BEGIN
     SET NEW.titulo = TRIM(NEW.titulo);
@@ -502,8 +502,8 @@ BEGIN
     SET NEW.link_destino = TRIM(IFNULL(NEW.link_destino, ''));
 END//
 
-CREATE TRIGGER carousel_trim_before_update
-BEFORE UPDATE ON carousel_images
+CREATE TRIGGER carrossel_trim_before_update
+BEFORE UPDATE ON carrossel_imagens
 FOR EACH ROW
 BEGIN
     SET NEW.titulo = TRIM(NEW.titulo);
@@ -1017,7 +1017,7 @@ INSERT INTO ProdutoImagem (id_produto, url_imagem, nome_arquivo, ordem, is_princ
 );
 
 -- Inserir dados padrão
-INSERT INTO carousel_images (titulo, subtitulo, url_imagem, link_destino, ordem, ativo) VALUES
-('Tecnologia que Transforma', 'Encontre os melhores produtos com preços incríveis', '/uploads/carousel/default1.jpg', '/produtos', 1, TRUE),
-('Setup Gamer Completo', 'Monte seu setup dos sonhos com nossa linha gamer', '/uploads/carousel/default2.jpg', '/produtos?categoria=PCs Gamer', 2, TRUE),
-('Assistência Técnica Especializada', 'Reparo rápido e confiável para seus equipamentos', '/uploads/carousel/default3.jpg', '/central-ajuda', 3, TRUE);
+INSERT INTO carrossel_imagens (titulo, subtitulo, url_imagem, link_destino, ordem, ativo) VALUES
+('Tecnologia que Transforma', 'Encontre os melhores produtos com preços incríveis', '/uploads/carrossel/default1.jpg', '/produtos', 1, TRUE),
+('Setup Gamer Completo', 'Monte seu setup dos sonhos com nossa linha gamer', '/uploads/carrossel/default2.jpg', '/produtos?categoria=PCs Gamer', 2, TRUE),
+('Assistência Técnica Especializada', 'Reparo rápido e confiável para seus equipamentos', '/uploads/carrossel/default3.jpg', '/central-ajuda', 3, TRUE);

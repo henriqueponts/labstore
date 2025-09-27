@@ -1,5 +1,5 @@
-// Arquivo: server/debug-carousel.js
-// Execute este script para debugar o carrossel: node debug-carousel.js
+// Arquivo: server/debug-carrossel.js
+// Execute este script para debugar o carrossel: node debug-carrossel.js
 
 import { connectToDatabase } from "./lib/db.js"
 import fs from "fs"
@@ -9,7 +9,7 @@ import { fileURLToPath } from "url"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-async function debugCarousel() {
+async function debugcarrossel() {
   console.log("🔍 Iniciando debug do carrossel...")
   
   try {
@@ -18,17 +18,17 @@ async function debugCarousel() {
     console.log("✅ Conectado ao banco de dados")
     
     // 2. Buscar todas as imagens do carrossel
-    const [images] = await db.execute("SELECT * FROM carousel_images ORDER BY ordem ASC")
+    const [images] = await db.execute("SELECT * FROM carrossel_images ORDER BY ordem ASC")
     console.log(`📊 Encontradas ${images.length} imagens no banco`)
     
     // 3. Verificar estrutura de diretórios
     const uploadDir = path.join(__dirname, "uploads")
-    const carouselDir = path.join(__dirname, "uploads", "carousel")
+    const carrosselDir = path.join(__dirname, "uploads", "carrossel")
     
     console.log(`📁 Diretório uploads: ${uploadDir}`)
-    console.log(`📁 Diretório carousel: ${carouselDir}`)
+    console.log(`📁 Diretório carrossel: ${carrosselDir}`)
     console.log(`📁 Uploads existe: ${fs.existsSync(uploadDir)}`)
-    console.log(`📁 Carousel existe: ${fs.existsSync(carouselDir)}`)
+    console.log(`📁 carrossel existe: ${fs.existsSync(carrosselDir)}`)
     
     // Criar diretórios se não existirem
     if (!fs.existsSync(uploadDir)) {
@@ -36,20 +36,20 @@ async function debugCarousel() {
       console.log("📁 Criou diretório uploads")
     }
     
-    if (!fs.existsSync(carouselDir)) {
-      fs.mkdirSync(carouselDir, { recursive: true })
-      console.log("📁 Criou diretório carousel")
+    if (!fs.existsSync(carrosselDir)) {
+      fs.mkdirSync(carrosselDir, { recursive: true })
+      console.log("📁 Criou diretório carrossel")
     }
     
-    // 4. Listar arquivos no diretório carousel
-    const files = fs.existsSync(carouselDir) ? fs.readdirSync(carouselDir) : []
-    console.log(`📋 Arquivos no diretório carousel: ${files.length}`)
+    // 4. Listar arquivos no diretório carrossel
+    const files = fs.existsSync(carrosselDir) ? fs.readdirSync(carrosselDir) : []
+    console.log(`📋 Arquivos no diretório carrossel: ${files.length}`)
     files.forEach(file => console.log(`  - ${file}`))
     
     // 5. Verificar cada imagem do banco
     console.log("\n🔍 Verificando cada imagem:")
     for (const image of images) {
-      console.log(`\n📸 Imagem ID ${image.id_carousel}: ${image.titulo}`)
+      console.log(`\n📸 Imagem ID ${image.id_carrossel}: ${image.titulo}`)
       console.log(`  - URL no banco: ${image.url_imagem}`)
       console.log(`  - Ativo: ${Boolean(image.ativo)}`)
       console.log(`  - Ordem: ${image.ordem}`)
@@ -62,7 +62,7 @@ async function debugCarousel() {
         } else if (image.url_imagem.startsWith('/')) {
           filePath = path.join(__dirname, image.url_imagem)
         } else {
-          filePath = path.join(carouselDir, image.url_imagem)
+          filePath = path.join(carrosselDir, image.url_imagem)
         }
         
         const fileExists = fs.existsSync(filePath)
@@ -91,7 +91,7 @@ async function debugCarousel() {
       if (img.url_imagem.startsWith('/uploads/')) {
         filePath = path.join(__dirname, img.url_imagem)
       } else {
-        filePath = path.join(carouselDir, img.url_imagem)
+        filePath = path.join(carrosselDir, img.url_imagem)
       }
       return !fs.existsSync(filePath)
     })
@@ -117,4 +117,4 @@ async function debugCarousel() {
   }
 }
 
-debugCarousel()
+debugcarrossel()

@@ -24,21 +24,21 @@ router.get("/db", async (req, res) => {
 })
 
 // Teste específico do carrossel
-router.get("/carousel", async (req, res) => {
+router.get("/carrossel", async (req, res) => {
   try {
     const db = await connectToDatabase()
 
     // Verificar se a tabela existe
-    const [tables] = await db.execute("SHOW TABLES LIKE 'carousel_images'")
+    const [tables] = await db.execute("SHOW TABLES LIKE 'carrossel_images'")
     if (tables.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Tabela carousel_images não encontrada!",
+        message: "Tabela carrossel_images não encontrada!",
       })
     }
 
     // Buscar dados
-    const [results] = await db.execute("SELECT * FROM carousel_images ORDER BY ordem ASC")
+    const [results] = await db.execute("SELECT * FROM carrossel_images ORDER BY ordem ASC")
 
     res.json({
       success: true,

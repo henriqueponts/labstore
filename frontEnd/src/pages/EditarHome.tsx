@@ -7,8 +7,8 @@ import axios from "axios"
 import Layout from "../components/Layout"
 import { Save, Upload, Eye, EyeOff, ImageIcon, Package, Loader2 } from "lucide-react"
 
-interface CarouselImage {
-  id_carousel: number
+interface carrosselImage {
+  id_carrossel: number
   titulo: string
   subtitulo: string
   url_imagem: string | null
@@ -31,7 +31,7 @@ const EditarHome: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingImages, setUploadingImages] = useState<{ [key: number]: boolean }>({})
-  const [carouselImages, setCarouselImages] = useState<CarouselImage[]>([])
+  const [carrosselImages, setcarrosselImages] = useState<carrosselImage[]>([])
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [produtosDestaque, setProdutosDestaque] = useState<number[]>([])
   const [imageErrors, setImageErrors] = useState<{ [key: number]: boolean }>({})
@@ -46,7 +46,7 @@ const EditarHome: React.FC = () => {
   }
 
   // Função para construir URL da imagem
-  const getImageUrl = (image: CarouselImage) => {
+  const getImageUrl = (image: carrosselImage) => {
     if (!image.url_imagem) return null
 
     if (image.url_imagem.startsWith("http")) {
@@ -57,7 +57,7 @@ const EditarHome: React.FC = () => {
       return `http://localhost:3000${image.url_imagem}`
     }
 
-    return `http://localhost:3000/uploads/carousel/${image.url_imagem}`
+    return `http://localhost:3000/uploads/carrossel/${image.url_imagem}`
   }
 
   // Função para lidar com erro de imagem
@@ -86,18 +86,18 @@ const EditarHome: React.FC = () => {
       }
 
       try {
-        const carouselResponse = await axios.get("http://localhost:3000/api/carousel")
-        const sortedImages = carouselResponse.data
-          .map((img: CarouselImage) => ({
+        const carrosselResponse = await axios.get("http://localhost:3000/api/carrossel")
+        const sortedImages = carrosselResponse.data
+          .map((img: carrosselImage) => ({
             ...img,
             ativo: normalizeBoolean(img.ativo),
           }))
-          .sort((a: CarouselImage, b: CarouselImage) => a.ordem - b.ordem)
+          .sort((a: carrosselImage, b: carrosselImage) => a.ordem - b.ordem)
 
-        setCarouselImages(sortedImages)
+        setcarrosselImages(sortedImages)
       } catch (err) {
         console.error("Erro ao carregar carrossel:", err)
-        setCarouselImages([])
+        setcarrosselImages([])
       }
 
       const produtosResponse = await axios.get("http://localhost:3000/produtos/produtos")
@@ -136,7 +136,7 @@ const EditarHome: React.FC = () => {
       const formData = new FormData()
       formData.append("imagem", file)
 
-      const image = carouselImages.find((img) => img.id_carousel === imageId)
+      const image = carrosselImages.find((img) => img.id_carrossel === imageId)
       if (image) {
         formData.append("titulo", image.titulo)
         formData.append("subtitulo", image.subtitulo)
@@ -144,7 +144,7 @@ const EditarHome: React.FC = () => {
         formData.append("ordem", image.ordem.toString())
         formData.append("ativo", image.ativo.toString())
 
-        const response = await axios.put(`http://localhost:3000/api/carousel/${imageId}`, formData, {
+        const response = await axios.put(`http://localhost:3000/api/carrossel/${imageId}`, formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
@@ -155,7 +155,7 @@ const EditarHome: React.FC = () => {
           ativo: normalizeBoolean(response.data.ativo),
         }
 
-        setCarouselImages((prev) => prev.map((img) => (img.id_carousel === imageId ? updatedImage : img)))
+        setcarrosselImages((prev) => prev.map((img) => (img.id_carrossel === imageId ? updatedImage : img)))
         setImageErrors((prev) => ({ ...prev, [imageId]: false }))
 
         alert("Imagem carregada com sucesso!")
@@ -171,15 +171,15 @@ const EditarHome: React.FC = () => {
   // --- INÍCIO DAS MODIFICAÇÕES ---
 
   // 1. Nova função para atualizar o estado local instantaneamente (sem trim)
-  const handleCarouselInputChange = (id: number, field: keyof CarouselImage, value: CarouselImage[keyof CarouselImage]) => {
-    setCarouselImages((prev) =>
-      prev.map((img) => (img.id_carousel === id ? { ...img, [field]: value } : img)),
+  const handlecarrosselInputChange = (id: number, field: keyof carrosselImage, value: carrosselImage[keyof carrosselImage]) => {
+    setcarrosselImages((prev) =>
+      prev.map((img) => (img.id_carrossel === id ? { ...img, [field]: value } : img)),
     )
   }
 
   // 2. Nova função para ser chamada no onBlur dos inputs de texto
-  const handleCarouselInputBlur = (id: number, field: keyof CarouselImage) => {
-    const image = carouselImages.find((img) => img.id_carousel === id)
+  const handlecarrosselInputBlur = (id: number, field: keyof carrosselImage) => {
+    const image = carrosselImages.find((img) => img.id_carrossel === id)
     if (!image) return
 
     const currentValue = image[field]
@@ -188,18 +188,18 @@ const EditarHome: React.FC = () => {
       // Apenas atualiza se o valor realmente mudou após o trim
       if (trimmedValue !== currentValue) {
         // Atualiza o estado local com o valor "limpo" e envia para a API
-        updateCarouselImage(id, field, trimmedValue)
+        updatecarrosselImage(id, field, trimmedValue)
       }
     }
   }
 
   // 3. A função original agora é o nosso "salvador" de dados
-  const updateCarouselImage = async (id: number, field: keyof CarouselImage, value: CarouselImage[keyof CarouselImage]) => {
+  const updatecarrosselImage = async (id: number, field: keyof carrosselImage, value: carrosselImage[keyof carrosselImage]) => {
     // Adiciona o trim aqui para garantir que qualquer valor de string seja limpo antes de enviar
     const finalValue = typeof value === 'string' ? value.trim() : value
 
     try {
-      const image = carouselImages.find((img) => img.id_carousel === id)
+      const image = carrosselImages.find((img) => img.id_carrossel === id)
       if (!image) return
 
       // Usamos o estado local para os outros campos para não perder dados não salvos
@@ -212,14 +212,14 @@ const EditarHome: React.FC = () => {
         [field]: finalValue, // Aplica o valor atualizado e limpo
       }
 
-      const response = await axios.put(`http://localhost:3000/api/carousel/${id}`, updatedData)
+      const response = await axios.put(`http://localhost:3000/api/carrossel/${id}`, updatedData)
 
       const updatedImage = {
         ...response.data,
         ativo: normalizeBoolean(response.data.ativo),
       }
 
-      setCarouselImages((prev) => prev.map((img) => (img.id_carousel === id ? updatedImage : img)))
+      setcarrosselImages((prev) => prev.map((img) => (img.id_carrossel === id ? updatedImage : img)))
 
       if (field === "ativo") {
         const status = value ? "ativada" : "inativada"
@@ -276,7 +276,7 @@ const EditarHome: React.FC = () => {
 
   const handleSave = async () => {
     // Antes de salvar, vamos garantir que todos os dados de texto estão limpos.
-    const trimmedCarouselImages = carouselImages.map(img => ({
+    const trimmedcarrosselImages = carrosselImages.map(img => ({
       ...img,
       titulo: img.titulo.trim(),
       subtitulo: img.subtitulo.trim(),
@@ -284,9 +284,9 @@ const EditarHome: React.FC = () => {
     }))
     
     // Atualiza o estado local para refletir os valores limpos
-    setCarouselImages(trimmedCarouselImages)
+    setcarrosselImages(trimmedcarrosselImages)
     
-    const invalidImages = trimmedCarouselImages.filter(
+    const invalidImages = trimmedcarrosselImages.filter(
       (img) =>
         normalizeBoolean(img.ativo) &&
         (!img.titulo || !img.subtitulo || (img.link_destino && !isValidUrl(img.link_destino))),
@@ -303,15 +303,15 @@ const EditarHome: React.FC = () => {
       localStorage.setItem("produtosDestaque", JSON.stringify(produtosDestaque))
       
       // Salva todas as alterações dos slides no backend
-      const updatePromises = trimmedCarouselImages.map(image =>
-        axios.put(`http://localhost:3000/api/carousel/${image.id_carousel}`, {
+      const updatePromises = trimmedcarrosselImages.map(image =>
+        axios.put(`http://localhost:3000/api/carrossel/${image.id_carrossel}`, {
           ...image,
           link_destino: image.link_destino || null
         })
       )
       await Promise.all(updatePromises)
       
-      const slidesAtivos = trimmedCarouselImages.filter((img) => normalizeBoolean(img.ativo))
+      const slidesAtivos = trimmedcarrosselImages.filter((img) => normalizeBoolean(img.ativo))
       const totalSlides = slidesAtivos.length
       const totalProdutos = produtosDestaque.length
       const primeiraImagem = slidesAtivos.sort((a, b) => a.ordem - b.ordem)[0]
@@ -442,13 +442,13 @@ const EditarHome: React.FC = () => {
 
 
             <div className="space-y-6">
-              {carouselImages.map((image) => {
+              {carrosselImages.map((image) => {
                 const isActive = normalizeBoolean(image.ativo)
                 const imageUrl = getImageUrl(image)
                 
                 return (
                   <div
-                    key={image.id_carousel}
+                    key={image.id_carrossel}
                     className={`border rounded-lg p-4 transition-all duration-200 ${
                       !isActive ? "opacity-75 bg-gray-50 border-gray-300" : "border-gray-200"
                     }`}
@@ -457,12 +457,12 @@ const EditarHome: React.FC = () => {
                      <input
                       type="file"
                       ref={(el) => {
-                        fileInputRefs.current[image.id_carousel] = el
+                        fileInputRefs.current[image.id_carrossel] = el
                       }}
                       onChange={(e) => {
                         const file = e.target.files?.[0]
                         if (file) {
-                          handleFileUpload(image.id_carousel, file)
+                          handleFileUpload(image.id_carrossel, file)
                         }
                       }}
                       accept="image/*"
@@ -481,7 +481,7 @@ const EditarHome: React.FC = () => {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() =>
-                            updateCarouselImage(image.id_carousel, "ativo", !normalizeBoolean(image.ativo))
+                            updatecarrosselImage(image.id_carrossel, "ativo", !normalizeBoolean(image.ativo))
                           }
                           className={`p-2 rounded-lg transition-colors ${
                             normalizeBoolean(image.ativo)
@@ -505,12 +505,12 @@ const EditarHome: React.FC = () => {
                             {image.url_imagem ? "Imagem carregada" : "Nenhuma imagem"}
                           </div>
                           <button
-                            onClick={() => fileInputRefs.current[image.id_carousel]?.click()}
-                            disabled={uploadingImages[image.id_carousel]}
+                            onClick={() => fileInputRefs.current[image.id_carrossel]?.click()}
+                            disabled={uploadingImages[image.id_carrossel]}
                             className="px-3 py-2 bg-blue-600 text-white border border-l-0 border-blue-600 rounded-r-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                             title="Alterar imagem"
                           >
-                            {uploadingImages[image.id_carousel] ? (
+                            {uploadingImages[image.id_carrossel] ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <Upload className="h-4 w-4" />
@@ -528,8 +528,8 @@ const EditarHome: React.FC = () => {
                         <input
                           type="text"
                           value={image.link_destino || ""}
-                          onChange={(e) => handleCarouselInputChange(image.id_carousel, "link_destino", e.target.value)}
-                          onBlur={() => handleCarouselInputBlur(image.id_carousel, "link_destino")}
+                          onChange={(e) => handlecarrosselInputChange(image.id_carrossel, "link_destino", e.target.value)}
+                          onBlur={() => handlecarrosselInputBlur(image.id_carrossel, "link_destino")}
                           placeholder="/produtos ou https://exemplo.com"
                           className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                             image.link_destino && !isValidUrl(image.link_destino) ? "border-red-300" : "border-gray-300"
@@ -545,8 +545,8 @@ const EditarHome: React.FC = () => {
                         <input
                           type="text"
                           value={image.titulo}
-                          onChange={(e) => handleCarouselInputChange(image.id_carousel, "titulo", e.target.value)}
-                          onBlur={() => handleCarouselInputBlur(image.id_carousel, "titulo")}
+                          onChange={(e) => handlecarrosselInputChange(image.id_carrossel, "titulo", e.target.value)}
+                          onBlur={() => handlecarrosselInputBlur(image.id_carrossel, "titulo")}
                           placeholder="Título do slide"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           required
@@ -558,8 +558,8 @@ const EditarHome: React.FC = () => {
                         <input
                           type="text"
                           value={image.subtitulo}
-                          onChange={(e) => handleCarouselInputChange(image.id_carousel, "subtitulo", e.target.value)}
-                          onBlur={() => handleCarouselInputBlur(image.id_carousel, "subtitulo")}
+                          onChange={(e) => handlecarrosselInputChange(image.id_carrossel, "subtitulo", e.target.value)}
+                          onBlur={() => handlecarrosselInputBlur(image.id_carrossel, "subtitulo")}
                           placeholder="Subtítulo do slide"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           required
@@ -571,7 +571,7 @@ const EditarHome: React.FC = () => {
                      <div className="mt-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">Preview</label>
                       <div className="preview-container">
-                        {!imageErrors[image.id_carousel] && imageUrl ? (
+                        {!imageErrors[image.id_carrossel] && imageUrl ? (
                           <div className="preview-image-container">
                             <img
                               src={imageUrl}
@@ -581,7 +581,7 @@ const EditarHome: React.FC = () => {
                               }}
                               onError={() => {
                                 console.error(`Erro no preview: ${imageUrl}`)
-                                handleImageError(image.id_carousel)
+                                handleImageError(image.id_carrossel)
                               }}
                             />
                           </div>
@@ -615,7 +615,7 @@ const EditarHome: React.FC = () => {
               })}
               
               {/* ... (o resto do componente continua o mesmo) ... */}
-               {carouselImages.length === 0 && (
+               {carrosselImages.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <ImageIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                   <p>Nenhuma imagem no carrossel encontrada.</p>
@@ -624,15 +624,15 @@ const EditarHome: React.FC = () => {
             </div>
 
             {/* Resumo da ordem */}
-            {carouselImages.length > 0 && (
+            {carrosselImages.length > 0 && (
               <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                 <h3 className="font-medium text-gray-900 mb-2">Slides Ativos (Ordem de Exibição):</h3>
                 <div className="space-y-1">
-                  {carouselImages
+                  {carrosselImages
                     .filter((img) => normalizeBoolean(img.ativo))
                     .sort((a, b) => a.ordem - b.ordem)
                     .map((img, index) => (
-                      <div key={img.id_carousel} className="flex items-center space-x-2 text-sm">
+                      <div key={img.id_carrossel} className="flex items-center space-x-2 text-sm">
                         <span className="font-medium text-gray-600">{index + 1}°</span>
                         <span className="text-gray-900">{img.titulo}</span>
                         <span className="text-gray-500">(Posição {img.ordem})</span>
@@ -643,7 +643,7 @@ const EditarHome: React.FC = () => {
                         </span>
                       </div>
                     ))}
-                  {carouselImages.filter((img) => normalizeBoolean(img.ativo)).length === 0 && (
+                  {carrosselImages.filter((img) => normalizeBoolean(img.ativo)).length === 0 && (
                     <p className="text-gray-500 text-sm">Nenhum slide ativo no momento.</p>
                   )}
                 </div>

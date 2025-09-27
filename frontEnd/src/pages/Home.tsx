@@ -28,8 +28,8 @@ interface Produto {
   }>
 }
 
-interface CarouselImage {
-  id_carousel: number
+interface carrosselImage {
+  id_carrossel: number
   titulo: string
   subtitulo: string
   url_imagem: string | null
@@ -43,7 +43,7 @@ const Home: React.FC = () => {
   const [produtosDestaque, setProdutosDestaque] = useState<Produto[]>([])
   const [loading, setLoading] = useState(true)
   const [currentSlide, setCurrentSlide] = useState(0)
-  const [carouselImages, setCarouselImages] = useState<CarouselImage[]>([])
+  const [carrosselImages, setcarrosselImages] = useState<carrosselImage[]>([])
   const [imageErrors, setImageErrors] = useState<{ [key: number]: boolean }>({})
   interface DebugInfo {
     url: string
@@ -60,19 +60,19 @@ const Home: React.FC = () => {
   const { adicionarAoCarrinho } = useCart()
 
   // Carregar imagens do carrossel do banco
-  const loadCarouselImages = async () => {
+  const loadcarrosselImages = async () => {
     try {
-      const response = await axios.get("http://localhost:3000/api/carousel")
+      const response = await axios.get("http://localhost:3000/api/carrossel")
 
       // Filtrar apenas imagens ativas e ordenar
       const imagensAtivas = response.data
-        .filter((img: CarouselImage) => img.ativo)
-        .sort((a: CarouselImage, b: CarouselImage) => a.ordem - b.ordem)
+        .filter((img: carrosselImage) => img.ativo)
+        .sort((a: carrosselImage, b: carrosselImage) => a.ordem - b.ordem)
 
-      setCarouselImages(imagensAtivas)
+      setcarrosselImages(imagensAtivas)
     } catch (error) {
       console.error("⚠ Erro ao carregar carrossel:", error)
-      setCarouselImages([])
+      setcarrosselImages([])
     }
   }
 
@@ -99,19 +99,19 @@ const Home: React.FC = () => {
   }
 
   useEffect(() => {
-    loadCarouselImages()
+    loadcarrosselImages()
     loadProdutos()
   }, [])
 
   // Auto-play do carrossel
   useEffect(() => {
-    if (carouselImages.length > 1) {
+    if (carrosselImages.length > 1) {
       const timer = setInterval(() => {
-        setCurrentSlide((prev) => (prev + 1) % carouselImages.length)
+        setCurrentSlide((prev) => (prev + 1) % carrosselImages.length)
       }, 5000)
       return () => clearInterval(timer)
     }
-  }, [carouselImages.length])
+  }, [carrosselImages.length])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -121,11 +121,11 @@ const Home: React.FC = () => {
   }
 
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % carouselImages.length)
+    setCurrentSlide((prev) => (prev + 1) % carrosselImages.length)
   }
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + carouselImages.length) % carouselImages.length)
+    setCurrentSlide((prev) => (prev - 1 + carrosselImages.length) % carrosselImages.length)
   }
 
   const goToSlide = (index: number) => {
@@ -149,7 +149,7 @@ const Home: React.FC = () => {
   }
 
   // Função para construir URL da imagem
-  const getImageUrl = (image: CarouselImage) => {
+  const getImageUrl = (image: carrosselImage) => {
     if (!image.url_imagem) return null
 
     if (image.url_imagem.startsWith("http")) {
@@ -160,7 +160,7 @@ const Home: React.FC = () => {
       return `http://localhost:3000${image.url_imagem}`
     }
 
-    return `http://localhost:3000/uploads/carousel/${image.url_imagem}`
+    return `http://localhost:3000/uploads/carrossel/${image.url_imagem}`
   }
 
   // Debug da imagem
@@ -188,20 +188,20 @@ const Home: React.FC = () => {
         {/* CSS Debug Styles */}
         <style>{`
           /* Reset para garantir que não há estilos conflitantes */
-          .carousel-container {
+          .carrossel-container {
             position: relative;
             overflow: hidden;
             background: transparent !important;
           }
           
-          .carousel-slide {
+          .carrossel-slide {
             position: relative;
             min-width: 100%;
             height: 100%;
             background: transparent !important;
           }
           
-          .carousel-image-container {
+          .carrossel-image-container {
             position: absolute;
             top: 0;
             left: 0;
@@ -211,7 +211,7 @@ const Home: React.FC = () => {
             background: transparent !important;
           }
           
-          .carousel-image {
+          .carrossel-image {
             width: 100% !important;
             height: 100% !important;
             object-fit: cover !important;
@@ -220,7 +220,7 @@ const Home: React.FC = () => {
             display: block !important;
           }
           
-          .carousel-overlay {
+          .carrossel-overlay {
             position: absolute;
             top: 0;
             left: 0;
@@ -233,7 +233,7 @@ const Home: React.FC = () => {
             justify-content: center;
           }
           
-          .carousel-fallback {
+          .carrossel-fallback {
             position: absolute;
             top: 0;
             left: 0;
@@ -248,35 +248,35 @@ const Home: React.FC = () => {
         `}</style>
 
         {/* Carrossel de Imagens */}
-        {carouselImages.length > 0 && (
-          <section className="relative h-96 md:h-[500px] carousel-container">
+        {carrosselImages.length > 0 && (
+          <section className="relative h-96 md:h-[500px] carrossel-container">
             <div
               className="flex transition-transform duration-500 ease-in-out h-full"
               style={{ transform: `translateX(-${currentSlide * 100}%)` }}
             >
-              {carouselImages.map((image) => {
+              {carrosselImages.map((image) => {
                 const imageUrl = getImageUrl(image)
                 
                 return (
-                  <div key={image.id_carousel} className="carousel-slide">
+                  <div key={image.id_carrossel} className="carrossel-slide">
                     {/* Container da imagem com z-index baixo */}
-                    {!imageErrors[image.id_carousel] && imageUrl ? (
-                      <div className="carousel-image-container">
+                    {!imageErrors[image.id_carrossel] && imageUrl ? (
+                      <div className="carrossel-image-container">
                         <img
                           src={imageUrl}
                           alt={image.titulo}
-                          className="carousel-image"
+                          className="carrossel-image"
                           onLoad={(e) => {
-                            debugImage(image.id_carousel, imageUrl, e)
+                            debugImage(image.id_carrossel, imageUrl, e)
                           }}
                           onError={() => {
                             console.error(`❌ Falha ao carregar: ${imageUrl}`)
-                            handleImageError(image.id_carousel)
+                            handleImageError(image.id_carrossel)
                           }}
                         />
                       </div>
                     ) : (
-                      <div className="carousel-fallback">
+                      <div className="carrossel-fallback">
                         <div className="text-center text-white opacity-30">
                           <ImageIcon className="h-24 w-24 mx-auto mb-4" />
                           <p className="text-lg">
@@ -290,7 +290,7 @@ const Home: React.FC = () => {
                     )}
 
                     {/* Overlay com z-index alto */}
-                    <div className="carousel-overlay">
+                    <div className="carrossel-overlay">
                       <div className="text-center text-white px-4 max-w-4xl relative z-10">
                         <h2 className="text-3xl md:text-5xl font-bold mb-4 text-shadow">
                           {image.titulo}
@@ -317,7 +317,7 @@ const Home: React.FC = () => {
             </div>
 
             {/* Controles do Carrossel */}
-            {carouselImages.length > 1 && (
+            {carrosselImages.length > 1 && (
               <>
                 <button
                   onClick={prevSlide}
@@ -336,12 +336,12 @@ const Home: React.FC = () => {
 
                 {/* Indicador de posição */}
                 <div className="absolute bottom-4 right-4 bg-black bg-opacity-60 text-white px-3 py-1 rounded-full text-sm font-medium z-30">
-                  {currentSlide + 1} / {carouselImages.length}
+                  {currentSlide + 1} / {carrosselImages.length}
                 </div>
 
                 {/* Dots de navegação */}
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-30">
-                  {carouselImages.map((_, index) => (
+                  {carrosselImages.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => goToSlide(index)}
@@ -358,7 +358,7 @@ const Home: React.FC = () => {
         )}
 
         {/* Mensagem quando não há carrossel */}
-        {carouselImages.length === 0 && (
+        {carrosselImages.length === 0 && (
           <section className="h-96 md:h-[500px] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
             <div className="text-center text-gray-600">
               <ImageIcon className="h-16 w-16 mx-auto mb-4 text-gray-400" />
@@ -368,7 +368,6 @@ const Home: React.FC = () => {
           </section>
         )}
 
-        {/* Resto do componente continua igual... */}
         {/* Produtos em Destaque */}
         <section className="py-16 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4">
@@ -481,6 +480,55 @@ const Home: React.FC = () => {
             </div>
           </div>
         </section>
+
+        {/* Rodapé Personalizado */}
+        <footer className="bg-gray-800 text-white py-12 mt-16">
+          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 border-b border-gray-700 pb-8">
+            {/* Coluna de Contato */}
+            <div>
+              <h4 className="text-xl font-bold mb-4 text-blue-400">Contato & Horário</h4>
+              <p className="mb-2">
+                <span className="font-semibold block">Email:</span>
+                <a 
+                  href="mailto:labstore.bebedouro@gmail.com" 
+                  className="text-gray-300 hover:text-blue-400 transition duration-200"
+                >
+                  labstore.bebedouro@gmail.com
+                </a>
+              </p>
+              <p className="mt-4">
+                <span className="font-semibold block">Funcionamento:</span>
+                Segunda a Sexta, das 8h às 18h
+              </p>
+            </div>
+
+            {/* Coluna Central de Ajuda*/}
+            <div className="text-left md:border-l md:border-r border-gray-700 md:px-8">
+              <h4 className="text-xl font-bold mb-4 text-blue-400">Suporte</h4>
+              <button
+                onClick={() => navigate("/central-ajuda")}
+                className="text-lg text-white hover:text-blue-400 transition duration-200 inline-block p-2 rounded-lg hover:bg-gray-700"
+              >
+                Central de Ajuda
+              </button>
+            </div>
+
+            {/* Coluna de Produtos */}
+            <div>
+              <h4 className="text-xl font-bold mb-4 text-blue-400">Explorar</h4>
+              <button
+                onClick={() => navigate("/produtos")}
+                className="text-lg text-gray-300 hover:text-blue-400 transition duration-200 block p-2 rounded-lg hover:bg-gray-700"
+              >
+                Todos os Produtos
+              </button>
+            </div>
+          </div>
+          
+          <div className="max-w-7xl mx-auto px-4 pt-8 text-center text-gray-400 text-sm">
+            © {new Date().getFullYear()} LabStore. Todos os direitos reservados.
+          </div>
+        </footer>
 
         <style>{`
           .line-clamp-2 {
