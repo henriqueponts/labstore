@@ -39,13 +39,26 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const buscarCarrinho = useCallback(async () => {
         const token = getToken();
-        if (!token) {
+        const usuarioJSON = localStorage.getItem('usuario');
+
+
+        if (!token || !usuarioJSON) {
             setItensCarrinho([]);
             setCarregando(false);
             return;
         }
 
         try {
+            const usuario = JSON.parse(usuarioJSON);
+
+            // Se o usuário logado NÃO é um cliente, ele não tem carrinho.
+            // Apenas limpamos o estado e paramos a execução para evitar a chamada à API.
+            if (usuario.tipo !== 'cliente') {
+                setItensCarrinho([]);
+                setCarregando(false);
+                return; // Ponto crucial: Impede a chamada da API para admins/analistas
+            }
+
             setCarregando(true);
             const response = await axios.get('http://localhost:3000/carrinho', {
                 headers: { Authorization: `Bearer ${token}` },

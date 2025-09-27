@@ -1,4 +1,4 @@
-// Arquivo: server/index.js (versão corrigida)
+// Arquivo: server/index.js (versão corrigida e reordenada)
 import express from "express"
 import cors from "cors"
 import path from "path"
@@ -26,19 +26,24 @@ const app = express()
 console.log('=== TESTE DE VARIÁVEIS ===');
 console.log('PAGARME_SECRET_KEY:', process.env.PAGARME_SECRET_KEY ? 'DEFINIDO' : 'NÃO DEFINIDO');
 console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'DEFINIDO' : 'NÃO DEFINIDO');
-console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'DEFINIDO' : 'NÃO DEFINIDO'); // Adicione para debug
+console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'DEFINIDO' : 'NÃO DEFINIDO');
 console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'DEFINIDO' : 'NÃO DEFINIDO');
 
 console.log("🚀 LabStore Server iniciando...")
 
-// Middlewares
+// =================================================================
+// 1. CONFIGURAÇÃO DE MIDDLEWARE (ORDEM CORRETA)
+// =================================================================
+
+// Middleware geral para permitir requisições de outras origens
 app.use(cors())
 
+// Rota de Webhook - PRECISA VIR ANTES do express.json() para receber o body raw
 app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     // Parse do body
     const event = JSON.parse(req.body.toString());
-    console.log('Webhook recebido com sucesso:', JSON.stringify(event, null, 2)); // Log completo para depuração
+    console.log('Webhook recebido com sucesso:', JSON.stringify(event, null, 2));
 
     if (event.type === 'order.paid') {
       const order = event.data;
@@ -105,7 +110,7 @@ app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async 
               order.shipping?.address?.line_1 || order.customer?.address?.line_1 || null
             ]
           );
-          const pedidoId = pedidoResult.insertId;
+          pedidoId = pedidoResult.insertId;
 
           // Inserir itens do pedido
           if (itensCarrinho.length > 0) {
@@ -175,8 +180,6 @@ app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async 
             try {
               await enviarEmailConfirmacaoCompra(pedidoId);
             } catch (emailError) {
-              // O erro já é logado dentro da função, mas podemos logar aqui também.
-              // O importante é não deixar que um erro de e-mail quebre o fluxo.
               console.error(`Falha ao enfileirar e-mail para o pedido ${pedidoId}, mas o pedido foi salvo.`);
             }
           }
@@ -196,25 +199,26 @@ app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async 
   }
 });
 
+// Middleware para parse de JSON (para todas as outras rotas)
 app.use(express.json())
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")))
-// Middleware para servir arquivos estáticos do diretório "uploads"
+// Middleware para servir arquivos estáticos (imagens, etc.)
+console.log("📁 Configurando middleware de arquivos estáticos...")
+const uploadsPath = path.join(__dirname, "uploads")
+console.log(`📂 Servindo arquivos de: ${uploadsPath}`)
+app.use("/uploads", express.static(uploadsPath))
 
-// Middleware adicional para debug de arquivos estáticos
-app.use("/uploads", (req, res, next) => {
-  const filePath = path.join(__dirname, "Uploads", req.path)
-  console.log(`📁 Tentando servir arquivo: ${filePath}`)
-  next()
-})
-
-// Middleware de log para debug
+// Middleware de log geral
 app.use((req, res, next) => {
   if (req.url.includes("/api/carousel") || req.url.includes("/uploads")) {
     console.log(`🌐 ${req.method} ${req.url}`)
   }
   next()
 })
+
+// =================================================================
+// 2. REGISTRO DE ROTAS DA APLICAÇÃO
+// =================================================================
 
 // Rota raiz
 app.get("/", (req, res) => {
@@ -232,7 +236,7 @@ app.get("/", (req, res) => {
         "/carrinho/remover/:id",
         "/carrinho/limpar",
       ],
-      carousel: ["/api/carousel", "/api/carousel/:id", "/api/carousel/reorder"],
+      carousel: ["/api/carousel", "/api/carousel/:id"],
       test: ["/test/db", "/test/carousel"],
       chamados: [
         "/chamados/meus-chamados",
@@ -255,6 +259,10 @@ app.get("/", (req, res) => {
       ],
     },
     status: "online",
+    uploads: {
+      carousel: "/uploads/carousel/",
+      produtos: "/uploads/produtos/"
+    }
   })
 })
 
@@ -274,6 +282,9 @@ app.use("/api/carousel", carouselRoutes)
 app.use("/test", testRoutes)
 console.log("✅ Rotas registradas!")
 
+// =================================================================
+// 3. INICIALIZAÇÃO DO SERVIDOR
+// =================================================================
 const PORT = process.env.PORT || 3000
 
 app.listen(PORT, () => {
@@ -283,6 +294,8 @@ app.listen(PORT, () => {
   console.log("  - GET  /test/carousel (testar dados do carrossel)")
   console.log("  - GET  /api/carousel (listar imagens do carrossel)")
   console.log("  - GET  /uploads/carousel/ (servir imagens do carrossel)")
+  console.log("  - GET  /uploads/produtos/ (servir imagens dos produtos)")
   console.log("")
-  console.log("🗄️  Conecte ao banco MySQL e configure JWT_SECRET no .env")
+  console.log("🗄️ Conecte ao banco MySQL e configure JWT_SECRET no .env")
+  console.log(`📁 Diretório de uploads: ${path.join(__dirname, "uploads")}`)
 })
