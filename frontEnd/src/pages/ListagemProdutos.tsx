@@ -2,6 +2,8 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+// Adicione a importação do useSearchParams aqui
+import { useSearchParams } from "react-router-dom"
 import axios from "axios"
 import Layout from "../components/Layout"
 import {
@@ -49,6 +51,8 @@ type OrdenacaoTipo = "nome" | "preco_asc" | "preco_desc" | "mais_recente"
 
 const ListagemProdutos: React.FC = () => {
   const { adicionarAoCarrinho } = useCart()
+  // 1. Inicialize o hook para ler os parâmetros da URL
+  const [searchParams] = useSearchParams()
 
   // Estados principais
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -74,6 +78,15 @@ const ListagemProdutos: React.FC = () => {
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
   const [produtosPorPagina] = useState(12)
   const [paginaAtual, setPaginaAtual] = useState(1)
+
+  // 2. Crie um useEffect para ler a URL quando o componente carregar
+  useEffect(() => {
+    const buscaDaUrl = searchParams.get("busca")
+    if (buscaDaUrl) {
+      setInputBusca(buscaDaUrl)
+      // Não precisa setar o termoBusca aqui, o useEffect abaixo já faz isso com debounce
+    }
+  }, [searchParams]) // Executa sempre que os parâmetros da URL mudarem
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -120,7 +133,7 @@ const ListagemProdutos: React.FC = () => {
   useEffect(() => {
     carregarDados()
   }, [])
-
+  
   // Obter marcas únicas
   const marcasDisponiveis = [...new Set(produtos.map((p) => p.marca_nome).filter(Boolean))].sort()
 
