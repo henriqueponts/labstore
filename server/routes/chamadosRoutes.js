@@ -405,7 +405,6 @@ router.get("/todos", verifyToken, verifyFuncionario, async (req, res) => {
                     WHEN 'aberto' THEN 1
                     WHEN 'aguardando_funcionario' THEN 2
                     WHEN 'aguardando_cliente' THEN 5
-                    WHEN 'resolvido' THEN 6
                     WHEN 'encerrado' THEN 7
                 END,
                 cs.ultima_atividade DESC
@@ -494,12 +493,13 @@ router.put("/:id/status", verifyToken, verifyFuncionario, async (req, res) => {
     const { id } = req.params
     const { status, justificativa } = req.body
 
-    // Only allow manual status changes to these values
-    const statusValidos = ["aberto", "resolvido", "encerrado"]
+    // --- ALTERAÇÃO AQUI ---
+    // Apenas 'aberto' e 'encerrado' podem ser definidos manualmente
+    const statusValidos = ["aberto", "encerrado"]
 
     if (!statusValidos.includes(status)) {
       return res.status(400).json({
-        message: "Status inválido. Apenas 'aberto', 'resolvido' e 'encerrado' podem ser definidos manualmente.",
+        message: "Status inválido. Apenas 'aberto' e 'encerrado' podem ser definidos manualmente.",
       })
     }
 
@@ -511,10 +511,11 @@ router.put("/:id/status", verifyToken, verifyFuncionario, async (req, res) => {
       return res.status(404).json({ message: "Chamado não encontrado" })
     }
 
-    // Special validation: only allow setting to "aberto" if current status is "encerrado" or "resolvido"
-    if (status === "aberto" && chamadoExists[0].status !== "encerrado" && chamadoExists[0].status !== "resolvido") {
+    // --- ALTERAÇÃO AQUI ---
+    // A reabertura agora só verifica se o status atual é 'encerrado'
+    if (status === "aberto" && chamadoExists[0].status !== "encerrado") {
       return res.status(400).json({
-        message: "Status 'aberto' só pode ser definido quando o chamado está 'encerrado' ou 'resolvido'",
+        message: "Um chamado só pode ser reaberto se estiver com status 'encerrado'",
       })
     }
 

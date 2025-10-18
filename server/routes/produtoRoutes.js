@@ -212,6 +212,9 @@ router.post("/produtos", verificarFuncionario, upload.array("imagens", 10), asyn
     if (!nome || !descricao || !preco || !id_categoria) {
       return res.status(400).json({ message: "Nome, descrição, preço e categoria são obrigatórios" })
     }
+    if (estoque && Number.parseInt(estoque) > 100) {
+      return res.status(400).json({ message: "O estoque não pode ser superior a 100 unidades." })
+    }
     if (isNaN(Number.parseFloat(preco)) || Number.parseFloat(preco) <= 0) {
       return res.status(400).json({ message: "Preço deve ser um número válido maior que zero" })
     }
@@ -351,6 +354,10 @@ router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 
       if (marca.length === 0) {
         return res.status(400).json({ message: "Marca não encontrada" })
       }
+    }
+    
+    if (estoque && Number.parseInt(estoque) > 100) {
+      return res.status(400).json({ message: "O estoque não pode ser superior a 100 unidades." })
     }
 
     await db.query(

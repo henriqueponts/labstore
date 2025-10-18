@@ -188,9 +188,14 @@ const EditarProduto: React.FC = () => {
       novosErros.preco = "Preço deve ser maior que zero"
     }
     if (!dadosFormulario.id_categoria) novosErros.id_categoria = "Categoria é obrigatória"
-    if (!dadosFormulario.id_marca) novosErros.id_marca = "Marca é obrigatória" // Added marca validation
-    if (dadosFormulario.estoque && Number.parseInt(dadosFormulario.estoque) < 0) {
-      novosErros.estoque = "Estoque não pode ser negativo"
+    if (!dadosFormulario.id_marca) novosErros.id_marca = "Marca é obrigatória" 
+    if (dadosFormulario.estoque) {
+      const estoqueNum = Number.parseInt(dadosFormulario.estoque)
+      if (estoqueNum < 0) {
+        novosErros.estoque = "Estoque não pode ser negativo"
+      } else if (estoqueNum > 100) {
+        novosErros.estoque = "Estoque não pode ser superior a 100"
+      }
     }
     if (
       dadosFormulario.ano_fabricacao &&
@@ -638,6 +643,8 @@ const EditarProduto: React.FC = () => {
                   value={dadosFormulario.estoque}
                   onChange={processarMudancaInput}
                   min="0"
+                  // --- LINHA ADICIONADA ---
+                  max="100"
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     erros.estoque ? "border-red-500" : "border-gray-300"
                   }`}

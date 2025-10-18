@@ -244,9 +244,8 @@ const VisualizarProduto: React.FC = () => {
                     <button
                       key={index}
                       onClick={() => setImagemAtual(index)}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        index === imagemAtual ? "bg-white" : "bg-white/50"
-                      }`}
+                      className={`w-2 h-2 rounded-full transition-colors ${index === imagemAtual ? "bg-white" : "bg-white/50"
+                        }`}
                     />
                   ))}
                 </div>
@@ -260,9 +259,8 @@ const VisualizarProduto: React.FC = () => {
                   <button
                     key={imagem.id_imagem}
                     onClick={() => setImagemAtual(index)}
-                    className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 transition-colors ${
-                      index === imagemAtual ? "border-blue-500" : "border-transparent hover:border-gray-300"
-                    }`}
+                    className={`aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 transition-colors ${index === imagemAtual ? "border-blue-500" : "border-transparent hover:border-gray-300"
+                      }`}
                   >
                     <img
                       src={
@@ -381,8 +379,13 @@ const VisualizarProduto: React.FC = () => {
           <div className="lg:col-span-2 space-y-8">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Descrição do Produto</h2>
-              <div className="prose prose-gray max-w-none">
-                <p className="text-gray-700 leading-relaxed">{produto.descricao}</p>
+              {/* ADICIONADO break-words AQUI */}
+              <div className="text-gray-700 leading-relaxed break-words">
+                {produto.descricao.split('\n').map((linha, index) => (
+                  <span key={index} className="block">
+                    {linha || <>&nbsp;</>}
+                  </span>
+                ))}
               </div>
             </div>
 
@@ -393,9 +396,13 @@ const VisualizarProduto: React.FC = () => {
                   <Zap className="mr-2" size={20} />
                   Especificações
                 </h3>
-                <p className="text-gray-700" style={{ whiteSpace: "pre-wrap" }}>
-                  {produto.compatibilidade}
-                </p>
+                <div className="text-gray-700 break-words">
+                  {produto.compatibilidade.split('\n').map((linha, index) => (
+                    <span key={index} className="block">
+                      {linha || <>&nbsp;</>}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>

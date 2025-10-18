@@ -657,7 +657,6 @@ const AdminChamadosPage: React.FC = () => {
                         value={novoStatus}
                         onChange={(e) => {
                           setNovoStatus(e.target.value)
-                          // Limpar justificativa se não for reabertura
                           if (e.target.value !== "aberto") {
                             setJustificativaReabertura("")
                           }
@@ -666,6 +665,13 @@ const AdminChamadosPage: React.FC = () => {
                       >
                         <option value="">Selecione um novo status</option>
                         {statusOptions.slice(1).map((status) => {
+                          // --- NOVA CONDIÇÃO AQUI ---
+                          // Não mostrar a opção 'Encerrado' se o chamado JÁ ESTIVER encerrado
+                          if (status.value === "encerrado" && chamadoSelecionado.status === "encerrado") {
+                            return null
+                          }
+                          // --- FIM DA NOVA CONDIÇÃO ---
+
                           // Allow "aberto" if current status is "encerrado"
                           if (
                             status.value === "aberto" &&

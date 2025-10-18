@@ -31,7 +31,7 @@ interface Chamado {
   assunto: string
   descricao: string
   categoria: string | null
-  status: "aberto" | "aguardando_cliente" | "aguardando_funcionario" | "resolvido" | "encerrado"
+  status: "aberto" | "aguardando_cliente" | "aguardando_funcionario" | "encerrado"
   data_abertura: string
   proximo_responder?: "cliente" | "funcionario"
   total_respostas?: number
@@ -347,8 +347,6 @@ const CentralAjudaPage: React.FC = () => {
         return "text-orange-600 bg-orange-100"
       case "aguardando_funcionario":
         return "text-indigo-600 bg-indigo-100"
-      case "resolvido":
-        return "text-green-600 bg-green-100"
       case "encerrado":
         return "text-gray-600 bg-gray-100"
       default:
@@ -364,8 +362,6 @@ const CentralAjudaPage: React.FC = () => {
         return "Aguardando Sua Resposta"
       case "aguardando_funcionario":
         return "Aguardando Funcionário"
-      case "resolvido":
-        return "Resolvido"
       case "encerrado":
         return "Encerrado"
       default:
@@ -381,8 +377,6 @@ const CentralAjudaPage: React.FC = () => {
         return <User className="w-4 h-4" />
       case "aguardando_funcionario":
         return <Clock className="w-4 h-4" />
-      case "resolvido":
-        return <CheckCircle className="w-4 h-4" />
       case "encerrado":
         return <X className="w-4 h-4" />
       default:
