@@ -22,7 +22,11 @@ import CarrinhoPage from "./pages/CarrinhoPage.tsx"
 import EditarHome from "./pages/EditarHome.tsx"
 import AguardoPagamento from './pages/AguardoPagamento';
 import PagamentoSucesso from './pages/PagamentoSucesso';
-import MeusPedidos from "./pages/MeusPedidos.tsx"
+import MeusPedidos from "./pages/MeusPedidos.tsx";
+import NovaSolicitacaoAssistencia from "./pages/NovaSolicitacaoAssistencia.tsx";
+import AcompanharSolicitacoes from "./pages/AcompanharSolicitacoes.tsx";
+import GestaoSolicitacoes from "./pages/GestaoSolicitacoes.tsx";
+import DetalhesSolicitacao from "./pages/DetalhesSolicitacao.tsx";
 
 function App() {
   return (
@@ -57,6 +61,12 @@ function App() {
           <Route path="/gestao/lgpd/editar-termo/:id" element={<NovoTermoLGPD />} />
           <Route path="/gestao/lgpd/termo/:id" element={<VisualizarTermo />} />
           <Route path="/visualizar-termo/:id" element={<VisualizarTermo />} />
+
+          {/* Rotas Assistência Técnica */}
+          <Route path="/nova-solicitacao-assistencia" element={<NovaSolicitacaoAssistencia />} />
+          <Route path="/acompanhar-solicitacoes" element={<AcompanharSolicitacoes />} />
+          <Route path="/gestao/solicitacoes" element={<GestaoSolicitacoes />} />
+          <Route path="/acompanhar-solicitacoes/:id" element={<DetalhesSolicitacao />} />
         </Routes>
       </BrowserRouter>
     </CartProvider>

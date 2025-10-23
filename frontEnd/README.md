@@ -138,14 +138,14 @@ CREATE TABLE ItemPedido (
 CREATE TABLE SolicitacaoServico (
     id_solicitacao INT PRIMARY KEY AUTO_INCREMENT,
     id_cliente INT NOT NULL,
-    tipo_equipamento ENUM('notebook', 'desktop', 'tablet', 'outros') NOT NULL,
+    tipo_equipamento ENUM('notebook', 'desktop') NOT NULL,
     marca VARCHAR(50) NOT NULL,
     modelo VARCHAR(50) NOT NULL,
     descricao_problema TEXT NOT NULL,
     fotoUrl VARCHAR(255) NULL,
     forma_envio VARCHAR(50) NULL,
     data_solicitacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('solicitado', 'em_analise', 'aguardando_aprovacao', 'aprovado', 'rejeitado', 'em_execucao', 'cancelado', 'aguardando_pagamento', 'concluido') NOT NULL DEFAULT 'solicitado',
+    status ENUM('solicitado', 'em_analise', 'aguardando_aprovacao', 'aprovado', 'rejeitado', 'em_execucao', 'cancelado', 'aguardando_pagamento', 'aguardando_retirada_envio', 'concluido') NOT NULL DEFAULT 'solicitado',
     data_aprovacao_orcamento DATETIME NULL,
     data_conclusao_servico DATETIME NULL,
     motivo_recusa_orcamento TEXT NULL,
@@ -166,6 +166,15 @@ CREATE TABLE Orcamento (
     data_criacao_orcamento DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Adicionado
     FOREIGN KEY (id_solicitacao) REFERENCES SolicitacaoServico(id_solicitacao) ON DELETE CASCADE,
     FOREIGN KEY (id_analista) REFERENCES Usuario(id_usuario)
+);
+
+-- Criar tabela para múltiplas fotos por solicitação
+CREATE TABLE IF NOT EXISTS FotoSolicitacao (
+  id_foto INT AUTO_INCREMENT PRIMARY KEY,
+  id_solicitacao INT NOT NULL,
+  foto_url VARCHAR(255) NOT NULL,
+  data_upload TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_solicitacao) REFERENCES SolicitacaoServico(id_solicitacao) ON DELETE CASCADE
 );
 
 -- Tabela de Logs de Auditoria
@@ -1018,6 +1027,6 @@ INSERT INTO ProdutoImagem (id_produto, url_imagem, nome_arquivo, ordem, is_princ
 
 -- Inserir dados padrão
 INSERT INTO carrossel_imagens (titulo, subtitulo, url_imagem, link_destino, ordem, ativo) VALUES
-('Tecnologia que Transforma', 'Encontre os melhores produtos com preços incríveis', '/uploads/carrossel/default1.jpg', '/produtos', 1, TRUE),
+('Tecnologia que Transforma', 'Encontre os melhores produtos com preços incríveis', '/uploads/carrossel/default1.png', '/produtos', 1, TRUE),
 ('Setup Gamer Completo', 'Monte seu setup dos sonhos com nossa linha gamer', '/uploads/carrossel/default2.jpg', '/produtos?categoria=PCs Gamer', 2, TRUE),
 ('Assistência Técnica Especializada', 'Reparo rápido e confiável para seus equipamentos', '/uploads/carrossel/default3.jpg', '/central-ajuda', 3, TRUE);

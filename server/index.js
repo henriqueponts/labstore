@@ -17,6 +17,8 @@ import carrosselRoutes from "./routes/carrosselRoutes.js"
 import testRoutes from "./routes/testRoutes.js"
 import pagamentoRoutes from './routes/pagamentoRoutes.js'
 import pedidoRoutes from './routes/pedidoRoutes.js';
+// O import já estava aqui, o que é ótimo!
+import assistenciaRoutes from './routes/assistenciaRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -228,6 +230,8 @@ app.get("/", (req, res) => {
     routes: {
       auth: ["/auth/login", "/auth/me", "/auth/registro/cliente", "/auth/registro/funcionario"],
       gestao: ["/gestao/usuarios", "/gestao/clientes"],
+      // <<< ADICIONEI A DOCUMENTAÇÃO DA NOVA ROTA AQUI
+      assistencia: ["/assistencia/solicitar", "/assistencia/minhas-solicitacoes"],
       produtos: ["/produtos/produtos", "/produtos/categorias"],
       carrinho: [
         "/carrinho/",
@@ -280,6 +284,10 @@ app.use('/pagamento', pagamentoRoutes);
 app.use("/pedido", pedidoRoutes);
 app.use("/api/carrossel", carrosselRoutes)
 app.use("/test", testRoutes)
+
+// <<< ADICIONE ESTA LINHA PARA REGISTRAR A ROTA DE ASSISTÊNCIA
+app.use("/assistencia", assistenciaRoutes);
+
 console.log("✅ Rotas registradas!")
 
 // =================================================================

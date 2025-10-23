@@ -83,7 +83,6 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
 
         setSearchResults(data)
         setIsResultsVisible(true) // Sempre mostra o painel para dar feedback (mesmo que seja "nenhum resultado")
-
       } catch (error) {
         console.error("[BUSCA] Erro na API:", error)
         setSearchResults([])
@@ -126,9 +125,9 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
     setIsResultsVisible(false) // Esconde o painel
     onSearchChange("") // Limpa a barra de pesquisa
   }
-  
+
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price)
   }
 
   const canEditHomePage =
@@ -154,7 +153,9 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   placeholder="Buscar produtos..."
                   value={searchTerm}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  onFocus={() => {if (searchTerm.length > 1) setIsResultsVisible(true)}}
+                  onFocus={() => {
+                    if (searchTerm.length > 1) setIsResultsVisible(true)
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <button type="submit" className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600">
@@ -194,7 +195,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                         </div>
                       </li>
                     ))}
-                     {searchTerm.trim() && (
+                    {searchTerm.trim() && (
                       <li>
                         <button
                           onClick={handleSearchSubmit}
@@ -214,8 +215,8 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
 
           {/* User actions (sem alterações) */}
           <div className="flex items-center space-x-2 md:space-x-4">
-             {/* ... o resto do seu código de ações do usuário permanece aqui ... */}
-             {!usuario ? (
+            {/* ... o resto do seu código de ações do usuário permanece aqui ... */}
+            {!usuario ? (
               <>
                 <button
                   onClick={() => navigate("/login")}
@@ -337,7 +338,10 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 <Monitor size={16} className="mr-1" />
                 Produtos
               </a>
-              <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
+              <a
+                href="/nova-solicitacao-assistencia"
+                className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
+              >
                 <Wrench size={16} className="mr-1" />
                 Assistência Técnica
               </a>
@@ -389,7 +393,10 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                     Produtos
                   </a>
 
-                  <a href="#" className="flex items-center text-green-700 hover:text-green-600 transition-colors">
+                  <a
+                    href="/gestao/solicitacoes"
+                    className="flex items-center text-green-700 hover:text-green-600 transition-colors"
+                  >
                     <Wrench size={16} className="mr-1" />
                     Solicitações
                   </a>
@@ -449,7 +456,10 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                 <Monitor size={16} className="mr-2" />
                 Produtos
               </a>
-              <a href="#" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2">
+              <a
+                href="/nova-solicitacao-assistencia"
+                className="flex items-center text-gray-700 hover:text-blue-600 transition-colors py-2"
+              >
                 <Wrench size={16} className="mr-2" />
                 Assistência Técnica
               </a>
@@ -497,7 +507,10 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                   Produtos
                 </a>
 
-                <a href="#" className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2">
+                <a
+                  href="/gestao/solicitacoes"
+                  className="flex items-center text-yellow-700 hover:text-yellow-600 transition-colors py-2"
+                >
                   <Wrench size={16} className="mr-2" />
                   Solicitações
                 </a>
