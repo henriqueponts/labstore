@@ -46,18 +46,28 @@ export default function GestaoSolicitacoes() {
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
-  
+
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
   const [filtroStatus, setFiltroStatus] = useState("")
+  const [inputBusca, setInputBusca] = useState("")
   const [busca, setBusca] = useState("")
-  
+
   const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState<SolicitacaoDetalhada | null>(null)
-  
+
   const [showOrcamentoForm, setShowOrcamentoForm] = useState(false)
   const [orcamentoForm, setOrcamentoForm] = useState({
     diagnostico: "", valor_pecas: "", valor_mao_obra: "", prazo_entrega_dias: "", observacoes_tecnicas: "",
   })
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setBusca(inputBusca)
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [inputBusca])
 
   const fetchSolicitacoesList = async () => {
     setLoading(true)
@@ -75,7 +85,7 @@ export default function GestaoSolicitacoes() {
       setLoading(false)
     }
   }
-  
+
   useEffect(() => {
     if (!solicitacaoSelecionada) {
       fetchSolicitacoesList()
@@ -141,19 +151,19 @@ export default function GestaoSolicitacoes() {
       setActionLoading(false)
     }
   }
-  
+
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-        solicitado: { label: "Solicitado", color: "bg-blue-100 text-blue-800", icon: <Clock className="h-4 w-4" /> },
-        em_analise: { label: "Em Análise", color: "bg-yellow-100 text-yellow-800", icon: <AlertCircle className="h-4 w-4" /> },
-        aguardando_aprovacao: { label: "Aguardando Aprovação", color: "bg-purple-100 text-purple-800", icon: <DollarSign className="h-4 w-4" /> },
-        aguardando_pagamento: { label: "Aguardando Pagamento", color: "bg-orange-100 text-orange-800", icon: <CreditCard className="h-4 w-4" /> },
-        aprovado: { label: "Aprovado (Aguard. Equip.)", color: "bg-teal-100 text-teal-800", icon: <Package className="h-4 w-4" /> },
-        em_execucao: { label: "Em Execução", color: "bg-indigo-100 text-indigo-800", icon: <Wrench className="h-4 w-4" /> },
-        aguardando_retirada_envio: { label: "Aguardando Retirada/Envio", color: "bg-cyan-100 text-cyan-800", icon: <Truck className="h-4 w-4" /> },
-        concluido: { label: "Concluído", color: "bg-green-100 text-green-800", icon: <CheckCircle className="h-4 w-4" /> },
-        rejeitado: { label: "Rejeitado", color: "bg-red-100 text-red-800", icon: <XCircle className="h-4 w-4" /> },
-        cancelado: { label: "Cancelado", color: "bg-gray-100 text-gray-800", icon: <Ban className="h-4 w-4" /> },
+      solicitado: { label: "Solicitado", color: "bg-blue-100 text-blue-800", icon: <Clock className="h-4 w-4" /> },
+      em_analise: { label: "Em Análise", color: "bg-yellow-100 text-yellow-800", icon: <AlertCircle className="h-4 w-4" /> },
+      aguardando_aprovacao: { label: "Aguardando Aprovação", color: "bg-purple-100 text-purple-800", icon: <DollarSign className="h-4 w-4" /> },
+      aguardando_pagamento: { label: "Aguardando Pagamento", color: "bg-orange-100 text-orange-800", icon: <CreditCard className="h-4 w-4" /> },
+      aprovado: { label: "Aprovado (Aguard. Equip.)", color: "bg-teal-100 text-teal-800", icon: <Package className="h-4 w-4" /> },
+      em_execucao: { label: "Em Execução", color: "bg-indigo-100 text-indigo-800", icon: <Wrench className="h-4 w-4" /> },
+      aguardando_retirada_envio: { label: "Aguardando Retirada/Envio", color: "bg-cyan-100 text-cyan-800", icon: <Truck className="h-4 w-4" /> },
+      concluido: { label: "Concluído", color: "bg-green-100 text-green-800", icon: <CheckCircle className="h-4 w-4" /> },
+      rejeitado: { label: "Rejeitado", color: "bg-red-100 text-red-800", icon: <XCircle className="h-4 w-4" /> },
+      cancelado: { label: "Cancelado", color: "bg-gray-100 text-gray-800", icon: <Ban className="h-4 w-4" /> },
     };
     const config = statusConfig[status] || statusConfig.solicitado;
     return <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>{config.icon}{config.label}</span>;
@@ -163,17 +173,17 @@ export default function GestaoSolicitacoes() {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
-  
+
   const formatCurrency = (value: number | null) => {
     if (value === null) return "N/A";
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   };
 
-  if (loading && !solicitacaoSelecionada) {
-    return <Layout><div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div></div></Layout>;
-  }
+  // REMOVIDO: A verificação de loading de tela cheia foi removida daqui.
+  // if (loading && !solicitacaoSelecionada) { ... }
 
   if (solicitacaoSelecionada) {
+    // A tela de detalhes permanece a mesma
     return (
       <Layout>
         <div className="min-h-screen bg-gray-50 py-12">
@@ -197,7 +207,7 @@ export default function GestaoSolicitacoes() {
                 <div className="bg-white rounded-lg shadow-md p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><User className="h-5 w-5 text-blue-600"/>Cliente</h3>
+                      <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><User className="h-5 w-5 text-blue-600" />Cliente</h3>
                       <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
                         <p><strong>Nome:</strong> {solicitacaoSelecionada.nome_cliente}</p>
                         <p><strong>Email:</strong> {solicitacaoSelecionada.email_cliente}</p>
@@ -205,7 +215,7 @@ export default function GestaoSolicitacoes() {
                       </div>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><Wrench className="h-5 w-5 text-blue-600"/>Equipamento</h3>
+                      <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><Wrench className="h-5 w-5 text-blue-600" />Equipamento</h3>
                       <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
                         <p><strong>Tipo:</strong> {solicitacaoSelecionada.tipo_equipamento}</p>
                         <p><strong>Marca:</strong> {solicitacaoSelecionada.marca}</p>
@@ -224,7 +234,7 @@ export default function GestaoSolicitacoes() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                         {solicitacaoSelecionada.fotos.map((foto, index) => (
                           <a key={index} href={`http://localhost:3000${foto}`} target="_blank" rel="noopener noreferrer">
-                            <img src={`http://localhost:3000${foto}`} alt={`Foto ${index + 1}`} className="w-full h-24 object-cover rounded-lg border"/>
+                            <img src={`http://localhost:3000${foto}`} alt={`Foto ${index + 1}`} className="w-full h-24 object-cover rounded-lg border" />
                           </a>
                         ))}
                       </div>
@@ -233,11 +243,11 @@ export default function GestaoSolicitacoes() {
                 </div>
 
                 <div className="bg-white rounded-lg shadow-md p-6">
-                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><DollarSign className="h-5 w-5 text-green-600"/>Orçamento</h3>
+                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><DollarSign className="h-5 w-5 text-green-600" />Orçamento</h3>
                   {!solicitacaoSelecionada.id_orcamento && !showOrcamentoForm && (
                     <div className="text-center py-4 bg-gray-50 rounded-lg">
                       <p className="text-gray-600 mb-3">Nenhum orçamento criado para esta solicitação.</p>
-                      <button onClick={() => setShowOrcamentoForm(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><FileText className="inline h-4 w-4 mr-2"/>Criar Orçamento</button>
+                      <button onClick={() => setShowOrcamentoForm(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><FileText className="inline h-4 w-4 mr-2" />Criar Orçamento</button>
                     </div>
                   )}
                   {solicitacaoSelecionada.id_orcamento && (
@@ -249,20 +259,20 @@ export default function GestaoSolicitacoes() {
                     </div>
                   )}
                   {showOrcamentoForm && (
-                     <form onSubmit={handleCriarOrcamento} className="space-y-4 pt-4 border-t">
-                        <div><label className="block text-sm font-medium text-gray-700 mb-2">Diagnóstico *</label><textarea value={orcamentoForm.diagnostico} onChange={(e) => setOrcamentoForm({ ...orcamentoForm, diagnostico: e.target.value })} required rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Descreva o diagnóstico técnico..."/></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div><label className="block text-sm font-medium text-gray-700 mb-2">Valor das Peças (R$)</label><input type="number" step="0.01" min="0" value={orcamentoForm.valor_pecas} onChange={(e) => setOrcamentoForm({ ...orcamentoForm, valor_pecas: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="0.00"/></div>
-                          <div><label className="block text-sm font-medium text-gray-700 mb-2">Mão de Obra (R$) *</label><input type="number" step="0.01" min="0" value={orcamentoForm.valor_mao_obra} onChange={(e) => setOrcamentoForm({ ...orcamentoForm, valor_mao_obra: e.target.value })} required className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="0.00"/></div>
-                        </div>
-                        <div><label className="block text-sm font-medium text-gray-700 mb-2">Prazo de Entrega (dias)</label><input type="number" min="1" max="365" value={orcamentoForm.prazo_entrega_dias} onChange={(e) => setOrcamentoForm({ ...orcamentoForm, prazo_entrega_dias: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Ex: 7"/></div>
-                        <div><label className="block text-sm font-medium text-gray-700 mb-2">Observações Técnicas</label><textarea value={orcamentoForm.observacoes_tecnicas} onChange={(e) => setOrcamentoForm({ ...orcamentoForm, observacoes_tecnicas: e.target.value })} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Observações adicionais..."/></div>
-                        <div className="flex gap-4 pt-2"><button type="submit" disabled={actionLoading} className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400">{actionLoading ? "Criando..." : "Criar e Enviar Orçamento"}</button><button type="button" onClick={() => setShowOrcamentoForm(false)} className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancelar</button></div>
+                    <form onSubmit={handleCriarOrcamento} className="space-y-4 pt-4 border-t">
+                      <div><label className="block text-sm font-medium text-gray-700 mb-2">Diagnóstico *</label><textarea value={orcamentoForm.diagnostico} onChange={(e) => setOrcamentoForm({ ...orcamentoForm, diagnostico: e.target.value })} required rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Descreva o diagnóstico técnico..." /></div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label className="block text-sm font-medium text-gray-700 mb-2">Valor das Peças (R$)</label><input type="number" step="0.01" min="0" value={orcamentoForm.valor_pecas} onChange={(e) => setOrcamentoForm({ ...orcamentoForm, valor_pecas: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="0.00" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 mb-2">Mão de Obra (R$) *</label><input type="number" step="0.01" min="0" value={orcamentoForm.valor_mao_obra} onChange={(e) => setOrcamentoForm({ ...orcamentoForm, valor_mao_obra: e.target.value })} required className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="0.00" /></div>
+                      </div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-2">Prazo de Entrega (dias)</label><input type="number" min="1" max="365" value={orcamentoForm.prazo_entrega_dias} onChange={(e) => setOrcamentoForm({ ...orcamentoForm, prazo_entrega_dias: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Ex: 7" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-2">Observações Técnicas</label><textarea value={orcamentoForm.observacoes_tecnicas} onChange={(e) => setOrcamentoForm({ ...orcamentoForm, observacoes_tecnicas: e.target.value })} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Observações adicionais..." /></div>
+                      <div className="flex gap-4 pt-2"><button type="submit" disabled={actionLoading} className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400">{actionLoading ? "Criando..." : "Criar e Enviar Orçamento"}</button><button type="button" onClick={() => setShowOrcamentoForm(false)} className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancelar</button></div>
                     </form>
                   )}
                 </div>
               </div>
-              
+
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
                   <h3 className="font-semibold text-gray-800 mb-4">Ações do Analista</h3>
@@ -287,10 +297,10 @@ export default function GestaoSolicitacoes() {
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center mb-8">
-             <button onClick={() => navigate(-1)} className="flex items-center text-gray-600 hover:text-gray-800 mr-4"><ArrowLeft className="w-5 h-5 mr-2" />Voltar</button>
+            <button onClick={() => navigate(-1)} className="flex items-center text-gray-600 hover:text-gray-800 mr-4"><ArrowLeft className="w-5 h-5 mr-2" />Voltar</button>
             <div><h1 className="text-3xl font-bold text-gray-800">Gestão de Solicitações</h1><p className="text-gray-600">Gerencie todas as solicitações de manutenção dos clientes</p></div>
           </div>
-          
+
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -313,8 +323,8 @@ export default function GestaoSolicitacoes() {
                 <label className="block text-sm font-medium text-gray-700 mb-2"><Search className="inline h-4 w-4 mr-1" />Buscar</label>
                 <input
                   type="text"
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
+                  value={inputBusca}
+                  onChange={(e) => setInputBusca(e.target.value)}
                   placeholder="Protocolo, cliente, marca ou modelo..."
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -324,10 +334,20 @@ export default function GestaoSolicitacoes() {
 
           {error && <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600">{error}</p></div>}
 
-          {solicitacoes.length === 0 ? (
-             <div className="bg-white rounded-lg shadow-md p-12 text-center"><Wrench className="h-16 w-16 text-gray-400 mx-auto mb-4" /><h3 className="text-xl font-semibold text-gray-700 mb-2">Nenhuma solicitação encontrada</h3><p className="text-gray-500">Não há solicitações com os filtros aplicados.</p></div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          {/* AJUSTE PRINCIPAL: Lógica de carregamento e exibição da tabela */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden min-h-[300px]">
+            {loading ? (
+              <div className="flex items-center justify-center h-full p-12">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                <p className="ml-4 text-gray-600">Carregando solicitações...</p>
+              </div>
+            ) : solicitacoes.length === 0 ? (
+              <div className="p-12 text-center">
+                <Wrench className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">Nenhuma solicitação encontrada</h3>
+                <p className="text-gray-500">Não há solicitações com os filtros aplicados.</p>
+              </div>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b">
@@ -358,8 +378,8 @@ export default function GestaoSolicitacoes() {
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </Layout>

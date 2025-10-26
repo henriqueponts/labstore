@@ -17,8 +17,8 @@ import carrosselRoutes from "./routes/carrosselRoutes.js"
 import testRoutes from "./routes/testRoutes.js"
 import pagamentoRoutes from './routes/pagamentoRoutes.js'
 import pedidoRoutes from './routes/pedidoRoutes.js';
-// O import já estava aqui, o que é ótimo!
 import assistenciaRoutes from './routes/assistenciaRoutes.js';
+import relatorioClienteRoutes from "./routes/relatorioClienteRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -71,7 +71,7 @@ app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async 
       } else {
         console.warn(`AVISO: Nenhum dado de frete encontrado na tabela TempFrete para o link ${paymentLinkId}. Usando fallbacks.`);
       }
-      
+
       // Usar o ID do cliente da tabela de frete é mais seguro
       let clienteId = freteInfo.cliente_id;
 
@@ -174,7 +174,7 @@ app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async 
           // 3. Limpar a entrada da tabela temporária (OPCIONAL, MAS RECOMENDADO)
           await db.query('DELETE FROM TempFrete WHERE payment_link_id = ?', [paymentLinkId]);
           console.log(`Dados de frete temporários para ${paymentLinkId} foram limpos.`);
-          
+
           console.log(`Pedido ${pedidoId} criado com sucesso via Webhook para cliente ${clienteId}`);
           await db.commit();
 
@@ -284,6 +284,8 @@ app.use('/pagamento', pagamentoRoutes);
 app.use("/pedido", pedidoRoutes);
 app.use("/api/carrossel", carrosselRoutes)
 app.use("/test", testRoutes)
+app.use("/relatorios/clientes", relatorioClienteRoutes)
+
 
 // <<< ADICIONE ESTA LINHA PARA REGISTRAR A ROTA DE ASSISTÊNCIA
 app.use("/assistencia", assistenciaRoutes);

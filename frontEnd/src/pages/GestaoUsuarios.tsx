@@ -20,6 +20,7 @@ import {
   Filter,
   Save,
   X,
+  BarChart3,
 } from "lucide-react"
 
 interface Usuario {
@@ -348,10 +349,29 @@ const GestaoUsuarios: React.FC = () => {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Gestão de Usuários e Clientes</h1>
-          <p className="text-gray-600">Gerencie funcionários e clientes do sistema</p>
+        <div className="mb-6">
+          {/* Linha com título e botão */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold text-gray-900">
+              Gestão de Usuários e Clientes
+            </h1>
+
+            <button
+              onClick={() => navigate("/relatorios/clientes")}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-md"
+            >
+              <BarChart3 size={20} />
+              Dashboard
+            </button>
+          </div>
+
+          {/* Subtítulo / descrição */}
+          <p className="text-gray-600 mt-2">
+            Gerencie funcionários e clientes do sistema
+          </p>
         </div>
+
+
 
         <div className="mb-6 bg-white rounded-lg shadow p-6">
           <div className="flex items-center mb-4">
@@ -430,11 +450,10 @@ const GestaoUsuarios: React.FC = () => {
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveTab("usuarios")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "usuarios"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "usuarios"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
               >
                 <div className="flex items-center">
                   <Users size={20} className="mr-2" />
@@ -443,11 +462,10 @@ const GestaoUsuarios: React.FC = () => {
               </button>
               <button
                 onClick={() => setActiveTab("clientes")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "clientes"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "clientes"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
               >
                 <div className="flex items-center">
                   <User size={20} className="mr-2" />
@@ -528,11 +546,10 @@ const GestaoUsuarios: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            usuario.tipo_perfil === "admin"
-                              ? "bg-purple-100 text-purple-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${usuario.tipo_perfil === "admin"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-green-100 text-green-800"
+                            }`}
                         >
                           {usuario.tipo_perfil === "admin" ? (
                             <>
@@ -553,9 +570,8 @@ const GestaoUsuarios: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            usuario.status === "ativo" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                          }`}
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${usuario.status === "ativo" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                            }`}
                         >
                           {usuario.status === "ativo" ? (
                             <>
@@ -598,11 +614,10 @@ const GestaoUsuarios: React.FC = () => {
                           )}
                           <button
                             onClick={() => toggleUsuarioStatus(usuario.id_usuario, usuario.status === "ativo")}
-                            className={`${
-                              usuario.status === "ativo"
-                                ? "text-red-600 hover:text-red-800"
-                                : "text-green-600 hover:text-green-800"
-                            }`}
+                            className={`${usuario.status === "ativo"
+                              ? "text-red-600 hover:text-red-800"
+                              : "text-green-600 hover:text-green-800"
+                              }`}
                             title={usuario.status === "ativo" ? "Inativar" : "Reativar"}
                           >
                             {usuario.status === "ativo" ? <UserX size={16} /> : <UserCheck size={16} />}
@@ -693,9 +708,8 @@ const GestaoUsuarios: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            cliente.status === "ativo" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                          }`}
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${cliente.status === "ativo" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                            }`}
                         >
                           {cliente.status === "ativo" ? (
                             <>
@@ -738,11 +752,10 @@ const GestaoUsuarios: React.FC = () => {
                           )}
                           <button
                             onClick={() => toggleClienteStatus(cliente.id_cliente, cliente.status === "ativo")}
-                            className={`${
-                              cliente.status === "ativo"
-                                ? "text-red-600 hover:text-red-800"
-                                : "text-green-600 hover:text-green-800"
-                            }`}
+                            className={`${cliente.status === "ativo"
+                              ? "text-red-600 hover:text-red-800"
+                              : "text-green-600 hover:text-green-800"
+                              }`}
                             title={cliente.status === "ativo" ? "Inativar" : "Reativar"}
                           >
                             {cliente.status === "ativo" ? <UserX size={16} /> : <UserCheck size={16} />}

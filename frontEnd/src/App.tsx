@@ -20,19 +20,21 @@ import NovoTermoLGPD from "./pages/NovoTermoLGPD.tsx"
 import VisualizarTermo from "./pages/VisualizarTermo"
 import CarrinhoPage from "./pages/CarrinhoPage.tsx"
 import EditarHome from "./pages/EditarHome.tsx"
-import AguardoPagamento from './pages/AguardoPagamento';
-import PagamentoSucesso from './pages/PagamentoSucesso';
-import MeusPedidos from "./pages/MeusPedidos.tsx";
-import NovaSolicitacaoAssistencia from "./pages/NovaSolicitacaoAssistencia.tsx";
-import AcompanharSolicitacoes from "./pages/AcompanharSolicitacoes.tsx";
-import GestaoSolicitacoes from "./pages/GestaoSolicitacoes.tsx";
-import DetalhesSolicitacao from "./pages/DetalhesSolicitacao.tsx";
+import AguardoPagamento from "./pages/AguardoPagamento"
+import PagamentoSucesso from "./pages/PagamentoSucesso"
+import MeusPedidos from "./pages/MeusPedidos.tsx"
+import NovaSolicitacaoAssistencia from "./pages/NovaSolicitacaoAssistencia.tsx"
+import AcompanharSolicitacoes from "./pages/AcompanharSolicitacoes.tsx"
+import GestaoSolicitacoes from "./pages/GestaoSolicitacoes.tsx"
+import DetalhesSolicitacao from "./pages/DetalhesSolicitacao.tsx"
+import RelatorioClientes from "./pages/RelatorioClientes.tsx"
 
 function App() {
   return (
     <CartProvider>
       <BrowserRouter>
         <Routes>
+          {/* Rotas Autenticação */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginComLGPD />} />
           <Route path="/cadastro/cliente" element={<CadastroClienteComLGPD />} />
@@ -41,19 +43,26 @@ function App() {
           <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route path="/alterar-senha" element={<AlterarSenha />} />
+
+          {/* Rotas Chamados */}
           <Route path="/central-ajuda" element={<CentralAjudaPage />} />
           <Route path="/gestao/chamados" element={<AdminChamadosPage />} />
+
+          {/* Rotas Produtos */}
           <Route path="/cadastro/produto" element={<CadastroProdutos />} />
           <Route path="/gestao/produtos" element={<GestaoProdutos />} />
           <Route path="/editar/produto/:id" element={<EditarProduto />} />
           <Route path="/produto/:id" element={<VisualizarProduto />} />
           <Route path="/produtos" element={<ListagemProdutos />} />
+
+          {/* Rotas Carrinho */}
           <Route path="/carrinho" element={<CarrinhoPage />} />
-          <Route path="/editar-home" element={<EditarHome />} />
           <Route path="/meus-pedidos" element={<MeusPedidos />} />
           <Route path="/aguardo-pagamento" element={<AguardoPagamento />} />
           <Route path="/pagamento-sucesso" element={<PagamentoSucesso />} />
 
+          {/* Rota Editar Home */}          
+          <Route path="/editar-home" element={<EditarHome />} />
 
           {/* Rotas LGPD */}
           <Route path="/gestao/lgpd" element={<GestaoLGPD />} />
@@ -67,6 +76,9 @@ function App() {
           <Route path="/acompanhar-solicitacoes" element={<AcompanharSolicitacoes />} />
           <Route path="/gestao/solicitacoes" element={<GestaoSolicitacoes />} />
           <Route path="/acompanhar-solicitacoes/:id" element={<DetalhesSolicitacao />} />
+
+          {/* Rotas Relatórios */}
+          <Route path="/relatorios/clientes" element={<RelatorioClientes />} />
         </Routes>
       </BrowserRouter>
     </CartProvider>
