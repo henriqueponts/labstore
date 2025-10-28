@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Layout from "../components/Layout"
 import { useCart } from "../context/CartContext"
 import { useNavigate } from "react-router-dom"
@@ -54,6 +54,15 @@ const CarrinhoPage: React.FC = () => {
   const [erroFrete, setErroFrete] = useState("")
   const [comSeguro, setComSeguro] = useState(false)
   const [processandoPagamento, setProcessandoPagamento] = useState(false)
+
+
+    useEffect(() => {
+    if (opcoesFrete.length > 0 || freteSelecionado) {
+      setOpcoesFrete([])
+      setFreteSelecionado(null)
+      setErroFrete("O carrinho foi alterado. Por favor, calcule o frete novamente.")
+    }
+  }, [totalItens, totalPreco])
 
   const formatarPreco = (preco: number) => {
     return new Intl.NumberFormat("pt-BR", {
