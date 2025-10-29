@@ -231,21 +231,6 @@ export default function AcompanharSolicitacoes() {
                         <Ban className="h-4 w-4" /> Cancelar
                       </button>
                     )}
-                    {solicitacao.status === "aguardando_aprovacao" && (
-                      <>
-                        <button onClick={() => handleAprovarOrcamento(solicitacao.id_solicitacao)} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                          <CheckCircle className="h-4 w-4" /> Aprovar Orçamento
-                        </button>
-                        <button onClick={() => handleRejeitarOrcamento(solicitacao.id_solicitacao)} className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                          <XCircle className="h-4 w-4" /> Rejeitar Orçamento
-                        </button>
-                      </>
-                    )}
-                    {solicitacao.status === "aguardando_pagamento" && (
-                      <button onClick={() => handleConfirmarPagamento(solicitacao.id_solicitacao)} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                        <CreditCard className="h-4 w-4" /> Confirmar Pagamento
-                      </button>
-                    )}
                   </div>
                 </div>
               ))}

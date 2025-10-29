@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   Ban,
   CreditCard,
+  Loader2,
   Calendar,
   User,
   Truck,
@@ -53,6 +54,7 @@ export default function DetalhesSolicitacao() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const [solicitacao, setSolicitacao] = useState<SolicitacaoDetalhes | null>(null)
+  const [processandoPagamento, setProcessandoPagamento] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -102,6 +104,38 @@ export default function DetalhesSolicitacao() {
       setError(err.response?.data?.message || "Erro ao cancelar solicitação")
     }
   }
+
+    const handleAprovarEPagar = async () => {
+    if (!solicitacao) return;
+
+    setProcessandoPagamento(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // 1. Primeiro, aprova o orçamento para mudar o status para 'aguardando_pagamento'
+      await axios.put(`http://localhost:3000/assistencia/aprovar-orcamento/${id}`);
+      
+      // 2. Em seguida, cria o link de pagamento
+      const response = await axios.post(`http://localhost:3000/assistencia/criar-link-pagamento/${id}`);
+
+      const data = response.data;
+
+      if (data.success && data.payment_url) {
+        // Abre a página de pagamento em uma nova aba
+        window.open(data.payment_url, "_blank");
+        // Navega a aba atual para a página de espera
+        navigate(`/aguardo-pagamento?order_id=${data.order_id}`);
+      } else {
+        setError(data.message || "Não foi possível obter a URL de pagamento.");
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Ocorreu um erro ao processar o pagamento.");
+    } finally {
+      setProcessandoPagamento(false);
+    }
+  };
+
 
   const handleConfirmarPagamento = async () => {
     try {
@@ -289,23 +323,35 @@ export default function DetalhesSolicitacao() {
               {/* CORREÇÃO AQUI: A classe "sticky" foi removida */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h3 className="font-semibold text-gray-800 mb-4">Ações Disponíveis</h3>
-                <div className="space-y-3">
-                  {solicitacao.status === "aguardando_aprovacao" && (
-                    <>
-                      <button onClick={handleAprovarOrcamento} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"><CheckCircle className="h-5 w-5" />Aprovar Orçamento</button>
-                      <button onClick={handleRejeitarOrcamento} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"><XCircle className="h-5 w-5" />Rejeitar Orçamento</button>
-                    </>
-                  )}
-                  {solicitacao.status === "aguardando_pagamento" && (
-                    <button onClick={handleConfirmarPagamento} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"><CreditCard className="h-5 w-5" />Confirmar Pagamento</button>
-                  )}
-                  {solicitacao.status === "solicitado" && (
-                    <button onClick={handleCancelarSolicitacao} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-semibold"><Ban className="h-5 w-5" />Cancelar Solicitação</button>
-                  )}
-                  {!["solicitado", "aguardando_aprovacao", "aguardando_pagamento"].includes(solicitacao.status) && (
-                    <p className="text-sm text-gray-500 text-center">Nenhuma ação disponível no momento.</p>
-                  )}
-                </div>
+                  <div className="space-y-3">
+                    {solicitacao.status === "aguardando_aprovacao" && (
+                      <>
+                        <button 
+                          onClick={handleAprovarEPagar} 
+                          disabled={processandoPagamento}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold disabled:bg-gray-400"
+                        >
+                          {processandoPagamento ? (
+                            <><Loader2 className="h-5 w-5 animate-spin" /> Processando...</>
+                          ) : (
+                            <><CreditCard className="h-5 w-5" /> Aprovar e Pagar</>
+                          )}
+                        </button>
+                        <button onClick={handleRejeitarOrcamento} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold">
+                          <XCircle className="h-5 w-5" /> Rejeitar Orçamento
+                        </button>
+                      </>
+                    )}
+                    {/* Removemos o botão de 'Confirmar Pagamento' pois o fluxo agora é direto */}
+                    {solicitacao.status === "solicitado" && (
+                      <button onClick={handleCancelarSolicitacao} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-semibold">
+                        <Ban className="h-5 w-5" /> Cancelar Solicitação
+                      </button>
+                    )}
+                    {!["solicitado", "aguardando_aprovacao"].includes(solicitacao.status) && (
+                      <p className="text-sm text-gray-500 text-center">Nenhuma ação disponível no momento.</p>
+                    )}
+                  </div>
               </div>
 
               {/* Linha do Tempo */}

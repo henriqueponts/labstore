@@ -43,163 +43,135 @@ app.use(cors())
 // Rota de Webhook - PRECISA VIR ANTES do express.json() para receber o body raw
 app.post('/pagamento/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
-    // Parse do body
     const event = JSON.parse(req.body.toString());
-    console.log('Webhook recebido com sucesso:', JSON.stringify(event, null, 2));
+    // Log simplificado para não poluir o console, focando no tipo de evento
+    console.log(`✅ Webhook recebido: ${event.type}`);
 
+    // Processa apenas eventos de pagamento bem-sucedido
     if (event.type === 'order.paid') {
       const order = event.data;
-      const paymentLinkId = order.code; // O ID do link de pagamento (pl_...)
-
-      // 1. Buscar dados do frete da nossa tabela temporária
+      const paymentLinkId = order.code;
       const db = await connectToDatabase();
-      const [freteRows] = await db.query(
-        'SELECT * FROM TempFrete WHERE payment_link_id = ?',
+
+      // ==================================================================
+      // LÓGICA DE DECISÃO ROBUSTA: CONSULTA AO BANCO DE DADOS
+      // ==================================================================
+
+      // 1. Tenta encontrar o link na tabela de pagamentos de ASSISTÊNCIA
+      const [assistenciaRows] = await db.query(
+        'SELECT id_solicitacao FROM TempPagamentoAssistencia WHERE payment_link_id = ?',
         [paymentLinkId]
       );
 
-      let freteInfo = {
-        frete_nome: null,
-        frete_valor: 0,
-        frete_prazo_dias: null,
-        cliente_id: null
-      };
+      // CASO 1: É UM PAGAMENTO DE ASSISTÊNCIA TÉCNICA
+      if (assistenciaRows.length > 0) {
+        const { id_solicitacao } = assistenciaRows[0];
+        console.log(`[Webhook] Pagamento de ASSISTÊNCIA TÉCNICA detectado para solicitação #${id_solicitacao}`);
 
-      if (freteRows.length > 0) {
-        freteInfo = freteRows[0];
-        console.log(`Dados de frete encontrados para ${paymentLinkId}:`, freteInfo);
-      } else {
-        console.warn(`AVISO: Nenhum dado de frete encontrado na tabela TempFrete para o link ${paymentLinkId}. Usando fallbacks.`);
-      }
-
-      // Usar o ID do cliente da tabela de frete é mais seguro
-      let clienteId = freteInfo.cliente_id;
-
-      // Fallback: Buscar cliente por email se não estiver na tabela de frete
-      if (!clienteId && order.customer?.email) {
-        const [clienteRows] = await db.query(
-          'SELECT id_cliente FROM Cliente WHERE email = ? LIMIT 1',
-          [order.customer.email]
-        );
-        if (clienteRows.length > 0) {
-          clienteId = clienteRows[0].id_cliente;
-          console.log(`Cliente encontrado via email: ID ${clienteId}`);
-        } else {
-          console.log(`Cliente não encontrado para email: ${order.customer.email}`);
-        }
-      }
-
-      if (clienteId) {
         await db.beginTransaction();
-        let pedidoId;
         try {
-          // Buscar itens do carrinho
-          const [itensCarrinho] = await db.query(
-            'SELECT * FROM CarrinhoDetalhado WHERE id_cliente = ?',
-            [clienteId]
-          );
-
-          // 2. Usar os dados de frete que buscamos da nossa tabela
-          const [pedidoResult] = await db.query(
-            `INSERT INTO Pedido (id_cliente, frete_nome, frete_valor, frete_prazo_dias, status, endereco_entrega)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [
-              clienteId,
-              freteInfo.frete_nome,
-              freteInfo.frete_valor,
-              freteInfo.frete_prazo_dias,
-              'pago',
-              order.shipping?.address?.line_1 || order.customer?.address?.line_1 || null
-            ]
-          );
-          pedidoId = pedidoResult.insertId;
-
-          // Inserir itens do pedido
-          if (itensCarrinho.length > 0) {
-            for (const item of itensCarrinho) {
-              await db.query(
-                `INSERT INTO ItemPedido (id_pedido, id_produto, quantidade, preco_unitario)
-                 VALUES (?, ?, ?, ?)`,
-                [pedidoId, item.id_produto, item.quantidade, item.preco_atual]
-              );
-              await db.query('UPDATE Produto SET estoque = estoque - ? WHERE id_produto = ?', [
-                item.quantidade,
-                item.id_produto
-              ]);
-            }
-
-            // Limpar carrinho
-            await db.query('CALL LimparCarrinho(?)', [clienteId]);
-          } else {
-            console.log('Nenhum item no carrinho, mas registrando transação básica');
-            // Inserir itens do webhook, se necessário
-            for (const item of order.items || []) {
-              const [produtoRows] = await db.query(
-                'SELECT id_produto, preco FROM Produto WHERE nome LIKE ? LIMIT 1',
-                [`%${item.name || item.description}%`]
-              );
-              if (produtoRows.length > 0) {
-                const produto = produtoRows[0];
-                const quantidade = item.quantity || 1;
-                const precoUnitario = item.amount / 100 / quantidade; // Converte centavos para reais
-                await db.query(
-                  `INSERT INTO ItemPedido (id_pedido, id_produto, quantidade, preco_unitario)
-                   VALUES (?, ?, ?, ?)`,
-                  [pedidoId, produto.id_produto, quantidade, precoUnitario]
-                );
-                await db.query('UPDATE Produto SET estoque = estoque - ? WHERE id_produto = ?', [
-                  quantidade,
-                  produto.id_produto
-                ]);
-              }
-            }
-          }
-
-          // Registrar transação
+          // Atualiza o status da solicitação para 'aprovado'
           await db.query(
-            `INSERT INTO TransacaoPagamento
-            (id_pedido, transaction_id_pagarme, status, metodo_pagamento, valor_centavos, parcelas, payment_link_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            "UPDATE SolicitacaoServico SET status = 'aprovado' WHERE id_solicitacao = ?",
+            [id_solicitacao]
+          );
+
+          // Registra a transação
+         await db.query(
+            `INSERT INTO TransacaoPagamento 
+            (id_pedido, id_solicitacao, transaction_id_pagarme, status, metodo_pagamento, valor_centavos, parcelas, payment_link_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-              pedidoId,
-              order.id, // O ID da ordem (or_...)
+              null, // Explicitamente definindo id_pedido como nulo
+              id_solicitacao,
+              order.id,
               'paid',
               order.charges?.[0]?.payment_method || null,
               order.amount || null,
               order.charges?.[0]?.installments || null,
-              paymentLinkId // Usando a variável que já temos
+              paymentLinkId
             ]
           );
 
-          // 3. Limpar a entrada da tabela temporária (OPCIONAL, MAS RECOMENDADO)
-          await db.query('DELETE FROM TempFrete WHERE payment_link_id = ?', [paymentLinkId]);
-          console.log(`Dados de frete temporários para ${paymentLinkId} foram limpos.`);
+          // Limpa a tabela temporária
+          await db.query('DELETE FROM TempPagamentoAssistencia WHERE payment_link_id = ?', [paymentLinkId]);
 
-          console.log(`Pedido ${pedidoId} criado com sucesso via Webhook para cliente ${clienteId}`);
           await db.commit();
+          console.log(`[Webhook] ✅ Sucesso! Solicitação ${id_solicitacao} atualizada para 'aprovado'.`);
 
-          if (pedidoId) {
-            try {
-              await enviarEmailConfirmacaoCompra(pedidoId);
-            } catch (emailError) {
-              console.error(`Falha ao enfileirar e-mail para o pedido ${pedidoId}, mas o pedido foi salvo.`);
-            }
-          }
+          // (Opcional) Futuramente, você pode criar e chamar uma função para enviar e-mail de confirmação do serviço
+          // await enviarEmailConfirmacaoServico(id_solicitacao);
 
         } catch (err) {
           await db.rollback();
-          console.error('Erro ao processar pedido no webhook:', err);
+          console.error(`[Webhook] ❌ ERRO ao processar pagamento de assistência para solicitação ${id_solicitacao}:`, err);
         }
+
       } else {
-        console.log('Webhook ignorado: Não foi possível identificar o cliente');
+        // CASO 2: É UM PAGAMENTO DE PRODUTO (Lógica original)
+        console.log(`[Webhook] Pagamento de PRODUTO detectado para o link ${paymentLinkId}`);
+
+        const [freteRows] = await db.query('SELECT * FROM TempFrete WHERE payment_link_id = ?', [paymentLinkId]);
+        let clienteId = freteRows.length > 0 ? freteRows[0].cliente_id : null;
+
+        // Fallback para encontrar cliente por e-mail se não estiver na tabela temporária
+        if (!clienteId && order.customer?.email) {
+            const [clienteRows] = await db.query('SELECT id_cliente FROM Cliente WHERE email = ? LIMIT 1', [order.customer.email]);
+            if (clienteRows.length > 0) clienteId = clienteRows[0].id_cliente;
+        }
+
+        if (clienteId) {
+          await db.beginTransaction();
+          try {
+            const freteInfo = freteRows[0] || { frete_nome: null, frete_valor: 0, frete_prazo_dias: null };
+            const [itensCarrinho] = await db.query('SELECT * FROM CarrinhoDetalhado WHERE id_cliente = ?', [clienteId]);
+
+            const [pedidoResult] = await db.query(
+              `INSERT INTO Pedido (id_cliente, frete_nome, frete_valor, frete_prazo_dias, status, endereco_entrega) VALUES (?, ?, ?, ?, ?, ?)`,
+              [clienteId, freteInfo.frete_nome, freteInfo.frete_valor, freteInfo.frete_prazo_dias, 'pago', order.shipping?.address?.line_1 || order.customer?.address?.line_1 || null]
+            );
+            const pedidoId = pedidoResult.insertId;
+
+            if (itensCarrinho.length > 0) {
+              for (const item of itensCarrinho) {
+                await db.query(`INSERT INTO ItemPedido (id_pedido, id_produto, quantidade, preco_unitario) VALUES (?, ?, ?, ?)`, [pedidoId, item.id_produto, item.quantidade, item.preco_atual]);
+                await db.query('UPDATE Produto SET estoque = estoque - ? WHERE id_produto = ?', [item.quantidade, item.id_produto]);
+              }
+              await db.query('CALL LimparCarrinho(?)', [clienteId]);
+            } else {
+              console.warn(`[Webhook] Carrinho do cliente ${clienteId} estava vazio. O pedido ${pedidoId} foi criado sem itens.`);
+            }
+
+            await db.query(
+              `INSERT INTO TransacaoPagamento (id_pedido, transaction_id_pagarme, status, metodo_pagamento, valor_centavos, parcelas, payment_link_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [pedidoId, order.id, 'paid', order.charges?.[0]?.payment_method, order.amount, order.charges?.[0]?.installments, paymentLinkId]
+            );
+
+            await db.query('DELETE FROM TempFrete WHERE payment_link_id = ?', [paymentLinkId]);
+            await db.commit();
+            console.log(`[Webhook] ✅ Sucesso! Pedido ${pedidoId} criado para cliente ${clienteId}.`);
+
+            if (pedidoId) {
+                await enviarEmailConfirmacaoCompra(pedidoId);
+            }
+
+          } catch (err) {
+            await db.rollback();
+            console.error(`[Webhook] ❌ ERRO ao processar pedido de produto para cliente ${clienteId}:`, err);
+          }
+        } else {
+          console.warn(`[Webhook] ⚠️ AVISO: Pagamento de produto ignorado. Não foi possível identificar o cliente para o link ${paymentLinkId}.`);
+        }
       }
     }
+    // Responde ao Pagar.me que o webhook foi recebido com sucesso
     res.status(200).send('OK');
   } catch (error) {
-    console.error('Erro fatal no webhook:', error);
-    res.status(500).send('Erro');
+    console.error('❌ ERRO FATAL no processamento do webhook:', error);
+    res.status(500).send('Erro Interno do Servidor');
   }
 });
+
 
 // Middleware para parse de JSON (para todas as outras rotas)
 app.use(express.json())

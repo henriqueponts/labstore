@@ -85,7 +85,51 @@ router.get("/meus-pedidos", verificarToken, async (req, res) => {
   }
 })
 
+// Rota unificada para verificar status de qualquer pagamento pelo link
+router.get("/status-geral/:paymentLinkId", verificarToken, async (req, res) => {
+  const { paymentLinkId } = req.params;
+  try {
+    const db = await connectToDatabase();
+
+    // 1. Tenta encontrar o status na tabela de Solicitação de Serviço
+    const [solicitacaoRows] = await db.query(
+      `SELECT S.status 
+       FROM SolicitacaoServico S
+       JOIN TransacaoPagamento T ON S.id_solicitacao = T.id_solicitacao
+       WHERE T.payment_link_id = ?`,
+      [paymentLinkId]
+    );
+
+    if (solicitacaoRows.length > 0) {
+      // Se o status for 'aprovado' ou posterior, consideramos 'pago' para o frontend
+      const status = ['aprovado', 'em_execucao', 'concluido'].includes(solicitacaoRows[0].status) ? 'pago' : 'pending';
+      return res.json({ status });
+    }
+
+    // 2. Se não encontrou, tenta na tabela de Pedidos (lógica existente)
+    const [pedidoRows] = await db.query(
+      `SELECT P.status 
+       FROM Pedido P
+       JOIN TransacaoPagamento T ON P.id_pedido = T.id_pedido
+       WHERE T.payment_link_id = ?`,
+      [paymentLinkId]
+    );
+
+    if (pedidoRows.length > 0) {
+      return res.json({ status: pedidoRows[0].status });
+    }
+
+    // 3. Se não encontrou em nenhum, o pagamento ainda está pendente
+    res.json({ status: "pending" });
+
+  } catch (error) {
+    console.error("Erro ao buscar status geral do pedido:", error);
+    res.status(500).json({ message: "Erro interno do servidor" });
+  }
+});
+
 // Rota existente para verificar status por link de pagamento
+/*
 router.get("/status-por-link/:paymentLinkId", verificarToken, async (req, res) => {
   const { paymentLinkId } = req.params
 
@@ -110,5 +154,5 @@ router.get("/status-por-link/:paymentLinkId", verificarToken, async (req, res) =
     res.status(500).json({ message: "Erro interno do servidor" })
   }
 })
-
+*/
 export default router

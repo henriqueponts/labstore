@@ -47,7 +47,7 @@ const AguardoPagamento: React.FC = () => {
         return
       }
 
-      const response = await fetch(`http://localhost:3000/pedido/status-por-link/${paymentLinkId}`, {
+      const response = await fetch(`http://localhost:3000/pedido/status-geral/${paymentLinkId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",

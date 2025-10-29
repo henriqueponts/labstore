@@ -285,6 +285,137 @@ router.put("/cancelar/:id", verifyAuth, async (req, res) => {
   }
 })
 
+
+router.post("/criar-link-pagamento/:id", verifyAuth, async (req, res) => {
+  console.log("💰 POST /assistencia/criar-link-pagamento/:id chamado");
+  try {
+    if (req.userType !== "cliente") {
+      return res.status(403).json({ message: "Apenas clientes podem iniciar pagamentos" });
+    }
+
+    const { id: id_solicitacao } = req.params;
+    const db = await connectToDatabase();
+
+    // 1. Buscar dados da solicitação, orçamento e cliente
+    const [solicitacaoRows] = await db.query(
+      `SELECT 
+        s.id_solicitacao, s.status, s.id_cliente, 
+        o.valor_pecas, o.valor_mao_obra, o.diagnostico,
+        c.nome as nome_cliente, c.email as email_cliente, c.cpf_cnpj
+       FROM SolicitacaoServico s
+       JOIN Orcamento o ON s.id_solicitacao = o.id_solicitacao
+       JOIN Cliente c ON s.id_cliente = c.id_cliente
+       WHERE s.id_solicitacao = ? AND s.id_cliente = ?`,
+      [id_solicitacao, req.userId]
+    );
+
+    if (solicitacaoRows.length === 0) {
+      return res.status(404).json({ success: false, message: "Solicitação não encontrada ou não pertence a você." });
+    }
+    const solicitacao = solicitacaoRows[0];
+
+    // 2. Validar o status
+    if (solicitacao.status !== 'aguardando_pagamento') {
+        return res.status(400).json({ success: false, message: `A solicitação não está aguardando pagamento (status atual: ${solicitacao.status}).` });
+    }
+
+    // 3. Preparar dados e calcular totais
+    const documento_cliente = String(solicitacao.cpf_cnpj || "").replace(/\D/g, "");
+    const valorTotal = (Number(solicitacao.valor_pecas) || 0) + (Number(solicitacao.valor_mao_obra) || 0);
+    const totalCentavos = Math.round(valorTotal * 100);
+
+    const maxInstallments = 12;
+    const parcelas = Array.from({ length: maxInstallments }, (_, i) => ({
+        number: i + 1,
+        total: Math.round(totalCentavos / (i + 1))
+    }));
+
+    // 4. Montar o payload para a API do Pagar.me
+    const paymentLinkData = {
+      type: "order",
+      name: `Serviço Técnico - Protocolo AT-${String(id_solicitacao).padStart(6, '0')}`,
+      is_building: false,
+      payment_settings: {
+        accepted_payment_methods: ["credit_card", "pix", "boleto"],
+        credit_card_settings: {
+          operation_type: "auth_and_capture",
+          installments: parcelas,
+        },
+        pix_settings: { expires_in: 3600 },
+        boleto_settings: { due_in: 3 },
+      },
+      cart_settings: {
+        items: [{
+          name: `Serviço: ${solicitacao.diagnostico || 'Reparo de Equipamento'}`,
+          amount: totalCentavos,
+          default_quantity: 1,
+        }],
+        items_total_cost: totalCentavos,
+        total_cost: totalCentavos,
+        shipping_cost: 0,
+        shipping_total_cost: 0,
+      },
+      customer_settings: {
+        customer_editable: false,
+        customer: {
+          name: solicitacao.nome_cliente,
+          email: solicitacao.email_cliente,
+          type: documento_cliente.length > 11 ? "company" : "individual",
+          document: documento_cliente || "00000000000",
+          document_type: documento_cliente.length > 11 ? "cnpj" : "cpf",
+        },
+      },
+      metadata: {
+        id_solicitacao: id_solicitacao.toString(),
+        id_cliente: req.userId.toString(),
+      },
+    };
+
+    console.log("Payload enviado ao Pagar.me (v5 - ESTRUTURA CORRETA):", JSON.stringify(paymentLinkData, null, 2));
+
+    // ==================================================================
+    // A CORREÇÃO ESTÁ AQUI: Usando a URL de SANDBOX
+    // ==================================================================
+    const apiUrl = 'https://sdx-api.pagar.me/core/v5/paymentlinks';
+
+    // 5. Chamar a API do Pagar.me
+    const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Basic ${Buffer.from(process.env.PAGARME_SECRET_KEY + ":").toString("base64")}`
+        },
+        body: JSON.stringify(paymentLinkData)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Erro na API do Pagar.me:", data);
+      return res.status(response.status).json({ success: false, message: "Erro ao criar link de pagamento", error: data });
+    }
+
+    // 6. Salvar a relação na tabela temporária
+    await db.query(
+      `INSERT INTO TempPagamentoAssistencia (payment_link_id, id_solicitacao) VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE id_solicitacao = VALUES(id_solicitacao)`,
+      [data.id, id_solicitacao]
+    );
+
+    console.log(`Link de pagamento ${data.id} criado para solicitação ${id_solicitacao}`);
+
+    res.json({
+      success: true,
+      payment_url: data.url,
+      order_id: data.id
+    });
+
+  } catch (err) {
+    console.error("Erro ao criar link de pagamento para assistência:", err);
+    res.status(500).json({ success: false, message: "Erro interno no servidor", error: err.message });
+  }
+});
+
 // Confirmar pagamento
 router.put("/confirmar-pagamento/:id", verifyAuth, async (req, res) => {
   console.log("💳 PUT /assistencia/confirmar-pagamento/:id chamado")
