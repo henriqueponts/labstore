@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom"
 import axios from "axios"
 import Layout from "../components/Layout"
 import { Save, Upload, Eye, EyeOff, ImageIcon, Package, Loader2 } from "lucide-react"
+import { useAlert } from "../components/Alert-container"
 
 interface carrosselImage {
   id_carrossel: number
@@ -36,6 +37,7 @@ const EditarHome: React.FC = () => {
   const [produtosDestaque, setProdutosDestaque] = useState<number[]>([])
   const [imageErrors, setImageErrors] = useState<{ [key: number]: boolean }>({})
   const navigate = useNavigate()
+  const { showErro, showAviso, showSucesso } = useAlert();
 
   // Refs para inputs de arquivo
   const fileInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({})
@@ -126,7 +128,7 @@ const EditarHome: React.FC = () => {
   // Função para upload de arquivo
   const handleFileUpload = async (imageId: number, file: File) => {
     if (!file || !file.type.startsWith("image/")) {
-      alert("Por favor, selecione apenas arquivos de imagem.")
+      showAviso("Por favor, selecione apenas arquivos de imagem.")
       return
     }
 
@@ -158,11 +160,11 @@ const EditarHome: React.FC = () => {
         setcarrosselImages((prev) => prev.map((img) => (img.id_carrossel === imageId ? updatedImage : img)))
         setImageErrors((prev) => ({ ...prev, [imageId]: false }))
 
-        alert("Imagem carregada com sucesso!")
+        showSucesso("Imagem carregada com sucesso!")
       }
     } catch (error) {
       console.error("Erro ao fazer upload:", error)
-      alert("Erro ao carregar imagem. Tente novamente.")
+      showErro("Erro ao carregar imagem. Tente novamente.")
     } finally {
       setUploadingImages((prev) => ({ ...prev, [imageId]: false }))
     }
@@ -247,7 +249,7 @@ const EditarHome: React.FC = () => {
       }
     } catch (error) {
       console.error("Erro ao atualizar slide:", error)
-      alert("Erro ao atualizar slide. Tente novamente.")
+      showErro("Erro ao atualizar slide. Tente novamente.")
     }
   }
 
@@ -293,7 +295,7 @@ const EditarHome: React.FC = () => {
     )
 
     if (invalidImages.length > 0) {
-      alert("Por favor, preencha todos os campos obrigatórios dos slides ativos e verifique se os links estão corretos.")
+      showAviso("Por favor, preencha todos os campos obrigatórios dos slides ativos e verifique se os links estão corretos.")
       return
     }
 
@@ -318,11 +320,11 @@ const EditarHome: React.FC = () => {
 
       const message = `Alterações salvas com sucesso!\n\n• ${totalSlides} slide(s) ativo(s) no carrossel\n• ${totalProdutos} produto(s) em destaque\n• Primeira imagem: "${primeiraImagem?.titulo || "Nenhuma"}"`
 
-      alert(message)
+      showSucesso(message)
       navigate("/")
     } catch (err) {
       console.error("Erro ao salvar:", err)
-      alert("Erro ao salvar alterações. Tente novamente.")
+      showErro("Erro ao salvar alterações. Tente novamente.")
     } finally {
       setSaving(false)
     }

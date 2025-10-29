@@ -24,6 +24,7 @@ import {
   Weight,
   Ruler,
 } from "lucide-react"
+import { useAlert } from "../components/Alert-container"
 
 interface Categoria {
   id_categoria: number
@@ -107,6 +108,7 @@ const EditarProduto: React.FC = () => {
   })
 
   const [erros, setErros] = useState<Record<string, string>>({})
+const { showErro, showAviso, showSucesso } = useAlert();
 
   // Carregar dados do produto
   const buscarProduto = async () => {
@@ -136,10 +138,10 @@ const EditarProduto: React.FC = () => {
     } catch (err) {
       console.error("Erro ao carregar produto:", err)
       if (axios.isAxiosError(err) && err.response?.status === 404) {
-        alert("Produto não encontrado")
+        showErro("Produto não encontrado")
         navegar("/gestao/produtos")
       } else {
-        alert("Erro ao carregar produto")
+        showErro("Erro ao carregar produto")
       }
     }
   }
@@ -238,7 +240,7 @@ const EditarProduto: React.FC = () => {
   // Criar nova categoria
   const processarCriarCategoria = async () => {
     if (!novaCategoria.nome.trim()) {
-      alert("Nome da categoria é obrigatório")
+      showAviso("Nome da categoria é obrigatório")
       return
     }
 
@@ -251,20 +253,20 @@ const EditarProduto: React.FC = () => {
       await buscarCategorias()
       setNovaCategoria({ nome: "", descricao: "" })
       setMostrarFormularioNovaCategoria(false)
-      alert("Categoria criada com sucesso!")
+      showSucesso("Categoria criada com sucesso!")
     } catch (err) {
       console.error("Erro ao criar categoria:", err)
       if (axios.isAxiosError(err) && err.response) {
-        alert(err.response.data.message || "Erro ao criar categoria")
+        showErro(err.response.data.message || "Erro ao criar categoria")
       } else {
-        alert("Erro ao criar categoria")
+        showErro("Erro ao criar categoria")
       }
     }
   }
 
   const processarCriarMarca = async () => {
     if (!novaMarca.nome.trim()) {
-      alert("Nome da marca é obrigatório")
+      showAviso("Nome da marca é obrigatório")
       return
     }
 
@@ -277,13 +279,13 @@ const EditarProduto: React.FC = () => {
       await buscarMarcas()
       setNovaMarca({ nome: "", descricao: "" })
       setMostrarFormularioNovaMarca(false)
-      alert("Marca criada com sucesso!")
+      showSucesso("Marca criada com sucesso!")
     } catch (err) {
       console.error("Erro ao criar marca:", err)
       if (axios.isAxiosError(err) && err.response) {
-        alert(err.response.data.message || "Erro ao criar marca")
+        showErro(err.response.data.message || "Erro ao criar marca")
       } else {
-        alert("Erro ao criar marca")
+        showErro("Erro ao criar marca")
       }
     }
   }
@@ -341,14 +343,14 @@ const EditarProduto: React.FC = () => {
         },
       })
 
-      alert("Produto atualizado com sucesso!")
+      showSucesso("Produto atualizado com sucesso!")
       navegar("/gestao/produtos")
     } catch (err) {
       console.error("Erro ao atualizar produto:", err)
       if (axios.isAxiosError(err) && err.response) {
-        alert(err.response.data.message || "Erro ao atualizar produto")
+        showErro(err.response.data.message || "Erro ao atualizar produto")
       } else {
-        alert("Erro ao atualizar produto")
+        showErro("Erro ao atualizar produto")
       }
     } finally {
       setSalvando(false)

@@ -19,6 +19,7 @@ import {
   AlertCircle,
   CheckCircle,
 } from "lucide-react"
+import { useAlert } from "../components/Alert-container"
 
 interface Produto {
   id_produto: number
@@ -55,6 +56,7 @@ const GestaoProdutos: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedBrand, setSelectedBrand] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
+  const { showErro, showAviso, showSucesso } = useAlert();
 
   // Carregar dados
   const fetchData = async () => {
@@ -157,10 +159,10 @@ const GestaoProdutos: React.FC = () => {
       )
 
       setProdutos((prevProdutos) => prevProdutos.map((p) => (p.id_produto === id ? { ...p, status: newStatus } : p)))
-      alert(`Produto "${nome}" ${actionText}ado com sucesso!`)
+      showSucesso(`Produto "${nome}" ${actionText}ado com sucesso!`)
     } catch (err) {
       console.error(`Erro ao ${actionText}ar produto:`, err)
-      alert(`Erro ao ${actionText}ar produto`)
+      showErro(`Erro ao ${actionText}ar produto`)
     }
   }
 

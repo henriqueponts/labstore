@@ -23,6 +23,7 @@ import {
   Loader2,
   ShieldCheck,
 } from "lucide-react"
+import { useAlert } from "../components/Alert-container"
 
 interface OpcaoFrete {
   id: number
@@ -54,6 +55,7 @@ const CarrinhoPage: React.FC = () => {
   const [erroFrete, setErroFrete] = useState("")
   const [comSeguro, setComSeguro] = useState(false)
   const [processandoPagamento, setProcessandoPagamento] = useState(false)
+  const { showErro, showAviso, showSucesso } = useAlert();
 
 
     useEffect(() => {
@@ -147,7 +149,7 @@ const CarrinhoPage: React.FC = () => {
 
   const handleFinalizarCompra = async () => {
     if (!freteSelecionado) {
-      alert("Selecione uma opção de entrega")
+      showAviso("Selecione uma opção de entrega")
       return
     }
 
@@ -187,12 +189,12 @@ const CarrinhoPage: React.FC = () => {
         // Mensagem de erro mais especÃ­fica se a URL não for criada
         const errorMessage = data.message || "Não foi possível obter a URL de pagamento do servidor."
         console.error("Erro ao criar link de pagamento:", data)
-        alert(`Erro ao criar link de pagamento: ${errorMessage}`)
+        showErro(`Erro ao criar link de pagamento: ${errorMessage}`)
       }
       // =======================================================
     } catch (error) {
       console.error("Erro ao criar link de pagamento:", error)
-      alert("Erro ao processar pagamento. Tente novamente.")
+      showErro("Erro ao processar pagamento. Tente novamente.")
     } finally {
       setProcessandoPagamento(false)
     }

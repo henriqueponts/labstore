@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { CartProvider } from "./context/CartContext"
+import { AlertProvider } from "./components/Alert-container"
 import Home from "./pages/Home"
 import LoginComLGPD from "./pages/Login"
 import CadastroClienteComLGPD from "./pages/CadastroCliente"
@@ -32,55 +33,57 @@ import RelatorioClientes from "./pages/RelatorioClientes.tsx"
 function App() {
   return (
     <CartProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Rotas Autenticação */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<LoginComLGPD />} />
-          <Route path="/cadastro/cliente" element={<CadastroClienteComLGPD />} />
-          <Route path="/cadastro/funcionario" element={<CadastroFuncionario />} />
-          <Route path="/gestao/usuarios" element={<GestaoUsuarios />} />
-          <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
-          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
-          <Route path="/alterar-senha" element={<AlterarSenha />} />
+      <AlertProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Rotas Autenticação */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<LoginComLGPD />} />
+            <Route path="/cadastro/cliente" element={<CadastroClienteComLGPD />} />
+            <Route path="/cadastro/funcionario" element={<CadastroFuncionario />} />
+            <Route path="/gestao/usuarios" element={<GestaoUsuarios />} />
+            <Route path="/esqueceu-senha" element={<EsqueceuSenha />} />
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+            <Route path="/alterar-senha" element={<AlterarSenha />} />
 
-          {/* Rotas Chamados */}
-          <Route path="/central-ajuda" element={<CentralAjudaPage />} />
-          <Route path="/gestao/chamados" element={<AdminChamadosPage />} />
+            {/* Rotas Chamados */}
+            <Route path="/central-ajuda" element={<CentralAjudaPage />} />
+            <Route path="/gestao/chamados" element={<AdminChamadosPage />} />
 
-          {/* Rotas Produtos */}
-          <Route path="/cadastro/produto" element={<CadastroProdutos />} />
-          <Route path="/gestao/produtos" element={<GestaoProdutos />} />
-          <Route path="/editar/produto/:id" element={<EditarProduto />} />
-          <Route path="/produto/:id" element={<VisualizarProduto />} />
-          <Route path="/produtos" element={<ListagemProdutos />} />
+            {/* Rotas Produtos */}
+            <Route path="/cadastro/produto" element={<CadastroProdutos />} />
+            <Route path="/gestao/produtos" element={<GestaoProdutos />} />
+            <Route path="/editar/produto/:id" element={<EditarProduto />} />
+            <Route path="/produto/:id" element={<VisualizarProduto />} />
+            <Route path="/produtos" element={<ListagemProdutos />} />
 
-          {/* Rotas Carrinho */}
-          <Route path="/carrinho" element={<CarrinhoPage />} />
-          <Route path="/meus-pedidos" element={<MeusPedidos />} />
-          <Route path="/aguardo-pagamento" element={<AguardoPagamento />} />
-          <Route path="/pagamento-sucesso" element={<PagamentoSucesso />} />
+            {/* Rotas Carrinho */}
+            <Route path="/carrinho" element={<CarrinhoPage />} />
+            <Route path="/meus-pedidos" element={<MeusPedidos />} />
+            <Route path="/aguardo-pagamento" element={<AguardoPagamento />} />
+            <Route path="/pagamento-sucesso" element={<PagamentoSucesso />} />
 
-          {/* Rota Editar Home */}          
-          <Route path="/editar-home" element={<EditarHome />} />
+            {/* Rota Editar Home */}          
+            <Route path="/editar-home" element={<EditarHome />} />
 
-          {/* Rotas LGPD */}
-          <Route path="/gestao/lgpd" element={<GestaoLGPD />} />
-          <Route path="/gestao/lgpd/novo-termo" element={<NovoTermoLGPD />} />
-          <Route path="/gestao/lgpd/editar-termo/:id" element={<NovoTermoLGPD />} />
-          <Route path="/gestao/lgpd/termo/:id" element={<VisualizarTermo />} />
-          <Route path="/visualizar-termo/:id" element={<VisualizarTermo />} />
+            {/* Rotas LGPD */}
+            <Route path="/gestao/lgpd" element={<GestaoLGPD />} />
+            <Route path="/gestao/lgpd/novo-termo" element={<NovoTermoLGPD />} />
+            <Route path="/gestao/lgpd/editar-termo/:id" element={<NovoTermoLGPD />} />
+            <Route path="/gestao/lgpd/termo/:id" element={<VisualizarTermo />} />
+            <Route path="/visualizar-termo/:id" element={<VisualizarTermo />} />
 
-          {/* Rotas Assistência Técnica */}
-          <Route path="/nova-solicitacao-assistencia" element={<NovaSolicitacaoAssistencia />} />
-          <Route path="/acompanhar-solicitacoes" element={<AcompanharSolicitacoes />} />
-          <Route path="/gestao/solicitacoes" element={<GestaoSolicitacoes />} />
-          <Route path="/acompanhar-solicitacoes/:id" element={<DetalhesSolicitacao />} />
+            {/* Rotas Assistência Técnica */}
+            <Route path="/nova-solicitacao-assistencia" element={<NovaSolicitacaoAssistencia />} />
+            <Route path="/acompanhar-solicitacoes" element={<AcompanharSolicitacoes />} />
+            <Route path="/gestao/solicitacoes" element={<GestaoSolicitacoes />} />
+            <Route path="/acompanhar-solicitacoes/:id" element={<DetalhesSolicitacao />} />
 
-          {/* Rotas Relatórios */}
-          <Route path="/relatorios/clientes" element={<RelatorioClientes />} />
-        </Routes>
-      </BrowserRouter>
+            {/* Rotas Relatórios */}
+            <Route path="/relatorios/clientes" element={<RelatorioClientes />} />
+          </Routes>
+        </BrowserRouter>
+      </AlertProvider>
     </CartProvider>
   )
 }

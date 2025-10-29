@@ -2,6 +2,8 @@
 
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useAlert } from "../components/Alert-container";
+
 
 // Interface para os itens do carrinho, baseada na sua VIEW CarrinhoDetalhado
 interface ItemCarrinho {
@@ -34,6 +36,7 @@ const CartContext = createContext<CartContextData>({} as CartContextData);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [itensCarrinho, setItensCarrinho] = useState<ItemCarrinho[]>([]);
     const [carregando, setCarregando] = useState(true);
+    const { showErro, showAviso, showSucesso } = useAlert();
 
     const getToken = () => localStorage.getItem('token');
 
@@ -89,7 +92,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const adicionarAoCarrinho = async (id_produto: number, quantidade: number) => {
         const token = getToken();
         if (!token) {
-            alert("Você precisa estar logado como cliente para adicionar itens ao carrinho.");
+            showAviso("Você precisa estar logado como cliente para adicionar itens ao carrinho.");
             return;
         }
         try {
@@ -98,13 +101,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             await buscarCarrinho();
-            alert("Produto adicionado ao carrinho!");
+            showSucesso("Produto adicionado ao carrinho!");
         } catch (error) {
             console.error("Erro ao adicionar ao carrinho:", error);
             if (axios.isAxiosError(error) && error.response) {
-                alert(`Erro: ${error.response.data.message}`);
+                showErro(`Erro: ${error.response.data.message}`);
             } else {
-                alert("Não foi possível adicionar o produto ao carrinho.");
+                showErro("Não foi possível adicionar o produto ao carrinho.");
             }
         }
     };
@@ -122,9 +125,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
             console.error("Erro ao atualizar quantidade:", error);
             if (axios.isAxiosError(error) && error.response) {
-                alert(`Erro: ${error.response.data.message}`);
+                showErro(`Erro: ${error.response.data.message}`);
             } else {
-                alert("Não foi possível atualizar a quantidade.");
+                showErro("Não foi possível atualizar a quantidade.");
             }
         }
     };
@@ -140,7 +143,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await buscarCarrinho();
         } catch (error) {
             console.error("Erro ao remover do carrinho:", error);
-            alert("Não foi possível remover o produto do carrinho.");
+            showErro("Não foi possível remover o produto do carrinho.");
         }
     };
 
@@ -155,7 +158,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await buscarCarrinho();
         } catch (error) {
             console.error("Erro ao limpar carrinho:", error);
-            alert("Não foi possível limpar o carrinho.");
+            showErro("Não foi possível limpar o carrinho.");
         }
     };
 

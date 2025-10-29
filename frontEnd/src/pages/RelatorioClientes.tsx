@@ -13,10 +13,10 @@ import {
   Search,
   FileText,
   BarChart3,
-  ArrowLeft,
   User,
   Building2,
 } from "lucide-react"
+import { useAlert } from "../components/Alert-container"
 
 // --- Interfaces ---
 
@@ -66,6 +66,7 @@ export default function RelatorioClientes() {
   const [loadingDashboard, setLoadingDashboard] = useState(true)
   const [loadingRelatorio, setLoadingRelatorio] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
+  const { showErro, showAviso, showSucesso } = useAlert();
 
   // --- Funções de Carregamento de Dados ---
 
@@ -150,7 +151,7 @@ export default function RelatorioClientes() {
       link.remove()
     } catch (error) {
       console.error("Erro ao exportar relatório:", error)
-      alert("Erro ao exportar relatório. Tente novamente.")
+      showErro("Erro ao exportar relatório. Tente novamente.")
     }
   }
 

@@ -27,6 +27,7 @@ import {
   Hash,
 } from "lucide-react"
 import { useCart } from "../context/CartContext" // <-- IMPORTADO
+import { useAlert } from "../components/Alert-container"
 
 interface ImagemProduto {
   id_imagem: number
@@ -66,7 +67,8 @@ const VisualizarProduto: React.FC = () => {
   const [imagemAtual, setImagemAtual] = useState(0)
   const [quantidade, setQuantidade] = useState(1)
   const [adicionandoCarrinho, setAdicionandoCarrinho] = useState(false)
-  const { adicionarAoCarrinho: adicionarProdutoAoCarrinho } = useCart() // <-- ADICIONADO
+  const { adicionarAoCarrinho: adicionarProdutoAoCarrinho } = useCart()
+  const { showErro, showAviso, showSucesso } = useAlert();
 
   // Carregar dados do produto
   const buscarProduto = async () => {
@@ -76,10 +78,10 @@ const VisualizarProduto: React.FC = () => {
     } catch (err) {
       console.error("Erro ao carregar produto:", err)
       if (axios.isAxiosError(err) && err.response?.status === 404) {
-        alert("Produto não encontrado")
+        showAviso("Produto não encontrado")
         navegar("/")
       } else {
-        alert("Erro ao carregar produto")
+        showErro("Erro ao carregar produto")
       }
     } finally {
       setCarregando(false)
@@ -152,7 +154,7 @@ const VisualizarProduto: React.FC = () => {
     } else {
       // Fallback: copiar URL
       navigator.clipboard.writeText(window.location.href)
-      alert("Link copiado para a área de transferência!")
+      showSucesso("Link copiado para a área de transferência!")
     }
   }
 

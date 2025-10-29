@@ -6,6 +6,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import TermoLGPDModal from "../components/TermoLGPDModal"
 import ErrorBoundary from "../components/ErrorBoundary"
+import { useAlert } from "../components/Alert-container"
 
 interface EnderecoData {
   logradouro: string
@@ -51,6 +52,7 @@ const CadastroClienteComLGPD: React.FC = () => {
   const [tempFormData, setTempFormData] = useState<any>(null)
   const [temTermoLGPD, setTemTermoLGPD] = useState<boolean | null>(null)
   const navigate = useNavigate()
+  const { showSucesso, showAviso, showErro } = useAlert()
 
   useEffect(() => {
     verificarStatusLGPD()
@@ -318,7 +320,7 @@ const CadastroClienteComLGPD: React.FC = () => {
 
       await axios.post("http://localhost:3000/auth/registro/cliente", dataToSubmit)
 
-      alert("Cliente cadastrado com sucesso! Você pode fazer login agora.")
+      showSucesso("Cliente cadastrado com sucesso! Você pode fazer login agora.")
       navigate("/login")
     } catch (error) {
       console.error("Erro ao cadastrar cliente:", error)
@@ -361,7 +363,7 @@ const CadastroClienteComLGPD: React.FC = () => {
       )
 
       setShowTermoModal(false)
-      alert("Cliente cadastrado com sucesso! Você pode fazer login agora.")
+      showSucesso("Cliente cadastrado com sucesso! Você pode fazer login agora.")
       navigate("/login")
     } catch (error) {
       console.error("Erro ao cadastrar cliente:", error)

@@ -18,6 +18,7 @@ import {
   Edit,
   RefreshCw,
 } from "lucide-react"
+import { useAlert } from "../components/Alert-container"
 
 interface Termo {
   id_termo: number
@@ -53,6 +54,7 @@ const GestaoLGPD: React.FC = () => {
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState<"termos" | "relatorio">("termos")
   const navigate = useNavigate()
+  const { showErro, showAviso, showSucesso } = useAlert();
 
   useEffect(() => {
     checkAuth()
@@ -122,13 +124,13 @@ const GestaoLGPD: React.FC = () => {
 
       // Mostrar mensagem de sucesso
       if (response.data.total_atualizados > 0) {
-        alert(`✅ ${response.data.total_atualizados} termo(s) atualizado(s) com sucesso!`)
+        showSucesso(`${response.data.total_atualizados} termo(s) atualizado(s) com sucesso!`)
       } else {
-        alert("ℹ️ Nenhum termo pendente para ativar no momento.")
+        showAviso("Nenhum termo pendente para ativar no momento.")
       }
     } catch (err: any) {
-      console.error("❌ Erro ao atualizar termos:", err)
-      alert("❌ Erro ao atualizar termos pendentes. Tente novamente.")
+      console.error("Erro ao atualizar termos:", err)
+      showErro("Erro ao atualizar termos pendentes. Tente novamente.")
     } finally {
       setUpdating(false)
     }

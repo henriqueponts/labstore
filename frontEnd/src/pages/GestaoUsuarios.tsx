@@ -22,6 +22,7 @@ import {
   X,
   BarChart3,
 } from "lucide-react"
+import { useAlert } from "../components/Alert-container"
 
 interface Usuario {
   id_usuario: number
@@ -76,6 +77,8 @@ const GestaoUsuarios: React.FC = () => {
   })
 
   const navigate = useNavigate()
+
+  const { showSucesso, showErro } = useAlert()
 
   const fetchData = async (useFilters = false) => {
     try {
@@ -156,7 +159,7 @@ const GestaoUsuarios: React.FC = () => {
       setEditingUserId(userId)
     } catch (err) {
       console.error("Erro ao carregar dados do usuário:", err)
-      alert("Erro ao carregar dados do usuário")
+      showErro("Erro ao carregar dados do usuário")
     }
   }
 
@@ -177,13 +180,13 @@ const GestaoUsuarios: React.FC = () => {
       )
 
       setEditingUserId(null)
-      alert("Dados do usuário atualizados com sucesso!")
+      showSucesso("Dados do usuário atualizados com sucesso!")
     } catch (err) {
       console.error("Erro ao salvar usuário:", err)
       if (axios.isAxiosError(err) && err.response) {
-        alert(err.response.data.message || "Erro ao salvar dados")
+        showErro(err.response.data.message || "Erro ao salvar dados")
       } else {
-        alert("Erro ao salvar dados")
+        showErro("Erro ao salvar dados")
       }
     }
   }
@@ -202,7 +205,7 @@ const GestaoUsuarios: React.FC = () => {
       setEditingClienteId(clienteId)
     } catch (err) {
       console.error("Erro ao carregar dados do cliente:", err)
-      alert("Erro ao carregar dados do cliente")
+      showErro("Erro ao carregar dados do cliente")
     }
   }
 
@@ -221,13 +224,13 @@ const GestaoUsuarios: React.FC = () => {
       )
 
       setEditingClienteId(null)
-      alert("Dados do cliente atualizados com sucesso!")
+      showSucesso("Dados do cliente atualizados com sucesso!")
     } catch (err) {
       console.error("Erro ao salvar cliente:", err)
       if (axios.isAxiosError(err) && err.response) {
-        alert(err.response.data.message || "Erro ao salvar dados")
+        showErro(err.response.data.message || "Erro ao salvar dados")
       } else {
-        alert("Erro ao salvar dados")
+        showErro("Erro ao salvar dados")
       }
     }
   }
@@ -246,13 +249,13 @@ const GestaoUsuarios: React.FC = () => {
       setUsuarios(usuarios.map((user) => (user.id_usuario === userId ? { ...user, tipo_perfil: novoPerfil } : user)))
 
       setEditingUserId(null)
-      alert("Perfil alterado com sucesso!")
+      showSucesso("Perfil alterado com sucesso!")
     } catch (err) {
       console.error("Erro ao alterar perfil:", err)
       if (axios.isAxiosError(err) && err.response) {
-        alert(err.response.data.message || "Erro ao alterar perfil")
+        showErro(err.response.data.message || "Erro ao alterar perfil")
       } else {
-        alert("Erro ao alterar perfil")
+        showErro("Erro ao alterar perfil")
       }
     }
   }
@@ -276,13 +279,13 @@ const GestaoUsuarios: React.FC = () => {
         ),
       )
 
-      alert(`Usuário ${isActive ? "inativado" : "reativado"} com sucesso!`)
+      showSucesso(`Usuário ${isActive ? "inativado" : "reativado"} com sucesso!`)
     } catch (err) {
       console.error("Erro ao alterar status:", err)
       if (axios.isAxiosError(err) && err.response) {
-        alert(err.response.data.message || "Erro ao alterar status")
+        showErro(err.response.data.message || "Erro ao alterar status")
       } else {
-        alert("Erro ao alterar status")
+        showErro("Erro ao alterar status")
       }
     }
   }
@@ -306,13 +309,13 @@ const GestaoUsuarios: React.FC = () => {
         ),
       )
 
-      alert(`Cliente ${isActive ? "inativado" : "reativado"} com sucesso!`)
+      showSucesso(`Cliente ${isActive ? "inativado" : "reativado"} com sucesso!`)
     } catch (err) {
       console.error("Erro ao alterar status:", err)
       if (axios.isAxiosError(err) && err.response) {
-        alert(err.response.data.message || "Erro ao alterar status")
+        showErro(err.response.data.message || "Erro ao alterar status")
       } else {
-        alert("Erro ao alterar status")
+        showErro("Erro ao alterar status")
       }
     }
   }
