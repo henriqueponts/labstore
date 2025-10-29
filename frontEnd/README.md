@@ -1030,3 +1030,27 @@ INSERT INTO carrossel_imagens (titulo, subtitulo, url_imagem, link_destino, orde
 ('Tecnologia que Transforma', 'Encontre os melhores produtos com preços incríveis', '/uploads/carrossel/default1.png', '/produtos', 1, TRUE),
 ('Setup Gamer Completo', 'Monte seu setup dos sonhos com nossa linha gamer', '/uploads/carrossel/default2.jpg', '/produtos?categoria=PCs Gamer', 2, TRUE),
 ('Assistência Técnica Especializada', 'Reparo rápido e confiável para seus equipamentos', '/uploads/carrossel/default3.jpg', '/central-ajuda', 3, TRUE);
+
+
+
+-- TEMPORÁRIO
+
+-- 1. Tabela para armazenar temporariamente a relação entre link e solicitação
+CREATE TABLE TempPagamentoAssistencia (
+    payment_link_id VARCHAR(255) PRIMARY KEY,
+    id_solicitacao INT NOT NULL,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_solicitacao) REFERENCES SolicitacaoServico(id_solicitacao)
+);
+
+-- 2. Adicionar uma coluna na tabela de transações para o ID da solicitação
+ALTER TABLE TransacaoPagamento
+ADD COLUMN id_solicitacao INT NULL,
+ADD CONSTRAINT fk_transacao_solicitacao
+FOREIGN KEY (id_solicitacao) REFERENCES SolicitacaoServico(id_solicitacao);
+
+-- 3. (Opcional, mas recomendado) Adicionar um índice para a nova coluna
+CREATE INDEX idx_id_solicitacao ON TransacaoPagamento(id_solicitacao);
+
+
+ALTER TABLE TransacaoPagamento MODIFY COLUMN id_pedido INT NULL; -- repensar se é OK
