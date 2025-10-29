@@ -16,24 +16,24 @@ interface AlertProps {
 
 const alertStyles = {
   sucesso: {
-    container: "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800",
-    icon: "text-green-600 dark:text-green-400",
-    title: "text-green-900 dark:text-green-100",
-    message: "text-green-700 dark:text-green-300",
+    container: "bg-green-50 border-green-200",
+    icon: "text-green-600",
+    title: "text-green-900",
+    message: "text-green-700",
     IconComponent: CheckCircle,
   },
   erro: {
-    container: "bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800",
-    icon: "text-red-600 dark:text-red-400",
-    title: "text-red-900 dark:text-red-100",
-    message: "text-red-700 dark:text-red-300",
+    container: "bg-red-50 border-red-200",
+    icon: "text-red-600",
+    title: "text-red-900",
+    message: "text-red-700",
     IconComponent: XCircle,
   },
   aviso: {
-    container: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800",
-    icon: "text-yellow-600 dark:text-yellow-400",
-    title: "text-yellow-900 dark:text-yellow-100",
-    message: "text-yellow-700 dark:text-yellow-300",
+    container: "bg-yellow-50 border-yellow-200",
+    icon: "text-yellow-600",
+    title: "text-yellow-900",
+    message: "text-yellow-700",
     IconComponent: AlertTriangle,
   },
 }

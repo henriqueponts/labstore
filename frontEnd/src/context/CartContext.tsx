@@ -2,7 +2,9 @@
 
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { useAlert } from "../components/Alert-container";
+import { useAlert, AlertProvider } from "../components/Alert-container"; 
+
+
 
 
 // Interface para os itens do carrinho, baseada na sua VIEW CarrinhoDetalhado
@@ -33,10 +35,12 @@ interface CartContextData {
 
 const CartContext = createContext<CartContextData>({} as CartContextData);
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const CartInternal: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [itensCarrinho, setItensCarrinho] = useState<ItemCarrinho[]>([]);
     const [carregando, setCarregando] = useState(true);
+
     const { showErro, showAviso, showSucesso } = useAlert();
+
 
     const getToken = () => localStorage.getItem('token');
 
@@ -127,7 +131,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (axios.isAxiosError(error) && error.response) {
                 showErro(`Erro: ${error.response.data.message}`);
             } else {
-                showErro("Não foi possível atualizar a quantidade.");
+                showAviso("Não foi possível atualizar a quantidade.");
             }
         }
     };
@@ -143,7 +147,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await buscarCarrinho();
         } catch (error) {
             console.error("Erro ao remover do carrinho:", error);
-            showErro("Não foi possível remover o produto do carrinho.");
+            showAviso("Não foi possível remover o produto do carrinho.");
         }
     };
 
@@ -158,7 +162,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await buscarCarrinho();
         } catch (error) {
             console.error("Erro ao limpar carrinho:", error);
-            showErro("Não foi possível limpar o carrinho.");
+            showAviso("Não foi possível limpar o carrinho.");
         }
     };
 
@@ -186,6 +190,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         </CartContext.Provider>
     );
 };
+
+
+export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    return (
+        <AlertProvider>
+            <CartInternal>
+                {children}
+            </CartInternal>
+        </AlertProvider>
+    );
+};
+
 
 export const useCart = () => {
     const context = useContext(CartContext);

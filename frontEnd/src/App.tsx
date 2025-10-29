@@ -32,8 +32,8 @@ import RelatorioClientes from "./pages/RelatorioClientes.tsx"
 
 function App() {
   return (
+  <AlertProvider>
     <CartProvider>
-      <AlertProvider>
         <BrowserRouter>
           <Routes>
             {/* Rotas Autenticação */}
@@ -83,8 +83,8 @@ function App() {
             <Route path="/relatorios/clientes" element={<RelatorioClientes />} />
           </Routes>
         </BrowserRouter>
-      </AlertProvider>
     </CartProvider>
+  </AlertProvider>
   )
 }
 
