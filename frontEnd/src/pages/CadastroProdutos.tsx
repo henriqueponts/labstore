@@ -52,7 +52,7 @@ const CadastroProdutos: React.FC = () => {
   const [newCategory, setNewCategory] = useState({ nome: "", descricao: "" })
   const [newBrand, setNewBrand] = useState({ nome: "", descricao: "" })
   const [images, setImages] = useState<ImageFile[]>([])
-  const { showErro, showAviso, showSucesso } = useAlert();
+  const { showErro, showAviso, showSucesso } = useAlert()
 
   const [formData, setFormData] = useState({
     nome: "",
@@ -73,7 +73,7 @@ const CadastroProdutos: React.FC = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Carregar categorias
+  // Carregar categorias e marcas
   const fetchCategorias = async () => {
     try {
       const response = await axios.get("http://localhost:3000/produtos/categorias")
@@ -106,25 +106,48 @@ const CadastroProdutos: React.FC = () => {
     if (!formData.nome.trim()) newErrors.nome = "Nome é obrigatório"
     if (!formData.descricao.trim()) newErrors.descricao = "Descrição é obrigatória"
     if (!formData.preco || Number.parseFloat(formData.preco) <= 0) {
-      newErrors.preco = "Preço deve ser maior que zero"
+      newErrors.preco = "Preço deve ser um número positivo"
     }
     if (!formData.id_categoria) newErrors.id_categoria = "Categoria é obrigatória"
-    if (formData.estoque && Number.parseInt(formData.estoque) < 0) {
-      newErrors.estoque = "Estoque não pode ser negativo"
+    if (!formData.id_marca) newErrors.id_marca = "Marca é obrigatória"
+    if (!formData.modelo.trim()) newErrors.modelo = "Modelo é obrigatório"
+    if (!formData.cor.trim()) newErrors.cor = "Cor é obrigatória"
+    if (!formData.compatibilidade.trim()) newErrors.compatibilidade = "Compatibilidade é obrigatória"
+
+    // Validação de Estoque
+    if (!formData.estoque.trim()) {
+      newErrors.estoque = "Estoque é obrigatório"
+    } else {
+      const estoqueNum = Number.parseInt(formData.estoque)
+      if (estoqueNum < 0) {
+        newErrors.estoque = "Estoque não pode ser negativo"
+      } else if (estoqueNum > 100) {
+        newErrors.estoque = "Estoque não pode ser superior a 100"
+      }
     }
-    if (
-      formData.ano_fabricacao &&
-      (Number.parseInt(formData.ano_fabricacao) < 1900 ||
-        Number.parseInt(formData.ano_fabricacao) > new Date().getFullYear())
+
+    // Validação de Ano
+    if (!formData.ano_fabricacao.trim()) {
+      newErrors.ano_fabricacao = "Ano de fabricação é obrigatório"
+    } else if (
+      Number.parseInt(formData.ano_fabricacao) < 1900 ||
+      Number.parseInt(formData.ano_fabricacao) > new Date().getFullYear()
     ) {
       newErrors.ano_fabricacao = "Ano de fabricação inválido"
     }
-    if (formData.peso_kg && Number.parseFloat(formData.peso_kg) <= 0) newErrors.peso_kg = "Peso deve ser maior que zero"
-    if (formData.altura_cm && Number.parseFloat(formData.altura_cm) <= 0)
-      newErrors.altura_cm = "Altura deve ser maior que zero"
-    if (formData.largura_cm && Number.parseFloat(formData.largura_cm) <= 0)
-      newErrors.largura_cm = "Largura deve ser maior que zero"
-    if (formData.comprimento_cm && Number.parseFloat(formData.comprimento_cm) <= 0)
+
+    // Validações de Envio
+    if (!formData.peso_kg.trim()) newErrors.peso_kg = "Peso é obrigatório"
+    else if (Number.parseFloat(formData.peso_kg) <= 0) newErrors.peso_kg = "Peso deve ser maior que zero"
+
+    if (!formData.altura_cm.trim()) newErrors.altura_cm = "Altura é obrigatória"
+    else if (Number.parseFloat(formData.altura_cm) <= 0) newErrors.altura_cm = "Altura deve ser maior que zero"
+
+    if (!formData.largura_cm.trim()) newErrors.largura_cm = "Largura é obrigatória"
+    else if (Number.parseFloat(formData.largura_cm) <= 0) newErrors.largura_cm = "Largura deve ser maior que zero"
+
+    if (!formData.comprimento_cm.trim()) newErrors.comprimento_cm = "Comprimento é obrigatório"
+    else if (Number.parseFloat(formData.comprimento_cm) <= 0)
       newErrors.comprimento_cm = "Comprimento deve ser maior que zero"
 
     setErrors(newErrors)
@@ -199,6 +222,7 @@ const CadastroProdutos: React.FC = () => {
     e.preventDefault()
 
     if (!validateForm()) {
+      showAviso("Por favor, preencha todos os campos obrigatórios.")
       return
     }
 
@@ -259,7 +283,7 @@ const CadastroProdutos: React.FC = () => {
             </button>
             <h1 className="text-3xl font-bold text-gray-800">Cadastrar Produto</h1>
           </div>
-          <p className="text-gray-600">Adicione um novo produto ao catálogo</p>
+          <p className="text-gray-600">Adicione um novo produto ao catálogo. Todos os campos com * são obrigatórios.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -368,13 +392,15 @@ const CadastroProdutos: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Marca</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Marca *</label>
                 <div className="flex gap-2">
                   <select
                     name="id_marca"
                     value={formData.id_marca}
                     onChange={handleInputChange}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.id_marca ? "border-red-500" : "border-gray-300"
+                    }`}
                   >
                     <option value="">Selecione uma marca</option>
                     {marcas.map((marca) => (
@@ -392,6 +418,7 @@ const CadastroProdutos: React.FC = () => {
                     Nova
                   </button>
                 </div>
+                {errors.id_marca && <p className="text-red-500 text-sm mt-1">{errors.id_marca}</p>}
               </div>
             </div>
 
@@ -481,21 +508,24 @@ const CadastroProdutos: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Modelo</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Modelo *</label>
                 <input
                   type="text"
                   name="modelo"
                   value={formData.modelo}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.modelo ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Ex: Inspiron 15 3000"
                 />
+                {errors.modelo && <p className="text-red-500 text-sm mt-1">{errors.modelo}</p>}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Truck className="inline mr-1" size={16} />
-                  Estoque
+                  Estoque *
                 </label>
                 <input
                   type="number"
@@ -514,22 +544,25 @@ const CadastroProdutos: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Palette className="inline mr-1" size={16} />
-                  Cor
+                  Cor *
                 </label>
                 <input
                   type="text"
                   name="cor"
                   value={formData.cor}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.cor ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Ex: Preto, Prata, Azul"
                 />
+                {errors.cor && <p className="text-red-500 text-sm mt-1">{errors.cor}</p>}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Calendar className="inline mr-1" size={16} />
-                  Ano de Fabricação
+                  Ano de Fabricação *
                 </label>
                 <input
                   type="number"
@@ -547,15 +580,18 @@ const CadastroProdutos: React.FC = () => {
               </div>
 
               <div className="md:col-span-2 lg:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Compatibilidade</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Compatibilidade *</label>
                 <textarea
                   name="compatibilidade"
                   value={formData.compatibilidade}
                   onChange={handleInputChange}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.compatibilidade ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Descreva com quais sistemas, dispositivos ou componentes este produto é compatível..."
                 />
+                {errors.compatibilidade && <p className="text-red-500 text-sm mt-1">{errors.compatibilidade}</p>}
               </div>
             </div>
           </div>
@@ -567,13 +603,13 @@ const CadastroProdutos: React.FC = () => {
               Informações de Envio
             </h2>
             <p className="text-sm text-gray-500 mb-6">
-              Essas informações são essenciais para o cálculo automático do frete.
+              Essas informações são essenciais para o cálculo do frete. Todos os campos são obrigatórios.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Weight className="inline mr-1" size={16} />
-                  Peso (kg)
+                  Peso (kg) *
                 </label>
                 <input
                   type="number"
@@ -592,7 +628,7 @@ const CadastroProdutos: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Ruler className="inline mr-1" size={16} />
-                  Altura (cm)
+                  Altura (cm) *
                 </label>
                 <input
                   type="number"
@@ -611,7 +647,7 @@ const CadastroProdutos: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Ruler className="inline mr-1" size={16} />
-                  Largura (cm)
+                  Largura (cm) *
                 </label>
                 <input
                   type="number"
@@ -630,7 +666,7 @@ const CadastroProdutos: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Ruler className="inline mr-1" size={16} />
-                  Comprimento (cm)
+                  Comprimento (cm) *
                 </label>
                 <input
                   type="number"

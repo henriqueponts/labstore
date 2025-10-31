@@ -481,54 +481,7 @@ const Home: React.FC = () => {
           </div>
         </section>
 
-        {/* Rodapé Personalizado */}
-        <footer className="bg-gray-800 text-white py-12 mt-16">
-          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 border-b border-gray-700 pb-8">
-            {/* Coluna de Contato */}
-            <div>
-              <h4 className="text-xl font-bold mb-4 text-blue-400">Contato & Horário</h4>
-              <p className="mb-2">
-                <span className="font-semibold block">Email:</span>
-                <a 
-                  href="mailto:labstore.bebedouro@gmail.com" 
-                  className="text-gray-300 hover:text-blue-400 transition duration-200"
-                >
-                  labstore.bebedouro@gmail.com
-                </a>
-              </p>
-              <p className="mt-4">
-                <span className="font-semibold block">Funcionamento:</span>
-                Segunda a Sexta, das 8h às 18h
-              </p>
-            </div>
 
-            {/* Coluna Central de Ajuda*/}
-            <div className="text-left md:border-l md:border-r border-gray-700 md:px-8">
-              <h4 className="text-xl font-bold mb-4 text-blue-400">Suporte</h4>
-              <button
-                onClick={() => navigate("/central-ajuda")}
-                className="text-lg text-white hover:text-blue-400 transition duration-200 inline-block p-2 rounded-lg hover:bg-gray-700"
-              >
-                Central de Ajuda
-              </button>
-            </div>
-
-            {/* Coluna de Produtos */}
-            <div>
-              <h4 className="text-xl font-bold mb-4 text-blue-400">Explorar</h4>
-              <button
-                onClick={() => navigate("/produtos")}
-                className="text-lg text-gray-300 hover:text-blue-400 transition duration-200 block p-2 rounded-lg hover:bg-gray-700"
-              >
-                Todos os Produtos
-              </button>
-            </div>
-          </div>
-          
-          <div className="max-w-7xl mx-auto px-4 pt-8 text-center text-gray-400 text-sm">
-            © {new Date().getFullYear()} LabStore. Todos os direitos reservados.
-          </div>
-        </footer>
 
         <style>{`
           .line-clamp-2 {

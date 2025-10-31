@@ -29,11 +29,12 @@ import AcompanharSolicitacoes from "./pages/AcompanharSolicitacoes.tsx"
 import GestaoSolicitacoes from "./pages/GestaoSolicitacoes.tsx"
 import DetalhesSolicitacao from "./pages/DetalhesSolicitacao.tsx"
 import RelatorioClientes from "./pages/RelatorioClientes.tsx"
+import RelatorioAssistencia from "./pages/RelatorioAssistencia.tsx"
 
 function App() {
   return (
-  <AlertProvider>
-    <CartProvider>
+    <AlertProvider>
+      <CartProvider>
         <BrowserRouter>
           <Routes>
             {/* Rotas Autenticação */}
@@ -63,7 +64,7 @@ function App() {
             <Route path="/aguardo-pagamento" element={<AguardoPagamento />} />
             <Route path="/pagamento-sucesso" element={<PagamentoSucesso />} />
 
-            {/* Rota Editar Home */}          
+            {/* Rota Editar Home */}
             <Route path="/editar-home" element={<EditarHome />} />
 
             {/* Rotas LGPD */}
@@ -81,10 +82,11 @@ function App() {
 
             {/* Rotas Relatórios */}
             <Route path="/relatorios/clientes" element={<RelatorioClientes />} />
+            <Route path="/relatorios/assistencias" element={<RelatorioAssistencia />} />
           </Routes>
         </BrowserRouter>
-    </CartProvider>
-  </AlertProvider>
+      </CartProvider>
+    </AlertProvider>
   )
 }
 

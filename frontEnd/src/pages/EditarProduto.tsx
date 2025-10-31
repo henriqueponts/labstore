@@ -58,7 +58,7 @@ interface Produto {
   descricao: string
   preco: number
   marca: string
-  id_marca: number // Added id_marca field for brand integration
+  id_marca: number
   modelo: string
   estoque: number
   id_categoria: number
@@ -80,11 +80,11 @@ const EditarProduto: React.FC = () => {
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [categorias, setCategorias] = useState<Categoria[]>([])
-  const [marcas, setMarcas] = useState<Marca[]>([]) // Added marcas state
+  const [marcas, setMarcas] = useState<Marca[]>([])
   const [mostrarFormularioNovaCategoria, setMostrarFormularioNovaCategoria] = useState(false)
-  const [mostrarFormularioNovaMarca, setMostrarFormularioNovaMarca] = useState(false) // Added nova marca form state
+  const [mostrarFormularioNovaMarca, setMostrarFormularioNovaMarca] = useState(false)
   const [novaCategoria, setNovaCategoria] = useState({ nome: "", descricao: "" })
-  const [novaMarca, setNovaMarca] = useState({ nome: "", descricao: "" }) // Added nova marca state
+  const [novaMarca, setNovaMarca] = useState({ nome: "", descricao: "" })
   const [imagensExistentes, setImagensExistentes] = useState<ImagemExistente[]>([])
   const [novasImagens, setNovasImagens] = useState<NovaImagemArquivo[]>([])
   const [imagensParaRemover, setImagensParaRemover] = useState<number[]>([])
@@ -93,7 +93,7 @@ const EditarProduto: React.FC = () => {
     nome: "",
     descricao: "",
     preco: "",
-    id_marca: "", // Changed from marca to id_marca for brand integration
+    id_marca: "",
     modelo: "",
     estoque: "",
     id_categoria: "",
@@ -108,7 +108,7 @@ const EditarProduto: React.FC = () => {
   })
 
   const [erros, setErros] = useState<Record<string, string>>({})
-const { showErro, showAviso, showSucesso } = useAlert();
+  const { showErro, showAviso, showSucesso } = useAlert()
 
   // Carregar dados do produto
   const buscarProduto = async () => {
@@ -120,7 +120,7 @@ const { showErro, showAviso, showSucesso } = useAlert();
         nome: produto.nome || "",
         descricao: produto.descricao || "",
         preco: produto.preco?.toString() || "",
-        id_marca: produto.id_marca?.toString() || "", // Updated to use id_marca
+        id_marca: produto.id_marca?.toString() || "",
         modelo: produto.modelo || "",
         estoque: produto.estoque?.toString() || "",
         id_categoria: produto.id_categoria?.toString() || "",
@@ -146,7 +146,7 @@ const { showErro, showAviso, showSucesso } = useAlert();
     }
   }
 
-  // Carregar categorias
+  // Carregar categorias e marcas
   const buscarCategorias = async () => {
     try {
       const resposta = await axios.get("http://localhost:3000/produtos/categorias")
@@ -173,25 +173,33 @@ const { showErro, showAviso, showSucesso } = useAlert();
 
     const carregarDados = async () => {
       setCarregando(true)
-      await Promise.all([buscarProduto(), buscarCategorias(), buscarMarcas()]) // Added buscarMarcas to Promise.all
+      await Promise.all([buscarProduto(), buscarCategorias(), buscarMarcas()])
       setCarregando(false)
     }
 
     carregarDados()
   }, [id])
 
-  // Validar formulário
+  // Função de validação atualizada para todos os campos
   const validarFormulario = () => {
     const novosErros: Record<string, string> = {}
 
     if (!dadosFormulario.nome.trim()) novosErros.nome = "Nome é obrigatório"
     if (!dadosFormulario.descricao.trim()) novosErros.descricao = "Descrição é obrigatória"
     if (!dadosFormulario.preco || Number.parseFloat(dadosFormulario.preco) <= 0) {
-      novosErros.preco = "Preço deve ser maior que zero"
+      novosErros.preco = "Preço deve ser um número positivo"
     }
     if (!dadosFormulario.id_categoria) novosErros.id_categoria = "Categoria é obrigatória"
-    if (!dadosFormulario.id_marca) novosErros.id_marca = "Marca é obrigatória" 
-    if (dadosFormulario.estoque) {
+    if (!dadosFormulario.id_marca) novosErros.id_marca = "Marca é obrigatória"
+    if (!dadosFormulario.modelo.trim()) novosErros.modelo = "Modelo é obrigatório"
+    if (!dadosFormulario.cor.trim()) novosErros.cor = "Cor é obrigatória"
+    if (!dadosFormulario.compatibilidade.trim()) novosErros.compatibilidade = "Compatibilidade é obrigatória"
+    if (!dadosFormulario.status) novosErros.status = "Status é obrigatório"
+
+    // Validação de Estoque
+    if (!dadosFormulario.estoque.trim()) {
+      novosErros.estoque = "Estoque é obrigatório"
+    } else {
       const estoqueNum = Number.parseInt(dadosFormulario.estoque)
       if (estoqueNum < 0) {
         novosErros.estoque = "Estoque não pode ser negativo"
@@ -199,20 +207,30 @@ const { showErro, showAviso, showSucesso } = useAlert();
         novosErros.estoque = "Estoque não pode ser superior a 100"
       }
     }
-    if (
-      dadosFormulario.ano_fabricacao &&
-      (Number.parseInt(dadosFormulario.ano_fabricacao) < 1900 ||
-        Number.parseInt(dadosFormulario.ano_fabricacao) > new Date().getFullYear())
+
+    // Validação de Ano
+    if (!dadosFormulario.ano_fabricacao.trim()) {
+      novosErros.ano_fabricacao = "Ano de fabricação é obrigatório"
+    } else if (
+      Number.parseInt(dadosFormulario.ano_fabricacao) < 1900 ||
+      Number.parseInt(dadosFormulario.ano_fabricacao) > new Date().getFullYear()
     ) {
       novosErros.ano_fabricacao = "Ano de fabricação inválido"
     }
-    if (dadosFormulario.peso_kg && Number.parseFloat(dadosFormulario.peso_kg) <= 0)
-      novosErros.peso_kg = "Peso deve ser maior que zero"
-    if (dadosFormulario.altura_cm && Number.parseFloat(dadosFormulario.altura_cm) <= 0)
-      novosErros.altura_cm = "Altura deve ser maior que zero"
-    if (dadosFormulario.largura_cm && Number.parseFloat(dadosFormulario.largura_cm) <= 0)
+
+    // Validações de Envio
+    if (!dadosFormulario.peso_kg.trim()) novosErros.peso_kg = "Peso é obrigatório"
+    else if (Number.parseFloat(dadosFormulario.peso_kg) <= 0) novosErros.peso_kg = "Peso deve ser maior que zero"
+
+    if (!dadosFormulario.altura_cm.trim()) novosErros.altura_cm = "Altura é obrigatória"
+    else if (Number.parseFloat(dadosFormulario.altura_cm) <= 0) novosErros.altura_cm = "Altura deve ser maior que zero"
+
+    if (!dadosFormulario.largura_cm.trim()) novosErros.largura_cm = "Largura é obrigatória"
+    else if (Number.parseFloat(dadosFormulario.largura_cm) <= 0)
       novosErros.largura_cm = "Largura deve ser maior que zero"
-    if (dadosFormulario.comprimento_cm && Number.parseFloat(dadosFormulario.comprimento_cm) <= 0)
+
+    if (!dadosFormulario.comprimento_cm.trim()) novosErros.comprimento_cm = "Comprimento é obrigatório"
+    else if (Number.parseFloat(dadosFormulario.comprimento_cm) <= 0)
       novosErros.comprimento_cm = "Comprimento deve ser maior que zero"
 
     setErros(novosErros)
@@ -243,13 +261,11 @@ const { showErro, showAviso, showSucesso } = useAlert();
       showAviso("Nome da categoria é obrigatório")
       return
     }
-
     try {
       const token = localStorage.getItem("token")
       await axios.post("http://localhost:3000/produtos/categorias", novaCategoria, {
         headers: { Authorization: `Bearer ${token}` },
       })
-
       await buscarCategorias()
       setNovaCategoria({ nome: "", descricao: "" })
       setMostrarFormularioNovaCategoria(false)
@@ -264,18 +280,17 @@ const { showErro, showAviso, showSucesso } = useAlert();
     }
   }
 
+  // Criar nova marca
   const processarCriarMarca = async () => {
     if (!novaMarca.nome.trim()) {
       showAviso("Nome da marca é obrigatório")
       return
     }
-
     try {
       const token = localStorage.getItem("token")
       await axios.post("http://localhost:3000/gestao/marcas", novaMarca, {
         headers: { Authorization: `Bearer ${token}` },
       })
-
       await buscarMarcas()
       setNovaMarca({ nome: "", descricao: "" })
       setMostrarFormularioNovaMarca(false)
@@ -295,6 +310,7 @@ const { showErro, showAviso, showSucesso } = useAlert();
     e.preventDefault()
 
     if (!validarFormulario()) {
+      showAviso("Por favor, preencha todos os campos obrigatórios.")
       return
     }
 
@@ -380,7 +396,7 @@ const { showErro, showAviso, showSucesso } = useAlert();
             </button>
             <h1 className="text-3xl font-bold text-gray-800">Editar Produto</h1>
           </div>
-          <p className="text-gray-600">Modifique as informações do produto</p>
+          <p className="text-gray-600">Modifique as informações do produto. Todos os campos com * são obrigatórios.</p>
         </div>
 
         <form onSubmit={processarEnvio} className="space-y-8">
@@ -454,11 +470,10 @@ const { showErro, showAviso, showSucesso } = useAlert();
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
               <Layers className="mr-2" size={24} />
-              Categoria, Marca e Status {/* Updated title to include Marca */}
+              Categoria, Marca e Status
             </h2>
 
             <div className="space-y-6">
-              {/* Categoria e Marca juntos */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Categoria *</label>
@@ -491,13 +506,15 @@ const { showErro, showAviso, showSucesso } = useAlert();
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Marca</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Marca *</label>
                   <div className="flex gap-2">
                     <select
                       name="id_marca"
                       value={dadosFormulario.id_marca}
                       onChange={processarMudancaInput}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                        erros.id_marca ? "border-red-500" : "border-gray-300"
+                      }`}
                     >
                       <option value="">Selecione uma marca</option>
                       {marcas.map((marca) => (
@@ -519,21 +536,23 @@ const { showErro, showAviso, showSucesso } = useAlert();
                 </div>
               </div>
 
-              {/* Status separado */}
               <div className="max-w-xs">
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                   <AlertCircle className="mr-1" size={16} />
-                  Status
+                  Status *
                 </label>
                 <select
                   name="status"
                   value={dadosFormulario.status}
                   onChange={processarMudancaInput}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                    erros.status ? "border-red-500" : "border-gray-300"
+                  }`}
                 >
                   <option value="ativo">Ativo</option>
                   <option value="inativo">Inativo</option>
                 </select>
+                {erros.status && <p className="text-red-500 text-sm mt-1">{erros.status}</p>}
               </div>
             </div>
 
@@ -623,21 +642,24 @@ const { showErro, showAviso, showSucesso } = useAlert();
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Modelo</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Modelo *</label>
                 <input
                   type="text"
                   name="modelo"
                   value={dadosFormulario.modelo}
                   onChange={processarMudancaInput}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.modelo ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Ex: Inspiron 15 3000"
                 />
+                {erros.modelo && <p className="text-red-500 text-sm mt-1">{erros.modelo}</p>}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Truck className="inline mr-1" size={16} />
-                  Estoque
+                  Estoque *
                 </label>
                 <input
                   type="number"
@@ -645,7 +667,6 @@ const { showErro, showAviso, showSucesso } = useAlert();
                   value={dadosFormulario.estoque}
                   onChange={processarMudancaInput}
                   min="0"
-                  // --- LINHA ADICIONADA ---
                   max="100"
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     erros.estoque ? "border-red-500" : "border-gray-300"
@@ -658,22 +679,25 @@ const { showErro, showAviso, showSucesso } = useAlert();
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Palette className="inline mr-1" size={16} />
-                  Cor
+                  Cor *
                 </label>
                 <input
                   type="text"
                   name="cor"
                   value={dadosFormulario.cor}
                   onChange={processarMudancaInput}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.cor ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Ex: Preto, Prata, Azul"
                 />
+                {erros.cor && <p className="text-red-500 text-sm mt-1">{erros.cor}</p>}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Calendar className="inline mr-1" size={16} />
-                  Ano de Fabricação
+                  Ano de Fabricação *
                 </label>
                 <input
                   type="number"
@@ -691,15 +715,18 @@ const { showErro, showAviso, showSucesso } = useAlert();
               </div>
 
               <div className="md:col-span-2 lg:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Compatibilidade</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Compatibilidade *</label>
                 <textarea
                   name="compatibilidade"
                   value={dadosFormulario.compatibilidade}
                   onChange={processarMudancaInput}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    erros.compatibilidade ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Descreva com quais sistemas, dispositivos ou componentes este produto é compatível..."
                 />
+                {erros.compatibilidade && <p className="text-red-500 text-sm mt-1">{erros.compatibilidade}</p>}
               </div>
             </div>
           </div>
@@ -711,13 +738,13 @@ const { showErro, showAviso, showSucesso } = useAlert();
               Informações de Envio
             </h2>
             <p className="text-sm text-gray-500 mb-6">
-              Essas informações são essenciais para o cálculo automático do frete.
+              Essas informações são essenciais para o cálculo do frete. Todos os campos são obrigatórios.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Weight className="inline mr-1" size={16} />
-                  Peso (kg)
+                  Peso (kg) *
                 </label>
                 <input
                   type="number"
@@ -736,7 +763,7 @@ const { showErro, showAviso, showSucesso } = useAlert();
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Ruler className="inline mr-1" size={16} />
-                  Altura (cm)
+                  Altura (cm) *
                 </label>
                 <input
                   type="number"
@@ -755,7 +782,7 @@ const { showErro, showAviso, showSucesso } = useAlert();
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Ruler className="inline mr-1" size={16} />
-                  Largura (cm)
+                  Largura (cm) *
                 </label>
                 <input
                   type="number"
@@ -774,7 +801,7 @@ const { showErro, showAviso, showSucesso } = useAlert();
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Ruler className="inline mr-1" size={16} />
-                  Comprimento (cm)
+                  Comprimento (cm) *
                 </label>
                 <input
                   type="number"
