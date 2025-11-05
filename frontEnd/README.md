@@ -3,8 +3,6 @@ ngrok http 3000
 Cartão de crédito (Sucesso)
 4000000000000010
 
--- Cria o banco de dados se ele não existir
-
 CREATE DATABASE IF NOT EXISTS labstore;
 USE labstore;
 
@@ -105,35 +103,6 @@ CREATE TABLE Pedido (
     FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente)
 );
 
--- Tabela para armazenar transações do Pagar.me
-CREATE TABLE IF NOT EXISTS TransacaoPagamento (
-    id_transacao INT PRIMARY KEY AUTO_INCREMENT,
-    id_pedido INT NOT NULL,
-    transaction_id_pagarme VARCHAR(100) NOT NULL UNIQUE,
-    status VARCHAR(50) NOT NULL,
-    metodo_pagamento VARCHAR(50) NOT NULL,
-    valor_centavos INT NOT NULL,
-    parcelas INT DEFAULT 1,
-    payment_link_id VARCHAR(255) NULL,
-    data_transacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    data_atualizacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_pedido) REFERENCES Pedido(id_pedido) ON DELETE CASCADE,
-    INDEX idx_transaction_id (transaction_id_pagarme),
-    INDEX idx_pedido (id_pedido),
-	INDEX idx_payment_link_id (payment_link_id)
-); 	
-
--- Tabela de Itens de um Pedido
-CREATE TABLE ItemPedido (
-    id_item_pedido INT PRIMARY KEY AUTO_INCREMENT,
-    id_pedido INT NOT NULL,
-    id_produto INT NOT NULL,
-    quantidade INT NOT NULL,
-    preco_unitario DECIMAL(10,2) NOT NULL,
-    FOREIGN KEY (id_pedido) REFERENCES Pedido(id_pedido) ON DELETE CASCADE,
-    FOREIGN KEY (id_produto) REFERENCES Produto(id_produto)
-);
-
 -- Tabela de Solicitações de Serviço Técnico
 CREATE TABLE SolicitacaoServico (
     id_solicitacao INT PRIMARY KEY AUTO_INCREMENT,
@@ -150,6 +119,48 @@ CREATE TABLE SolicitacaoServico (
     data_conclusao_servico DATETIME NULL,
     motivo_recusa_orcamento TEXT NULL,
     FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente)
+);
+
+CREATE TABLE IF NOT EXISTS TransacaoPagamento (
+    id_transacao INT PRIMARY KEY AUTO_INCREMENT,
+    id_pedido INT NULL,
+    id_solicitacao INT NULL,
+    transaction_id_pagarme VARCHAR(100) NOT NULL UNIQUE,
+    status VARCHAR(50) NOT NULL,
+    metodo_pagamento VARCHAR(50) NOT NULL,
+    valor_centavos INT NOT NULL,
+    parcelas INT DEFAULT 1,
+    payment_link_id VARCHAR(255) NULL,
+    data_transacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (id_pedido) REFERENCES Pedido(id_pedido) ON DELETE CASCADE,
+    FOREIGN KEY (id_solicitacao) REFERENCES SolicitacaoServico(id_solicitacao),
+
+    INDEX idx_transaction_id (transaction_id_pagarme),
+    INDEX idx_pedido (id_pedido),
+    INDEX idx_payment_link_id (payment_link_id),
+    INDEX idx_id_solicitacao (id_solicitacao)
+);
+
+
+-- Tabela de Itens de um Pedido
+CREATE TABLE ItemPedido (
+    id_item_pedido INT PRIMARY KEY AUTO_INCREMENT,
+    id_pedido INT NOT NULL,
+    id_produto INT NOT NULL,
+    quantidade INT NOT NULL,
+    preco_unitario DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (id_pedido) REFERENCES Pedido(id_pedido) ON DELETE CASCADE,
+    FOREIGN KEY (id_produto) REFERENCES Produto(id_produto)
+);
+
+-- Tabela para armazenar temporariamente a relação entre link e solicitação
+CREATE TABLE TempPagamentoAssistencia (
+    payment_link_id VARCHAR(255) PRIMARY KEY,
+    id_solicitacao INT NOT NULL,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_solicitacao) REFERENCES SolicitacaoServico(id_solicitacao)
 );
 
 -- Tabela de Orçamentos para Solicitações de Serviço
@@ -845,7 +856,6 @@ BEGIN
 END//
 DELIMITER ;
 
-
 -- admin@gmail.com
 -- analista@gmail.com
 -- SENHA É 123
@@ -1030,27 +1040,3 @@ INSERT INTO carrossel_imagens (titulo, subtitulo, url_imagem, link_destino, orde
 ('Tecnologia que Transforma', 'Encontre os melhores produtos com preços incríveis', '/uploads/carrossel/default1.png', '/produtos', 1, TRUE),
 ('Setup Gamer Completo', 'Monte seu setup dos sonhos com nossa linha gamer', '/uploads/carrossel/default2.jpg', '/produtos?categoria=PCs Gamer', 2, TRUE),
 ('Assistência Técnica Especializada', 'Reparo rápido e confiável para seus equipamentos', '/uploads/carrossel/default3.jpg', '/central-ajuda', 3, TRUE);
-
-
-
--- TEMPORÁRIO
-
--- 1. Tabela para armazenar temporariamente a relação entre link e solicitação
-CREATE TABLE TempPagamentoAssistencia (
-    payment_link_id VARCHAR(255) PRIMARY KEY,
-    id_solicitacao INT NOT NULL,
-    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_solicitacao) REFERENCES SolicitacaoServico(id_solicitacao)
-);
-
--- 2. Adicionar uma coluna na tabela de transações para o ID da solicitação
-ALTER TABLE TransacaoPagamento
-ADD COLUMN id_solicitacao INT NULL,
-ADD CONSTRAINT fk_transacao_solicitacao
-FOREIGN KEY (id_solicitacao) REFERENCES SolicitacaoServico(id_solicitacao);
-
--- 3. (Opcional, mas recomendado) Adicionar um índice para a nova coluna
-CREATE INDEX idx_id_solicitacao ON TransacaoPagamento(id_solicitacao);
-
-
-ALTER TABLE TransacaoPagamento MODIFY COLUMN id_pedido INT NULL; -- repensar se é OK
