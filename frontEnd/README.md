@@ -1040,3 +1040,57 @@ INSERT INTO carrossel_imagens (titulo, subtitulo, url_imagem, link_destino, orde
 ('Tecnologia que Transforma', 'Encontre os melhores produtos com preços incríveis', '/uploads/carrossel/default1.png', '/produtos', 1, TRUE),
 ('Setup Gamer Completo', 'Monte seu setup dos sonhos com nossa linha gamer', '/uploads/carrossel/default2.jpg', '/produtos?categoria=PCs Gamer', 2, TRUE),
 ('Assistência Técnica Especializada', 'Reparo rápido e confiável para seus equipamentos', '/uploads/carrossel/default3.jpg', '/central-ajuda', 3, TRUE);
+
+
+ALTER TABLE Pedido 
+MODIFY COLUMN status ENUM(
+    'aguardando_pagamento',
+    'pago',
+    'processando',
+    'enviado',
+    'entregue',
+    'cancelado',
+    'reembolsado',
+    'falha_pagamento',
+    'concluido',
+    'estornado'
+) NOT NULL DEFAULT 'aguardando_pagamento';
+
+
+-- Tabela para armazenar solicitações de estorno
+CREATE TABLE IF NOT EXISTS SolicitacaoEstorno (
+    id_solicitacao_estorno INT PRIMARY KEY AUTO_INCREMENT,
+    id_pedido INT NOT NULL,
+    id_cliente INT NOT NULL,
+    motivo TEXT NOT NULL,
+    status ENUM('pendente', 'aprovado', 'recusado') NOT NULL DEFAULT 'pendente',
+    data_solicitacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    data_resposta DATETIME NULL,
+    id_funcionario_resposta INT NULL,
+    motivo_recusa TEXT NULL,
+    FOREIGN KEY (id_pedido) REFERENCES Pedido(id_pedido) ON DELETE CASCADE,
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente) ON DELETE CASCADE,
+    FOREIGN KEY (id_funcionario_resposta) REFERENCES Usuario(id_usuario) ON DELETE SET NULL,
+    INDEX idx_pedido (id_pedido),
+    INDEX idx_cliente (id_cliente),
+    INDEX idx_status (status)
+);
+
+-- Adicionar trigger para fazer TRIM
+DELIMITER //
+CREATE TRIGGER solicitacao_estorno_trim_before_insert
+BEFORE INSERT ON SolicitacaoEstorno
+FOR EACH ROW
+BEGIN
+    SET NEW.motivo = TRIM(NEW.motivo);
+    SET NEW.motivo_recusa = TRIM(IFNULL(NEW.motivo_recusa, ''));
+END//
+
+CREATE TRIGGER solicitacao_estorno_trim_before_update
+BEFORE UPDATE ON SolicitacaoEstorno
+FOR EACH ROW
+BEGIN
+    SET NEW.motivo = TRIM(NEW.motivo);
+    SET NEW.motivo_recusa = TRIM(IFNULL(NEW.motivo_recusa, ''));
+END//
+DELIMITER ;
