@@ -553,6 +553,276 @@ router.delete("/marcas/:id", verifyAdmin, async (req, res) => {
   }
 })
 
+// Listar todos os pedidos
+router.get("/pedidos", verifyAdmin, async (req, res) => {
+  console.log("📊 GET /gestao/pedidos chamado")
+  try {
+    const { busca, status } = req.query
+    const db = await connectToDatabase()
+
+    let query = `
+      SELECT 
+        p.id_pedido,
+        p.id_cliente,
+        p.data_pedido,
+        p.status,
+        p.frete_nome,
+        p.frete_valor,
+        p.frete_prazo_dias,
+        p.endereco_entrega,
+        c.nome as nome_cliente,
+        c.email as email_cliente,
+        c.telefone as telefone_cliente,
+        COALESCE(SUM(ip.quantidade * ip.preco_unitario), 0) + COALESCE(p.frete_valor, 0) as valor_total
+      FROM Pedido p
+      LEFT JOIN Cliente c ON p.id_cliente = c.id_cliente
+      LEFT JOIN ItemPedido ip ON p.id_pedido = ip.id_pedido
+      WHERE 1=1
+    `
+    const params = []
+
+    if (busca) {
+      query += ` AND (p.id_pedido LIKE ? OR c.nome LIKE ? OR c.email LIKE ?)`
+      params.push(`%${busca}%`, `%${busca}%`, `%${busca}%`)
+    }
+
+    if (status) {
+      query += ` AND p.status = ?`
+      params.push(status)
+    }
+
+    query += ` GROUP BY p.id_pedido ORDER BY p.data_pedido DESC`
+
+    const [pedidos] = await db.query(query, params)
+
+    // Buscar itens de cada pedido
+    const pedidosCompletos = await Promise.all(
+      pedidos.map(async (pedido) => {
+        const [itens] = await db.query(
+          `
+          SELECT 
+            ip.id_produto,
+            ip.quantidade,
+            ip.preco_unitario,
+            (ip.quantidade * ip.preco_unitario) as subtotal,
+            pr.nome as nome_produto,
+            pi.url_imagem as imagem_principal
+          FROM ItemPedido ip
+          JOIN Produto pr ON ip.id_produto = pr.id_produto
+          LEFT JOIN ProdutoImagem pi ON pr.id_produto = pi.id_produto AND pi.is_principal = TRUE
+          WHERE ip.id_pedido = ?
+          ORDER BY ip.id_item_pedido
+        `,
+          [pedido.id_pedido],
+        )
+
+        const [solicitacaoEstorno] = await db.query(
+          `SELECT 
+            se.id_solicitacao_estorno,
+            se.status,
+            se.motivo,
+            se.data_solicitacao,
+            se.data_resposta,
+            se.motivo_recusa,
+            se.id_funcionario_resposta,
+            u.nome as nome_funcionario
+          FROM SolicitacaoEstorno se
+          LEFT JOIN Usuario u ON se.id_funcionario_resposta = u.id_usuario
+          WHERE se.id_pedido = ?
+          ORDER BY se.data_solicitacao DESC
+          LIMIT 1
+        `,
+          [pedido.id_pedido],
+        )
+
+        return {
+          ...pedido,
+          itens,
+          solicitacao_estorno: solicitacaoEstorno.length > 0 ? solicitacaoEstorno[0] : null,
+        }
+      }),
+    )
+
+    console.log(`📦 ${pedidosCompletos.length} pedidos encontrados`)
+    res.status(200).json(pedidosCompletos)
+  } catch (err) {
+    console.error("❌ Erro ao buscar pedidos:", err)
+    res.status(500).json({ message: "Erro interno do servidor" })
+  }
+})
+
+// Atualizar status do pedido
+router.put("/pedidos/:id/status", verifyAdmin, async (req, res) => {
+  console.log(`🔄 PUT /gestao/pedidos/${req.params.id}/status chamado`)
+  try {
+    const { id } = req.params
+    const { novo_status, motivo } = req.body
+
+    // Validar status
+    const statusValidos = [
+      "aguardando_pagamento",
+      "pago",
+      "processando",
+      "enviado",
+      "entregue",
+      "cancelado",
+      "estornado",
+      "falha_pagamento",
+    ]
+
+    if (!statusValidos.includes(novo_status)) {
+      return res.status(400).json({ message: "Status inválido" })
+    }
+
+    // Verificar se cancelamento ou estorno tem motivo
+    if ((novo_status === "cancelado" || novo_status === "estornado") && !motivo) {
+      return res.status(400).json({ message: "Motivo é obrigatório para cancelamento ou estorno" })
+    }
+
+    const db = await connectToDatabase()
+
+    // Verificar se o pedido existe
+    const [pedidoExiste] = await db.query("SELECT id_pedido, status FROM Pedido WHERE id_pedido = ?", [id])
+    if (pedidoExiste.length === 0) {
+      return res.status(404).json({ message: "Pedido não encontrado" })
+    }
+
+    // Atualizar status do pedido
+    await db.query("UPDATE Pedido SET status = ? WHERE id_pedido = ?", [novo_status, id])
+
+    // Registrar no log se houver motivo
+    if (motivo) {
+      console.log(`📝 Pedido #${id} ${novo_status} - Motivo: ${motivo}`)
+      // Aqui você pode inserir em uma tabela de histórico se desejar
+    }
+
+    console.log(`✅ Status do pedido ${id} atualizado para ${novo_status}`)
+    res.status(200).json({ message: "Status do pedido atualizado com sucesso", novo_status })
+  } catch (err) {
+    console.error("❌ Erro ao atualizar status do pedido:", err)
+    res.status(500).json({ message: "Erro interno do servidor" })
+  }
+})
+
+router.get("/estornos/pendentes", verifyAdmin, async (req, res) => {
+  console.log("📋 GET /gestao/estornos/pendentes chamado")
+  try {
+    const db = await connectToDatabase()
+
+    const [solicitacoes] = await db.query(
+      `SELECT 
+        se.id_solicitacao_estorno,
+        se.id_pedido,
+        se.motivo,
+        se.data_solicitacao,
+        se.status,
+        p.status as status_pedido,
+        c.nome as nome_cliente,
+        c.email as email_cliente,
+        COALESCE(SUM(ip.quantidade * ip.preco_unitario), 0) + COALESCE(p.frete_valor, 0) as valor_pedido
+      FROM SolicitacaoEstorno se
+      JOIN Pedido p ON se.id_pedido = p.id_pedido
+      JOIN Cliente c ON se.id_cliente = c.id_cliente
+      LEFT JOIN ItemPedido ip ON p.id_pedido = ip.id_pedido
+      WHERE se.status = 'pendente'
+      GROUP BY se.id_solicitacao_estorno
+      ORDER BY se.data_solicitacao ASC
+    `,
+    )
+
+    console.log(`📋 ${solicitacoes.length} solicitações de estorno pendentes`)
+    res.status(200).json(solicitacoes)
+  } catch (err) {
+    console.error("❌ Erro ao buscar solicitações de estorno:", err)
+    res.status(500).json({ message: "Erro interno do servidor" })
+  }
+})
+
+router.put("/estornos/:id/aprovar", verifyAdmin, async (req, res) => {
+  console.log(`✅ PUT /gestao/estornos/${req.params.id}/aprovar chamado`)
+  try {
+    const { id } = req.params
+    const db = await connectToDatabase()
+
+    // Buscar a solicitação
+    const [solicitacao] = await db.query(
+      "SELECT id_pedido, status FROM SolicitacaoEstorno WHERE id_solicitacao_estorno = ?",
+      [id],
+    )
+
+    if (solicitacao.length === 0) {
+      return res.status(404).json({ message: "Solicitação de estorno não encontrada" })
+    }
+
+    if (solicitacao[0].status !== "pendente") {
+      return res.status(400).json({ message: "Esta solicitação já foi processada" })
+    }
+
+    const idPedido = solicitacao[0].id_pedido
+
+    // Atualizar solicitação
+    await db.query(
+      `UPDATE SolicitacaoEstorno 
+       SET status = 'aprovado', 
+           data_resposta = NOW(), 
+           id_funcionario_resposta = ? 
+       WHERE id_solicitacao_estorno = ?`,
+      [req.userId, id],
+    )
+
+    // Atualizar status do pedido para estornado
+    await db.query("UPDATE Pedido SET status = 'estornado' WHERE id_pedido = ?", [idPedido])
+
+    console.log(`✅ Solicitação de estorno #${id} aprovada e pedido #${idPedido} estornado`)
+    res.status(200).json({ message: "Solicitação de estorno aprovada com sucesso" })
+  } catch (err) {
+    console.error("❌ Erro ao aprovar estorno:", err)
+    res.status(500).json({ message: "Erro interno do servidor" })
+  }
+})
+
+router.put("/estornos/:id/recusar", verifyAdmin, async (req, res) => {
+  console.log(`❌ PUT /gestao/estornos/${req.params.id}/recusar chamado`)
+  try {
+    const { id } = req.params
+    const { motivo_recusa } = req.body
+
+    if (!motivo_recusa || !motivo_recusa.trim()) {
+      return res.status(400).json({ message: "Motivo da recusa é obrigatório" })
+    }
+
+    const db = await connectToDatabase()
+
+    // Buscar a solicitação
+    const [solicitacao] = await db.query("SELECT status FROM SolicitacaoEstorno WHERE id_solicitacao_estorno = ?", [id])
+
+    if (solicitacao.length === 0) {
+      return res.status(404).json({ message: "Solicitação de estorno não encontrada" })
+    }
+
+    if (solicitacao[0].status !== "pendente") {
+      return res.status(400).json({ message: "Esta solicitação já foi processada" })
+    }
+
+    // Atualizar solicitação
+    await db.query(
+      `UPDATE SolicitacaoEstorno 
+       SET status = 'recusado', 
+           data_resposta = NOW(), 
+           id_funcionario_resposta = ?, 
+           motivo_recusa = ? 
+       WHERE id_solicitacao_estorno = ?`,
+      [req.userId, motivo_recusa.trim(), id],
+    )
+
+    console.log(`❌ Solicitação de estorno #${id} recusada`)
+    res.status(200).json({ message: "Solicitação de estorno recusada" })
+  } catch (err) {
+    console.error("❌ Erro ao recusar estorno:", err)
+    res.status(500).json({ message: "Erro interno do servidor" })
+  }
+})
+
 console.log("✅ gestaoRoutes.js configurado!")
 
 export default router

@@ -376,7 +376,7 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                         Home
                       </a>
                       <a
-                        href="/meus-pedidos"
+                        href="/gestao/pedidos"
                         className="flex items-center text-blue-700 hover:text-blue-600 transition-colors"
                       >
                         <ShoppingBag size={16} className="mr-1" />

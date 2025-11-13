@@ -30,6 +30,7 @@ import GestaoSolicitacoes from "./pages/GestaoSolicitacoes.tsx"
 import DetalhesSolicitacao from "./pages/DetalhesSolicitacao.tsx"
 import RelatorioClientes from "./pages/RelatorioClientes.tsx"
 import RelatorioAssistencia from "./pages/RelatorioAssistencia.tsx"
+import GestaoPedidos from "./pages/GestaoPedidos.tsx"
 
 function App() {
   return (
@@ -61,6 +62,7 @@ function App() {
             {/* Rotas Carrinho */}
             <Route path="/carrinho" element={<CarrinhoPage />} />
             <Route path="/meus-pedidos" element={<MeusPedidos />} />
+            <Route path="/gestao/pedidos" element={<GestaoPedidos />} />
             <Route path="/aguardo-pagamento" element={<AguardoPagamento />} />
             <Route path="/pagamento-sucesso" element={<PagamentoSucesso />} />
 

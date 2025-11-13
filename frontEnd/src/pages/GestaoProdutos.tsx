@@ -56,38 +56,24 @@ const GestaoProdutos: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedBrand, setSelectedBrand] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
-  const { showErro, showAviso, showSucesso } = useAlert();
+  const { showErro, showSucesso } = useAlert()
 
   // Carregar dados
   const fetchData = async () => {
     try {
-      console.log("[v0] Iniciando carregamento de dados...")
-
       const [produtosRes, categoriasRes, marcasRes] = await Promise.all([
         axios.get("http://localhost:3000/produtos/produtos"),
         axios.get("http://localhost:3000/produtos/categorias"),
         axios.get("http://localhost:3000/gestao/marcas"),
       ])
 
-      console.log("[v0] Produtos recebidos:", produtosRes.data)
-      console.log("[v0] Categorias recebidas:", categoriasRes.data)
-      console.log("[v0] Marcas recebidas:", marcasRes.data)
-
-      produtosRes.data.forEach((produto: Produto, index: number) => {
-        console.log(`[v0] Produto ${index + 1}:`, {
-          nome: produto.nome,
-          marca_nome: produto.marca_nome,
-          id_marca: (produto as any).id_marca, // Verificando se existe id_marca
-        })
-      })
-
       setProdutos(produtosRes.data)
       setCategorias(categoriasRes.data)
       setMarcas(marcasRes.data)
     } catch (err) {
-      console.error("[v0] Erro ao carregar dados:", err)
+      console.error("Erro ao carregar dados:", err)
       if (axios.isAxiosError(err)) {
-        console.error("[v0] Detalhes do erro:", {
+        console.error("Detalhes do erro:", {
           status: err.response?.status,
           statusText: err.response?.statusText,
           data: err.response?.data,
@@ -118,15 +104,6 @@ const GestaoProdutos: React.FC = () => {
       (!produto.marca_nome && selectedBrand === "Sem marca")
 
     const matchesStatus = !statusFilter || produto.status === statusFilter
-
-    console.log(`[v0] Filtro para ${produto.nome}:`, {
-      selectedBrand,
-      produto_marca_nome: produto.marca_nome,
-      matchesBrand,
-      matchesSearch,
-      matchesCategory,
-      matchesStatus,
-    })
 
     return matchesSearch && matchesCategory && matchesBrand && matchesStatus
   })
@@ -373,12 +350,6 @@ const GestaoProdutos: React.FC = () => {
                         >
                           {produto.marca_nome || "Sem marca"}
                         </span>
-                        {/* Temporário para debug - remover depois */}
-                        {!produto.marca_nome && (
-                          <div className="text-xs text-red-500 mt-1">
-                            Debug: marca_nome = {JSON.stringify(produto.marca_nome)}
-                          </div>
-                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center text-sm font-medium text-gray-900">

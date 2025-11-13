@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
+import { useAlert } from "../components/Alert-container"
 
 interface ItemPedido {
   id_produto: number
@@ -28,6 +29,15 @@ interface ItemPedido {
   preco_unitario: number
   subtotal: number
   imagem_principal?: string
+}
+
+interface SolicitacaoEstorno {
+  id_solicitacao_estorno: number
+  status: string
+  motivo: string
+  data_solicitacao: string
+  data_resposta?: string
+  motivo_recusa?: string
 }
 
 interface Pedido {
@@ -40,14 +50,21 @@ interface Pedido {
   endereco_entrega?: string
   valor_total: number
   itens: ItemPedido[]
+  solicitacao_estorno?: SolicitacaoEstorno
 }
 
 const MeusPedidos: React.FC = () => {
   const navigate = useNavigate()
+  const { showSucesso, showErro } = useAlert()
+
   const [pedidos, setPedidos] = useState<Pedido[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [pedidosOcultos, setPedidosOcultos] = useState<Set<number>>(new Set())
+
+  const [modalEstornoAberto, setModalEstornoAberto] = useState(false)
+  const [pedidoEstornoSelecionado, setPedidoEstornoSelecionado] = useState<number | null>(null)
+  const [motivoEstorno, setMotivoEstorno] = useState("")
 
   const formatarPreco = (preco: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -130,9 +147,6 @@ const MeusPedidos: React.FC = () => {
         return
       }
 
-      console.log("[v0] Iniciando busca de pedidos...")
-      console.log("[v0] Token presente:", !!token)
-
       const response = await fetch("http://localhost:3000/pedido/meus-pedidos", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -140,27 +154,20 @@ const MeusPedidos: React.FC = () => {
         },
       })
 
-      console.log("[v0] Response status:", response.status)
-      console.log("[v0] Response headers:", Object.fromEntries(response.headers.entries()))
-
       if (response.ok) {
         const data = await response.json()
-        console.log("[v0] Pedidos recebidos:", data)
         setPedidos(data)
       } else if (response.status === 401) {
-        console.log("[v0] Token inválido, redirecionando para login")
         localStorage.removeItem("token")
         navigate("/login")
       } else {
         let errorMessage = "Erro ao carregar pedidos"
         const responseText = await response.text()
-        console.log("[v0] Response text:", responseText)
 
         try {
           const errorData = JSON.parse(responseText)
           errorMessage = errorData.message || errorMessage
         } catch {
-          console.log("[v0] Resposta não é JSON:", responseText.substring(0, 200))
           if (response.status === 404) {
             errorMessage = "Rota não encontrada. Verifique se o servidor está configurado corretamente."
           } else {
@@ -170,7 +177,7 @@ const MeusPedidos: React.FC = () => {
         setErro(errorMessage)
       }
     } catch (error) {
-      console.error("[v0] Erro ao buscar pedidos:", error)
+      console.error("Erro ao buscar pedidos:", error)
       if (error instanceof Error) {
         if (error instanceof TypeError && error.message.includes("fetch")) {
           setErro("Erro de conexão. Verifique se o servidor está rodando na porta 3000.")
@@ -183,6 +190,50 @@ const MeusPedidos: React.FC = () => {
     } finally {
       setCarregando(false)
     }
+  }
+
+  const solicitarEstorno = async (idPedido: number, motivo: string) => {
+    try {
+      const token = localStorage.getItem("token")
+
+      const response = await fetch(`http://localhost:3000/pedido/${idPedido}/solicitar-estorno`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ motivo }),
+      })
+
+      if (response.ok) {
+        showSucesso("Solicitação de estorno enviada com sucesso!")
+        buscarPedidos()
+        setModalEstornoAberto(false)
+        setPedidoEstornoSelecionado(null)
+        setMotivoEstorno("")
+      } else {
+        const errorData = await response.json()
+        showErro(errorData.message || "Erro ao solicitar estorno")
+      }
+    } catch (error) {
+      console.error("Erro ao solicitar estorno:", error)
+      showErro("Erro ao solicitar estorno")
+    }
+  }
+
+  const abrirModalEstorno = (idPedido: number) => {
+    setPedidoEstornoSelecionado(idPedido)
+    setMotivoEstorno("")
+    setModalEstornoAberto(true)
+  }
+
+  const confirmarEstorno = () => {
+    if (!pedidoEstornoSelecionado || !motivoEstorno.trim()) {
+      showErro("Por favor, informe o motivo do estorno")
+      return
+    }
+
+    solicitarEstorno(pedidoEstornoSelecionado, motivoEstorno)
   }
 
   useEffect(() => {
@@ -214,7 +265,7 @@ const MeusPedidos: React.FC = () => {
             </div>
 
             <div className="text-center mb-8">
-              <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
                 Meus Pedidos
               </h1>
             </div>
@@ -262,6 +313,7 @@ const MeusPedidos: React.FC = () => {
               {pedidos.map((pedido) => {
                 const statusInfo = getStatusInfo(pedido.status)
                 const StatusIcon = statusInfo.icon
+                const podeEstornar = ["pago", "entregue"].includes(pedido.status) && !pedido.solicitacao_estorno
 
                 return (
                   <div
@@ -400,9 +452,38 @@ const MeusPedidos: React.FC = () => {
                       <div className="border-t border-slate-200 pt-6">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center space-x-6">
-                            <div className="flex items-center space-x-3">
+                            {podeEstornar && (
+                              <button
+                                onClick={() => abrirModalEstorno(pedido.id_pedido)}
+                                className="flex items-center bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl font-medium transition-colors shadow-lg text-sm"
+                              >
+                                <RefreshCw size={16} className="mr-2" />
+                                Solicitar Estorno
+                              </button>
+                            )}
 
-                            </div>
+                            {pedido.solicitacao_estorno && (
+                              <div className="flex items-center space-x-2">
+                                {pedido.solicitacao_estorno.status === "pendente" && (
+                                  <div className="flex items-center bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-xl text-sm font-medium">
+                                    <Clock size={16} className="mr-2" />
+                                    Estorno em análise
+                                  </div>
+                                )}
+                                {pedido.solicitacao_estorno.status === "aprovado" && (
+                                  <div className="flex items-center bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-xl text-sm font-medium">
+                                    <CheckCircle size={16} className="mr-2" />
+                                    Estorno aprovado
+                                  </div>
+                                )}
+                                {pedido.solicitacao_estorno.status === "recusado" && (
+                                  <div className="flex items-center bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-medium">
+                                    <XCircle size={16} className="mr-2" />
+                                    Estorno recusado
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="text-right bg-gradient-to-r from-slate-100 to-blue-100 px-6 py-4 rounded-xl">
                             <div className="text-sm text-slate-500 font-medium">Total Pago</div>
@@ -420,6 +501,42 @@ const MeusPedidos: React.FC = () => {
           )}
         </div>
       </div>
+
+      {modalEstornoAberto && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-slate-900 mb-4">Solicitar Estorno</h3>
+            <p className="text-slate-600 mb-4">
+              Por favor, informe o motivo para solicitar o estorno do pedido #{pedidoEstornoSelecionado}:
+            </p>
+            <textarea
+              value={motivoEstorno}
+              onChange={(e) => setMotivoEstorno(e.target.value)}
+              placeholder="Descreva o motivo do estorno..."
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 mb-4"
+              rows={4}
+            />
+            <div className="flex space-x-3">
+              <button
+                onClick={confirmarEstorno}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+              >
+                Confirmar Solicitação
+              </button>
+              <button
+                onClick={() => {
+                  setModalEstornoAberto(false)
+                  setPedidoEstornoSelecionado(null)
+                  setMotivoEstorno("")
+                }}
+                className="flex-1 bg-slate-600 hover:bg-slate-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }
