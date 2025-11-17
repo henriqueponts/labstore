@@ -2,6 +2,7 @@ import express from 'express';
 import { connectToDatabase } from '../lib/db.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { registrarLog } from '../middleware/logMiddleware.js';
 
 const router = express.Router()
 
@@ -19,6 +20,20 @@ router.post('/login', async (req, res) => {
             const funcionario = funcionarioRows[0];
             const isMatch = await bcrypt.compare(senha, funcionario.senha_hash)
             if (!isMatch) {
+                const fakeReq = {
+                    userId: null,
+                    userType: null,
+                    userProfile: null,
+                    headers: req.headers,
+                    connection: req.connection,
+                    socket: req.socket
+                };
+                await registrarLog(fakeReq, {
+                    acao: 'LOGIN_FALHA',
+                    tabelaAfetada: 'Usuario',
+                    idRegistro: funcionario.id_usuario,
+                    descricao: `Tentativa de login falhou - senha incorreta para ${email}`,
+                });
                 return res.status(401).json({ message: 'Senha incorreta!' })
             }
 
@@ -29,11 +44,26 @@ router.post('/login', async (req, res) => {
                 email: funcionario.email 
             }, process.env.JWT_SECRET, { expiresIn: '3h' })
 
+            const loginReq = {
+                userId: funcionario.id_usuario,
+                userType: 'funcionario',
+                userProfile: funcionario.tipo_perfil,
+                headers: req.headers,
+                connection: req.connection,
+                socket: req.socket
+            };
+            await registrarLog(loginReq, {
+                acao: 'LOGIN',
+                tabelaAfetada: 'Usuario',
+                idRegistro: funcionario.id_usuario,
+                descricao: `Login realizado com sucesso - ${funcionario.nome} (${funcionario.tipo_perfil})`,
+            });
+
             return res.status(200).json({ 
                 token: token,
                 usuario: {
                     id: funcionario.id_usuario,
-                    nome: funcionario.nome, // Adicionar nome
+                    nome: funcionario.nome,
                     email: funcionario.email,
                     tipo_perfil: funcionario.tipo_perfil,
                     tipo: 'funcionario'
@@ -49,6 +79,20 @@ router.post('/login', async (req, res) => {
             const cliente = clienteRows[0];
             const isMatch = await bcrypt.compare(senha, cliente.senha_hash)
             if (!isMatch) {
+                const fakeReq = {
+                    userId: null,
+                    userType: null,
+                    userProfile: null,
+                    headers: req.headers,
+                    connection: req.connection,
+                    socket: req.socket
+                };
+                await registrarLog(fakeReq, {
+                    acao: 'LOGIN_FALHA',
+                    tabelaAfetada: 'Cliente',
+                    idRegistro: cliente.id_cliente,
+                    descricao: `Tentativa de login falhou - senha incorreta para ${email}`,
+                });
                 return res.status(401).json({ message: 'Senha incorreta!' })
             }
 
@@ -57,6 +101,21 @@ router.post('/login', async (req, res) => {
                 tipo: 'cliente',
                 email: cliente.email 
             }, process.env.JWT_SECRET, { expiresIn: '3h' })
+
+            const loginReq = {
+                userId: cliente.id_cliente,
+                userType: 'cliente',
+                userProfile: 'cliente',
+                headers: req.headers,
+                connection: req.connection,
+                socket: req.socket
+            };
+            await registrarLog(loginReq, {
+                acao: 'LOGIN',
+                tabelaAfetada: 'Cliente',
+                idRegistro: cliente.id_cliente,
+                descricao: `Login realizado com sucesso - ${cliente.nome}`,
+            });
 
             return res.status(200).json({ 
                 token: token,
@@ -97,10 +156,25 @@ router.post('/registro/cliente', async (req, res) => {
         }
 
         const hashPassword = await bcrypt.hash(senha, 10)
-        await db.query(
+        const [result] = await db.query(
             'INSERT INTO Cliente (nome, email, senha_hash, cpf_cnpj, endereco, telefone) VALUES (?, ?, ?, ?, ?, ?)', 
             [nome, email, hashPassword, cpf_cnpj, endereco, telefone]
         )
+        
+        const registerReq = {
+            userId: null,
+            userType: null,
+            userProfile: null,
+            headers: req.headers,
+            connection: req.connection,
+            socket: req.socket
+        };
+        await registrarLog(registerReq, {
+            acao: 'CREATE',
+            tabelaAfetada: 'Cliente',
+            idRegistro: result.insertId,
+            descricao: `Novo cliente cadastrado - ${nome} (${email})`,
+        });
         
         res.status(201).json({ message: 'Cliente registrado com sucesso!' })
     } catch (err) {
@@ -128,10 +202,25 @@ router.post('/registro/funcionario', async (req, res) => {
         }
 
         const hashPassword = await bcrypt.hash(senha, 10)
-        await db.query(
+        const [result] = await db.query(
             'INSERT INTO Usuario (nome, email, senha_hash, tipo_perfil) VALUES (?, ?, ?, ?)', 
             [nome, email, hashPassword, tipo_perfil]
         )
+        
+        const registerReq = {
+            userId: null,
+            userType: null,
+            userProfile: null,
+            headers: req.headers,
+            connection: req.connection,
+            socket: req.socket
+        };
+        await registrarLog(registerReq, {
+            acao: 'CREATE',
+            tabelaAfetada: 'Usuario',
+            idRegistro: result.insertId,
+            descricao: `Novo funcionário cadastrado - ${nome} (${email}) - Perfil: ${tipo_perfil}`,
+        });
         
         res.status(201).json({ message: 'Funcionário registrado com sucesso!' })
     } catch (err) {
@@ -190,5 +279,21 @@ router.get('/me', verifyToken, async (req, res) => {
         return res.status(500).json({ message: 'Erro interno do servidor' })
     }
 })
+
+router.post('/logout', verifyToken, async (req, res) => {
+    try {
+        await registrarLog(req, {
+            acao: 'LOGOUT',
+            tabelaAfetada: req.userType === 'funcionario' ? 'Usuario' : 'Cliente',
+            idRegistro: req.userId,
+            descricao: `Logout realizado`,
+        });
+        
+        res.status(200).json({ message: 'Logout registrado com sucesso' });
+    } catch (err) {
+        console.error('Erro ao registrar logout:', err);
+        res.status(500).json({ message: 'Erro interno do servidor' });
+    }
+});
 
 export default router

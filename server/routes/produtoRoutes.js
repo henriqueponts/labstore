@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken"
 import multer from "multer"
 import path from "path"
 import fs from "fs"
+import { registrarLog } from "../middleware/logMiddleware.js"
 
 const router = express.Router()
 
@@ -152,11 +153,6 @@ router.get("/busca-rapida", async (req, res) => {
   }
 })
 
-
-
-
-
-
 // Criar nova categoria
 router.post("/categorias", verificarFuncionario, async (req, res) => {
   try {
@@ -187,7 +183,6 @@ router.post("/categorias", verificarFuncionario, async (req, res) => {
     res.status(500).json({ message: "Erro interno do servidor" })
   }
 })
-
 
 // Criar novo produto com múltiplas imagens
 router.post("/produtos", verificarFuncionario, upload.array("imagens", 10), async (req, res) => {
@@ -266,6 +261,14 @@ router.post("/produtos", verificarFuncionario, upload.array("imagens", 10), asyn
       }
     }
 
+    await registrarLog(req, {
+      acao: 'CREATE',
+      tabelaAfetada: 'Produto',
+      idRegistro: idProduto,
+      descricao: `Produto "${nome}" criado com estoque inicial de ${estoque || 0} unidades`,
+      valorNovo: JSON.stringify({ nome, preco, estoque: estoque || 0 })
+    })
+
     res.status(201).json({
       message: "Produto criado com sucesso",
       id_produto: idProduto,
@@ -276,8 +279,6 @@ router.post("/produtos", verificarFuncionario, upload.array("imagens", 10), asyn
     res.status(500).json({ message: "Erro interno do servidor" })
   }
 })
-
-
 
 // Buscar produto por ID com suas imagens
 router.get("/produtos/:id", async (req, res) => {
@@ -342,6 +343,9 @@ router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 
     if (produtoExistente.length === 0) {
       return res.status(404).json({ message: "Produto não encontrado" })
     }
+    
+    const produtoAntigo = produtoExistente[0]
+    
     if (id_categoria) {
       const [categoria] = await db.query("SELECT id_categoria FROM Categoria WHERE id_categoria = ?", [id_categoria])
       if (categoria.length === 0) {
@@ -381,6 +385,45 @@ router.put("/produtos/:id", verificarFuncionario, upload.array("novas_imagens", 
         id,
       ],
     )
+
+    if (estoque && Number.parseInt(estoque) !== Number.parseInt(produtoAntigo.estoque)) {
+      await registrarLog(req, {
+        acao: 'STOCK_UPDATE',
+        tabelaAfetada: 'Produto',
+        idRegistro: parseInt(id),
+        descricao: `Estoque do produto "${produtoAntigo.nome}" alterado de ${produtoAntigo.estoque} para ${estoque}`,
+        campoAlterado: 'estoque',
+        valorAnterior: String(produtoAntigo.estoque),
+        valorNovo: String(estoque)
+      })
+    }
+
+    if (preco && Number.parseFloat(preco) !== Number.parseFloat(produtoAntigo.preco)) {
+      const precoAntigoNum = Number.parseFloat(produtoAntigo.preco)
+      const precoNovoNum = Number.parseFloat(preco)
+      
+      await registrarLog(req, {
+        acao: 'UPDATE',
+        tabelaAfetada: 'Produto',
+        idRegistro: parseInt(id),
+        descricao: `Preço do produto "${produtoAntigo.nome}" alterado de R$ ${precoAntigoNum.toFixed(2)} para R$ ${precoNovoNum.toFixed(2)}`,
+        campoAlterado: 'preco',
+        valorAnterior: String(produtoAntigo.preco),
+        valorNovo: String(preco)
+      })
+    }
+
+    if (nome && nome !== produtoAntigo.nome) {
+      await registrarLog(req, {
+        acao: 'UPDATE',
+        tabelaAfetada: 'Produto',
+        idRegistro: parseInt(id),
+        descricao: `Nome do produto alterado de "${produtoAntigo.nome}" para "${nome}"`,
+        campoAlterado: 'nome',
+        valorAnterior: produtoAntigo.nome,
+        valorNovo: nome
+      })
+    }
 
     if (imagens_removidas) {
       const idsRemover = JSON.parse(imagens_removidas)
@@ -474,6 +517,11 @@ router.delete("/produtos/:id", verificarFuncionario, async (req, res) => {
     const { id } = req.params
     const db = await connectToDatabase()
 
+    const [produtoData] = await db.query("SELECT nome, estoque, preco FROM Produto WHERE id_produto = ?", [id])
+    if (produtoData.length === 0) {
+      return res.status(404).json({ message: "Produto não encontrado" })
+    }
+
     const [imagens] = await db.query("SELECT url_imagem FROM ProdutoImagem WHERE id_produto = ?", [id])
 
     for (const imagem of imagens) {
@@ -488,6 +536,20 @@ router.delete("/produtos/:id", verificarFuncionario, async (req, res) => {
     if (resultado.affectedRows === 0) {
       return res.status(404).json({ message: "Produto não encontrado" })
     }
+
+    const precoNum = Number.parseFloat(produtoData[0].preco)
+    
+    await registrarLog(req, {
+      acao: 'DELETE',
+      tabelaAfetada: 'Produto',
+      idRegistro: parseInt(id),
+      descricao: `Produto "${produtoData[0].nome}" deletado (tinha ${produtoData[0].estoque} unidades em estoque e custava R$ ${precoNum.toFixed(2)})`,
+      valorAnterior: JSON.stringify({ 
+        nome: produtoData[0].nome,
+        estoque: produtoData[0].estoque,
+        preco: produtoData[0].preco
+      })
+    })
 
     res.status(200).json({ message: "Produto e suas imagens deletados com sucesso" })
   } catch (err) {
@@ -598,7 +660,10 @@ router.put("/produtos/:idProduto/imagens/:idImagem/principal", verificarFunciona
 
     await db.query("UPDATE ProdutoImagem SET is_principal = FALSE WHERE id_produto = ?", [idProduto])
 
-    await db.query("UPDATE ProdutoImagem SET is_principal = TRUE WHERE id_imagem = ?", [idImagem])
+    await db.query("UPDATE ProdutoImagem SET is_principal = TRUE WHERE id_imagem = ? AND id_produto = ?", [
+      idImagem,
+      idProduto,
+    ])
 
     res.status(200).json({ message: "Imagem principal definida com sucesso" })
   } catch (err) {
@@ -634,62 +699,13 @@ router.put("/produtos/:idProduto/imagens/ordem", verificarFuncionario, async (re
   }
 })
 
-// Deletar produto (com suas imagens)
-router.delete("/produtos/:id", verificarFuncionario, async (req, res) => {
-  try {
-    const { id } = req.params
-    const db = await connectToDatabase()
-
-    const [imagens] = await db.query("SELECT url_imagem FROM ProdutoImagem WHERE id_produto = ?", [id])
-
-    for (const imagem of imagens) {
-      const caminhoImagem = path.join(process.cwd(), imagem.url_imagem)
-      if (fs.existsSync(caminhoImagem)) {
-        fs.unlinkSync(caminhoImagem)
-      }
-    }
-
-    const [resultado] = await db.query("DELETE FROM Produto WHERE id_produto = ?", [id])
-
-    if (resultado.affectedRows === 0) {
-      return res.status(404).json({ message: "Produto não encontrado" })
-    }
-
-    res.status(200).json({ message: "Produto e suas imagens deletados com sucesso" })
-  } catch (err) {
-    console.error("Erro ao deletar produto:", err)
-    res.status(500).json({ message: "Erro interno do servidor" })
-  }
-})
-
-// Listar todas as marcas
-router.get("/marcas", async (req, res) => {
-  try {
-    const db = await connectToDatabase()
-    const [marcas] = await db.query("SELECT id_marca, nome, descricao FROM Marca ORDER BY nome")
-    res.status(200).json(marcas)
-  } catch (err) {
-    console.error("Erro ao buscar marcas:", err)
-    res.status(500).json({ message: "Erro interno do servidor" })
-  }
-})
-
 // Buscar produtos com filtros
 router.get("/produtos/buscar", async (req, res) => {
   try {
     const { nome, categoria, marca, preco_min, preco_max, status } = req.query
     const db = await connectToDatabase()
 
-    let query = `
-      SELECT
-        p.*,
-        c.nome as categoria_nome,
-        m.nome as marca_nome
-      FROM Produto p
-      LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria
-      LEFT JOIN Marca m ON p.id_marca = m.id_marca
-      WHERE 1=1
-    `
+    let query = `SELECT p.*, c.nome as categoria_nome, m.nome as marca_nome FROM Produto p LEFT JOIN Categoria c ON p.id_categoria = c.id_categoria LEFT JOIN Marca m ON p.id_marca = m.id_marca WHERE 1=1`
     const params = []
 
     if (nome) {

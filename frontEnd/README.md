@@ -1094,3 +1094,43 @@ BEGIN
     SET NEW.motivo_recusa = TRIM(IFNULL(NEW.motivo_recusa, ''));
 END//
 DELIMITER ;
+
+
+-- Add codigo_rastreio column for tracking shipped orders
+ALTER TABLE Pedido 
+ADD COLUMN codigo_rastreio VARCHAR(255) NULL 
+COMMENT 'Código de rastreio da transportadora';
+
+-- Add motivo_cancelamento column for cancellation reasons
+ALTER TABLE Pedido 
+ADD COLUMN motivo_cancelamento TEXT NULL 
+COMMENT 'Motivo do cancelamento do pedido (visível para o cliente)';
+
+-- Add motivo_estorno column for refund reasons
+ALTER TABLE Pedido 
+ADD COLUMN motivo_estorno TEXT NULL 
+COMMENT 'Motivo do estorno do pedido (visível para o cliente)';
+
+-- Create index on codigo_rastreio for faster searches
+CREATE INDEX idx_pedido_codigo_rastreio ON Pedido(codigo_rastreio);
+
+CREATE TABLE IF NOT EXISTS LogSistema (
+  id_log INT AUTO_INCREMENT PRIMARY KEY,
+  id_usuario INT NULL,
+  nome_usuario VARCHAR(255),
+  tipo_usuario ENUM('funcionario', 'cliente') DEFAULT 'funcionario',
+  tipo_perfil VARCHAR(50),
+  acao VARCHAR(100) NOT NULL,
+  tabela_afetada VARCHAR(100),
+  id_registro INT,
+  campo_alterado VARCHAR(100),
+  valor_anterior TEXT,
+  valor_novo TEXT,
+  descricao TEXT,
+  ip_address VARCHAR(45),
+  data_acao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_usuario (id_usuario),
+  INDEX idx_data (data_acao),
+  INDEX idx_tabela (tabela_afetada),
+  INDEX idx_acao (acao)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

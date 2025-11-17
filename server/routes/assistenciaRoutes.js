@@ -7,6 +7,7 @@ import multer from "multer"
 import path from "path"
 import { fileURLToPath } from "url"
 import fs from "fs"
+import { registrarLog } from "../middleware/logMiddleware.js"
 
 const router = express.Router()
 const __filename = fileURLToPath(import.meta.url)
@@ -110,6 +111,13 @@ router.post("/solicitar", verifyAuth, upload.array("fotos", 5), async (req, res)
 
       await db.query("INSERT INTO FotoSolicitacao (id_solicitacao, foto_url) VALUES ?", [fotoValues])
     }
+
+    await registrarLog(req, {
+      acao: 'CREATE',
+      tabelaAfetada: 'SolicitacaoServico',
+      idRegistro: id_solicitacao,
+      descricao: `Nova solicitação de assistência técnica criada - ${tipo_equipamento} ${marca} ${modelo}`,
+    })
 
     console.log(`✅ Solicitação criada com ID: ${id_solicitacao}`)
     res.status(201).json({
@@ -225,6 +233,16 @@ router.put("/aprovar-orcamento/:id", verifyAuth, async (req, res) => {
     await db.query("UPDATE SolicitacaoServico SET status = 'aguardando_pagamento', data_aprovacao_orcamento = NOW() WHERE id_solicitacao = ?", [id])
     await db.query("UPDATE Orcamento SET status_aprovacao = 'aprovado' WHERE id_solicitacao = ?", [id])
 
+    await registrarLog(req, {
+      acao: 'BUDGET_APPROVED',
+      tabelaAfetada: 'SolicitacaoServico',
+      idRegistro: parseInt(id),
+      descricao: `Cliente aprovou o orçamento da solicitação #${id}`,
+      campoAlterado: 'status',
+      valorAnterior: 'aguardando_aprovacao',
+      valorNovo: 'aguardando_pagamento'
+    })
+
     console.log(`✅ Orçamento aprovado para solicitação ${id}`)
     res.status(200).json({ message: "Orçamento aprovado com sucesso" })
   } catch (err) {
@@ -252,6 +270,16 @@ router.put("/rejeitar-orcamento/:id", verifyAuth, async (req, res) => {
     await db.query("UPDATE SolicitacaoServico SET status = 'rejeitado', motivo_recusa_orcamento = ? WHERE id_solicitacao = ?", [motivo ? motivo.trim() : null, id])
     await db.query("UPDATE Orcamento SET status_aprovacao = 'recusado' WHERE id_solicitacao = ?", [id])
 
+    await registrarLog(req, {
+      acao: 'BUDGET_REJECTED',
+      tabelaAfetada: 'SolicitacaoServico',
+      idRegistro: parseInt(id),
+      descricao: `Cliente rejeitou o orçamento da solicitação #${id}${motivo ? ` - Motivo: ${motivo.trim()}` : ''}`,
+      campoAlterado: 'status',
+      valorAnterior: 'aguardando_aprovacao',
+      valorNovo: 'rejeitado'
+    })
+
     console.log(`❌ Orçamento rejeitado para solicitação ${id}`)
     res.status(200).json({ message: "Orçamento rejeitado com sucesso" })
   } catch (err) {
@@ -275,7 +303,18 @@ router.put("/cancelar/:id", verifyAuth, async (req, res) => {
     if (solicitacao[0].id_cliente !== req.userId) return res.status(403).json({ message: "Acesso negado" })
     if (solicitacao[0].status !== "solicitado") return res.status(400).json({ message: "Esta solicitação já está em análise e não pode mais ser cancelada." })
 
+    const statusAnterior = solicitacao[0].status
     await db.query("UPDATE SolicitacaoServico SET status = 'cancelado' WHERE id_solicitacao = ?", [id])
+
+    await registrarLog(req, {
+      acao: 'CANCEL',
+      tabelaAfetada: 'SolicitacaoServico',
+      idRegistro: parseInt(id),
+      descricao: `Cliente cancelou a solicitação de assistência #${id}`,
+      campoAlterado: 'status',
+      valorAnterior: statusAnterior,
+      valorNovo: 'cancelado'
+    })
 
     console.log(`🚫 Solicitação ${id} cancelada`)
     res.status(200).json({ message: "Solicitação cancelada com sucesso" })
@@ -285,7 +324,7 @@ router.put("/cancelar/:id", verifyAuth, async (req, res) => {
   }
 })
 
-
+// Criar link de pagamento
 router.post("/criar-link-pagamento/:id", verifyAuth, async (req, res) => {
   console.log("💰 POST /assistencia/criar-link-pagamento/:id chamado");
   try {
@@ -345,11 +384,11 @@ router.post("/criar-link-pagamento/:id", verifyAuth, async (req, res) => {
         boleto_settings: { due_in: 3 },
       },
       cart_settings: {
-        items: [{
+        items: [({
           name: `Serviço: ${solicitacao.diagnostico || 'Reparo de Equipamento'}`,
           amount: totalCentavos,
           default_quantity: 1,
-        }],
+        })],
         items_total_cost: totalCentavos,
         total_cost: totalCentavos,
         shipping_cost: 0,
@@ -450,19 +489,17 @@ router.get("/gestao/solicitacoes", verifyAuth, verifyFuncionario, async (req, re
     const { status, busca } = req.query
     const db = await connectToDatabase()
 
-    let query = `
-      SELECT 
-        s.id_solicitacao, s.tipo_equipamento, s.marca, s.modelo, s.descricao_problema, s.forma_envio,
-        s.data_solicitacao, s.status,
-        c.nome as nome_cliente, c.email as email_cliente, c.telefone as telefone_cliente,
-        o.id_orcamento, o.status_aprovacao,
-        u.nome as nome_analista
-      FROM SolicitacaoServico s
-      JOIN Cliente c ON s.id_cliente = c.id_cliente
-      LEFT JOIN Orcamento o ON s.id_solicitacao = o.id_solicitacao
-      LEFT JOIN Usuario u ON o.id_analista = u.id_usuario
-      WHERE 1=1
-    `
+    let query = `SELECT 
+      s.id_solicitacao, s.tipo_equipamento, s.marca, s.modelo, s.descricao_problema, s.forma_envio,
+      s.data_solicitacao, s.status,
+      c.nome as nome_cliente, c.email as email_cliente, c.telefone as telefone_cliente,
+      o.id_orcamento, o.status_aprovacao,
+      u.nome as nome_analista
+    FROM SolicitacaoServico s
+    JOIN Cliente c ON s.id_cliente = c.id_cliente
+    LEFT JOIN Orcamento o ON s.id_solicitacao = o.id_solicitacao
+    LEFT JOIN Usuario u ON o.id_analista = u.id_usuario
+    WHERE 1=1`
     const params = []
 
     if (status) {
@@ -510,7 +547,7 @@ router.post("/gestao/criar-orcamento/:id", verifyAuth, verifyFuncionario, async 
     const [orcamentoExistente] = await db.query("SELECT id_orcamento FROM Orcamento WHERE id_solicitacao = ?", [id])
     if (orcamentoExistente.length > 0) return res.status(400).json({ message: "Já existe um orçamento para esta solicitação" })
 
-    await db.query(
+    const [result] = await db.query(
       `INSERT INTO Orcamento 
       (id_solicitacao, id_analista, diagnostico, valor_pecas, valor_mao_obra, prazo_entrega_dias, observacoes_tecnicas, status_aprovacao) 
       VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente')`,
@@ -518,6 +555,14 @@ router.post("/gestao/criar-orcamento/:id", verifyAuth, verifyFuncionario, async 
     )
 
     await db.query("UPDATE SolicitacaoServico SET status = 'aguardando_aprovacao' WHERE id_solicitacao = ?", [id])
+
+    const valorTotal = (parseFloat(valor_pecas) || 0) + parseFloat(valor_mao_obra)
+    await registrarLog(req, {
+      acao: 'CREATE',
+      tabelaAfetada: 'Orcamento',
+      idRegistro: result.insertId,
+      descricao: `Orçamento criado para solicitação #${id} - Valor total: R$ ${valorTotal.toFixed(2)}`,
+    })
 
     console.log(`✅ Orçamento criado para solicitação ${id}`)
     res.status(201).json({ message: "Orçamento criado com sucesso" })
@@ -544,8 +589,10 @@ router.put("/gestao/atualizar-status/:id", verifyAuth, verifyFuncionario, async 
     }
 
     const db = await connectToDatabase()
-    const [solicitacao] = await db.query("SELECT id_solicitacao FROM SolicitacaoServico WHERE id_solicitacao = ?", [id])
+    const [solicitacao] = await db.query("SELECT id_solicitacao, status FROM SolicitacaoServico WHERE id_solicitacao = ?", [id])
     if (solicitacao.length === 0) return res.status(404).json({ message: "Solicitação não encontrada" })
+
+    const statusAnterior = solicitacao[0].status
 
     let updateQuery = "UPDATE SolicitacaoServico SET status = ?"
     const params = [status]
@@ -556,6 +603,16 @@ router.put("/gestao/atualizar-status/:id", verifyAuth, verifyFuncionario, async 
     params.push(id)
 
     await db.query(updateQuery, params)
+
+    await registrarLog(req, {
+      acao: 'STATUS_CHANGE',
+      tabelaAfetada: 'SolicitacaoServico',
+      idRegistro: parseInt(id),
+      descricao: `Status da solicitação de assistência #${id} alterado`,
+      campoAlterado: 'status',
+      valorAnterior: statusAnterior,
+      valorNovo: status
+    })
 
     console.log(`✅ Status da solicitação ${id} atualizado para ${status}`)
     res.status(200).json({ message: "Status atualizado com sucesso" })

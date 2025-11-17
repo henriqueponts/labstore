@@ -3,6 +3,7 @@
 import express from "express"
 import { connectToDatabase } from "../lib/db.js"
 import jwt from "jsonwebtoken"
+import { registrarLog } from "../middleware/logMiddleware.js"
 
 const router = express.Router()
 
@@ -126,7 +127,6 @@ router.put("/usuarios/:id/editar", verifyAdmin, async (req, res) => {
     const { id } = req.params
     const { nome, email } = req.body
 
-    // Validação básica
     if (!nome || !email) {
       return res.status(400).json({ message: "Nome e email são obrigatórios" })
     }
@@ -138,13 +138,11 @@ router.put("/usuarios/:id/editar", verifyAdmin, async (req, res) => {
 
     const db = await connectToDatabase()
 
-    // Verificar se o usuário existe
-    const [userExists] = await db.query("SELECT id_usuario FROM Usuario WHERE id_usuario = ?", [id])
+    const [userExists] = await db.query("SELECT id_usuario, nome, email FROM Usuario WHERE id_usuario = ?", [id])
     if (userExists.length === 0) {
       return res.status(404).json({ message: "Usuário não encontrado" })
     }
 
-    // Verificar se o email já está em uso por outro usuário
     const [emailExists] = await db.query("SELECT id_usuario FROM Usuario WHERE email = ? AND id_usuario != ?", [
       email,
       id,
@@ -153,8 +151,20 @@ router.put("/usuarios/:id/editar", verifyAdmin, async (req, res) => {
       return res.status(400).json({ message: "Este email já está em uso por outro usuário" })
     }
 
-    // Atualizar dados do usuário
+    const valorAnterior = `Nome: ${userExists[0].nome}, Email: ${userExists[0].email}`
+    const valorNovo = `Nome: ${nome}, Email: ${email}`
+
     await db.query("UPDATE Usuario SET nome = ?, email = ? WHERE id_usuario = ?", [nome, email, id])
+
+    await registrarLog(req, {
+      acao: 'UPDATE',
+      tabelaAfetada: 'Usuario',
+      idRegistro: parseInt(id),
+      descricao: `Dados do usuário #${id} atualizados`,
+      campoAlterado: 'nome, email',
+      valorAnterior,
+      valorNovo
+    })
 
     console.log(`✅ Dados do usuário ${id} atualizados`)
     res.status(200).json({ message: "Dados do usuário atualizados com sucesso" })
@@ -251,20 +261,17 @@ router.put("/clientes/:id/editar", verifyAdmin, async (req, res) => {
     const { id } = req.params
     const { nome, telefone } = req.body
 
-    // Validação básica
     if (!nome) {
       return res.status(400).json({ message: "Nome é obrigatório" })
     }
 
     const db = await connectToDatabase()
 
-    // Verificar se o cliente existe
     const [clientExists] = await db.query("SELECT id_cliente FROM Cliente WHERE id_cliente = ?", [id])
     if (clientExists.length === 0) {
       return res.status(404).json({ message: "Cliente não encontrado" })
     }
 
-    // Atualizar dados do cliente (sem email)
     await db.query("UPDATE Cliente SET nome = ?, telefone = ? WHERE id_cliente = ?", [nome, telefone || null, id])
 
     console.log(`✅ Dados do cliente ${id} atualizados`)
@@ -291,12 +298,24 @@ router.put("/usuarios/:id/perfil", verifyAdmin, async (req, res) => {
 
     const db = await connectToDatabase()
 
-    const [userExists] = await db.query("SELECT id_usuario FROM Usuario WHERE id_usuario = ?", [id])
+    const [userExists] = await db.query("SELECT id_usuario, tipo_perfil FROM Usuario WHERE id_usuario = ?", [id])
     if (userExists.length === 0) {
       return res.status(404).json({ message: "Usuário não encontrado" })
     }
 
+    const perfilAntigo = userExists[0].tipo_perfil
+
     await db.query("UPDATE Usuario SET tipo_perfil = ? WHERE id_usuario = ?", [tipo_perfil, id])
+
+    await registrarLog(req, {
+      acao: 'UPDATE',
+      tabelaAfetada: 'Usuario',
+      idRegistro: parseInt(id),
+      descricao: `Perfil do usuário #${id} alterado de ${perfilAntigo} para ${tipo_perfil}`,
+      campoAlterado: 'tipo_perfil',
+      valorAnterior: perfilAntigo,
+      valorNovo: tipo_perfil
+    })
 
     console.log(`✅ Perfil do usuário ${id} alterado para ${tipo_perfil}`)
     res.status(200).json({ message: "Perfil atualizado com sucesso" })
@@ -424,20 +443,17 @@ router.post("/marcas", verifyAdmin, async (req, res) => {
   try {
     const { nome, descricao } = req.body
 
-    // Validação básica
     if (!nome || !nome.trim()) {
       return res.status(400).json({ message: "Nome da marca é obrigatório" })
     }
 
     const db = await connectToDatabase()
 
-    // Verificar se a marca já existe
     const [existingBrand] = await db.query("SELECT id_marca FROM Marca WHERE nome = ?", [nome.trim()])
     if (existingBrand.length > 0) {
       return res.status(400).json({ message: "Já existe uma marca com este nome" })
     }
 
-    // Inserir nova marca
     const [result] = await db.query("INSERT INTO Marca (nome, descricao) VALUES (?, ?)", [
       nome.trim(),
       descricao?.trim() || null,
@@ -481,20 +497,17 @@ router.put("/marcas/:id", verifyAdmin, async (req, res) => {
     const { id } = req.params
     const { nome, descricao } = req.body
 
-    // Validação básica
     if (!nome || !nome.trim()) {
       return res.status(400).json({ message: "Nome da marca é obrigatório" })
     }
 
     const db = await connectToDatabase()
 
-    // Verificar se a marca existe
     const [brandExists] = await db.query("SELECT id_marca FROM Marca WHERE id_marca = ?", [id])
     if (brandExists.length === 0) {
       return res.status(404).json({ message: "Marca não encontrada" })
     }
 
-    // Verificar se o nome já está em uso por outra marca
     const [nameExists] = await db.query("SELECT id_marca FROM Marca WHERE nome = ? AND id_marca != ?", [
       nome.trim(),
       id,
@@ -503,7 +516,6 @@ router.put("/marcas/:id", verifyAdmin, async (req, res) => {
       return res.status(400).json({ message: "Já existe uma marca com este nome" })
     }
 
-    // Atualizar marca
     await db.query("UPDATE Marca SET nome = ?, descricao = ? WHERE id_marca = ?", [
       nome.trim(),
       descricao?.trim() || null,
@@ -528,13 +540,11 @@ router.delete("/marcas/:id", verifyAdmin, async (req, res) => {
     const { id } = req.params
     const db = await connectToDatabase()
 
-    // Verificar se a marca existe
     const [brandExists] = await db.query("SELECT id_marca FROM Marca WHERE id_marca = ?", [id])
     if (brandExists.length === 0) {
       return res.status(404).json({ message: "Marca não encontrada" })
     }
 
-    // Verificar se a marca está sendo usada por produtos
     const [productsUsingBrand] = await db.query("SELECT COUNT(*) as count FROM Produto WHERE id_marca = ?", [id])
     if (productsUsingBrand[0].count > 0) {
       return res.status(400).json({
@@ -542,7 +552,6 @@ router.delete("/marcas/:id", verifyAdmin, async (req, res) => {
       })
     }
 
-    // Deletar marca
     await db.query("DELETE FROM Marca WHERE id_marca = ?", [id])
 
     console.log(`✅ Marca ${id} deletada`)
@@ -598,7 +607,6 @@ router.get("/pedidos", verifyAdmin, async (req, res) => {
 
     const [pedidos] = await db.query(query, params)
 
-    // Buscar itens de cada pedido
     const pedidosCompletos = await Promise.all(
       pedidos.map(async (pedido) => {
         const [itens] = await db.query(
@@ -661,7 +669,6 @@ router.put("/pedidos/:id/status", verifyAdmin, async (req, res) => {
     const { id } = req.params
     const { novo_status, motivo, codigo_rastreio } = req.body
 
-    // Validar status
     const statusValidos = [
       "aguardando_pagamento",
       "pago",
@@ -677,7 +684,6 @@ router.put("/pedidos/:id/status", verifyAdmin, async (req, res) => {
       return res.status(400).json({ message: "Status inválido" })
     }
 
-    // Verificar se cancelamento ou estorno tem motivo
     if ((novo_status === "cancelado" || novo_status === "estornado") && !motivo) {
       return res.status(400).json({ message: "Motivo é obrigatório para cancelamento ou estorno" })
     }
@@ -688,7 +694,6 @@ router.put("/pedidos/:id/status", verifyAdmin, async (req, res) => {
 
     const db = await connectToDatabase()
 
-    // Verificar se o pedido existe
     const [pedidoExiste] = await db.query("SELECT id_pedido, status FROM Pedido WHERE id_pedido = ?", [id])
     if (pedidoExiste.length === 0) {
       return res.status(404).json({ message: "Pedido não encontrado" })
@@ -718,10 +723,22 @@ router.put("/pedidos/:id/status", verifyAdmin, async (req, res) => {
     updateQuery += " WHERE id_pedido = ?"
     updateParams.push(id)
 
-    // Atualizar status do pedido
     await db.query(updateQuery, updateParams)
 
-    // Registrar no log se houver motivo
+    let descricaoLog = `Status do pedido #${id} alterado de ${statusAtual} para ${novo_status}`
+    if (motivo) descricaoLog += ` - Motivo: ${motivo}`
+    if (codigo_rastreio) descricaoLog += ` - Rastreio: ${codigo_rastreio}`
+
+    await registrarLog(req, {
+      acao: 'STATUS_CHANGE',
+      tabelaAfetada: 'Pedido',
+      idRegistro: parseInt(id),
+      descricao: descricaoLog,
+      campoAlterado: 'status',
+      valorAnterior: statusAtual,
+      valorNovo: novo_status
+    })
+
     if (motivo) {
       console.log(`📝 Pedido #${id} ${novo_status} - Motivo: ${motivo}`)
     }
@@ -777,7 +794,6 @@ router.put("/estornos/:id/aprovar", verifyAdmin, async (req, res) => {
     const { id } = req.params
     const db = await connectToDatabase()
 
-    // Buscar a solicitação
     const [solicitacao] = await db.query(
       "SELECT id_pedido, status FROM SolicitacaoEstorno WHERE id_solicitacao_estorno = ?",
       [id],
@@ -793,7 +809,6 @@ router.put("/estornos/:id/aprovar", verifyAdmin, async (req, res) => {
 
     const idPedido = solicitacao[0].id_pedido
 
-    // Atualizar solicitação
     await db.query(
       `UPDATE SolicitacaoEstorno 
        SET status = 'aprovado', 
@@ -803,7 +818,6 @@ router.put("/estornos/:id/aprovar", verifyAdmin, async (req, res) => {
       [req.userId, id],
     )
 
-    // Atualizar status do pedido para estornado
     await db.query("UPDATE Pedido SET status = 'estornado' WHERE id_pedido = ?", [idPedido])
 
     console.log(`✅ Solicitação de estorno #${id} aprovada e pedido #${idPedido} estornado`)
@@ -826,7 +840,6 @@ router.put("/estornos/:id/recusar", verifyAdmin, async (req, res) => {
 
     const db = await connectToDatabase()
 
-    // Buscar a solicitação
     const [solicitacao] = await db.query("SELECT status FROM SolicitacaoEstorno WHERE id_solicitacao_estorno = ?", [id])
 
     if (solicitacao.length === 0) {
@@ -837,7 +850,6 @@ router.put("/estornos/:id/recusar", verifyAdmin, async (req, res) => {
       return res.status(400).json({ message: "Esta solicitação já foi processada" })
     }
 
-    // Atualizar solicitação
     await db.query(
       `UPDATE SolicitacaoEstorno 
        SET status = 'recusado', 

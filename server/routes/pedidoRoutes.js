@@ -1,6 +1,7 @@
 import express from "express"
 import { connectToDatabase } from "../lib/db.js"
 import jwt from "jsonwebtoken"
+import { registrarLog } from "../middleware/logMiddleware.js"
 
 const router = express.Router()
 
@@ -14,6 +15,9 @@ const verificarToken = (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
     req.cliente = decoded
+    req.userId = decoded.id
+    req.userType = decoded.tipo
+    req.userProfile = decoded.perfil
     next()
   } catch (error) {
     res.status(401).json({ message: "Token inválido" })
@@ -36,6 +40,9 @@ const verificarFuncionario = async (req, res, next) => {
     }
 
     req.funcionario = decoded
+    req.userId = decoded.id
+    req.userType = decoded.tipo
+    req.userProfile = decoded.perfil
     next()
   } catch (error) {
     res.status(401).json({ message: "Token inválido" })
@@ -360,11 +367,18 @@ router.post("/:id/solicitar-estorno", verificarToken, async (req, res) => {
     }
 
     // Criar solicitação de estorno
-    await db.query("INSERT INTO SolicitacaoEstorno (id_pedido, id_cliente, motivo) VALUES (?, ?, ?)", [
+    const [result] = await db.query("INSERT INTO SolicitacaoEstorno (id_pedido, id_cliente, motivo) VALUES (?, ?, ?)", [
       id,
       clienteId,
       motivo.trim(),
     ])
+
+    await registrarLog(req, {
+      acao: 'REFUND_REQUEST',
+      tabelaAfetada: 'SolicitacaoEstorno',
+      idRegistro: result.insertId,
+      descricao: `Cliente solicitou estorno do pedido #${id} - Motivo: ${motivo.trim()}`,
+    })
 
     console.log(`✅ Solicitação de estorno criada para o pedido #${id}`)
     res.status(201).json({ message: "Solicitação de estorno enviada com sucesso" })
