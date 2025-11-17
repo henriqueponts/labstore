@@ -570,6 +570,9 @@ router.get("/pedidos", verifyAdmin, async (req, res) => {
         p.frete_valor,
         p.frete_prazo_dias,
         p.endereco_entrega,
+        p.codigo_rastreio,
+        p.motivo_cancelamento,
+        p.motivo_estorno,
         c.nome as nome_cliente,
         c.email as email_cliente,
         c.telefone as telefone_cliente,
@@ -656,7 +659,7 @@ router.put("/pedidos/:id/status", verifyAdmin, async (req, res) => {
   console.log(`🔄 PUT /gestao/pedidos/${req.params.id}/status chamado`)
   try {
     const { id } = req.params
-    const { novo_status, motivo } = req.body
+    const { novo_status, motivo, codigo_rastreio } = req.body
 
     // Validar status
     const statusValidos = [
@@ -679,6 +682,10 @@ router.put("/pedidos/:id/status", verifyAdmin, async (req, res) => {
       return res.status(400).json({ message: "Motivo é obrigatório para cancelamento ou estorno" })
     }
 
+    if (novo_status === "enviado" && !codigo_rastreio) {
+      return res.status(400).json({ message: "Código de rastreio é obrigatório para pedidos enviados" })
+    }
+
     const db = await connectToDatabase()
 
     // Verificar se o pedido existe
@@ -687,13 +694,39 @@ router.put("/pedidos/:id/status", verifyAdmin, async (req, res) => {
       return res.status(404).json({ message: "Pedido não encontrado" })
     }
 
+    const statusAtual = pedidoExiste[0].status
+    if (statusAtual === "cancelado" || statusAtual === "estornado") {
+      return res.status(400).json({
+        message: `Não é possível alterar o status de um pedido ${statusAtual}`,
+      })
+    }
+
+    let updateQuery = "UPDATE Pedido SET status = ?"
+    const updateParams = [novo_status]
+
+    if (novo_status === "cancelado") {
+      updateQuery += ", motivo_cancelamento = ?"
+      updateParams.push(motivo)
+    } else if (novo_status === "estornado") {
+      updateQuery += ", motivo_estorno = ?"
+      updateParams.push(motivo)
+    } else if (novo_status === "enviado") {
+      updateQuery += ", codigo_rastreio = ?"
+      updateParams.push(codigo_rastreio)
+    }
+
+    updateQuery += " WHERE id_pedido = ?"
+    updateParams.push(id)
+
     // Atualizar status do pedido
-    await db.query("UPDATE Pedido SET status = ? WHERE id_pedido = ?", [novo_status, id])
+    await db.query(updateQuery, updateParams)
 
     // Registrar no log se houver motivo
     if (motivo) {
       console.log(`📝 Pedido #${id} ${novo_status} - Motivo: ${motivo}`)
-      // Aqui você pode inserir em uma tabela de histórico se desejar
+    }
+    if (codigo_rastreio) {
+      console.log(`📦 Pedido #${id} - Código de rastreio: ${codigo_rastreio}`)
     }
 
     console.log(`✅ Status do pedido ${id} atualizado para ${novo_status}`)

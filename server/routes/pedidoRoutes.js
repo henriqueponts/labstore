@@ -62,6 +62,9 @@ router.get("/meus-pedidos", verificarToken, async (req, res) => {
         p.frete_valor,
         p.frete_prazo_dias,
         p.endereco_entrega,
+        p.codigo_rastreio,
+        p.motivo_cancelamento,
+        p.motivo_estorno,
         COALESCE(SUM(ip.quantidade * ip.preco_unitario), 0) + COALESCE(p.frete_valor, 0) as valor_total
       FROM Pedido p
       LEFT JOIN ItemPedido ip ON p.id_pedido = ip.id_pedido

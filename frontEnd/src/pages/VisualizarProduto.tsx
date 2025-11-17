@@ -5,27 +5,7 @@ import { useState, useEffect } from "react"
 import axios from "axios"
 import Layout from "../components/Layout"
 import { useNavigate, useParams } from "react-router-dom"
-import {
-  ShoppingCart,
-  Share2,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Minus,
-  Check,
-  AlertCircle,
-  Home,
-  ChevronRightSquare as ChevronRightBreadcrumb,
-  Zap,
-  Calendar,
-  Palette,
-  Tag,
-  Package,
-  Weight,
-  Ruler,
-  Award,
-  Hash,
-} from "lucide-react"
+import { ShoppingCart, Share2, ChevronLeft, ChevronRight, Plus, Minus, Check, AlertCircle, Home, ChevronRightSquare as ChevronRightBreadcrumb, Zap, Calendar, Palette, Tag, Package, Weight, Ruler, Award, Hash } from 'lucide-react'
 import { useCart } from "../context/CartContext" // <-- IMPORTADO
 import { useAlert } from "../components/Alert-container"
 
@@ -134,6 +114,21 @@ const VisualizarProduto: React.FC = () => {
     } catch (err) {
       // O tratamento de erro já está no context, mas pode adicionar lógica extra aqui se quiser
       console.error("Erro ao adicionar ao carrinho (componente):", err)
+    } finally {
+      setAdicionandoCarrinho(false)
+    }
+  }
+
+  const comprarAgora = async () => {
+    if (!produto) return
+
+    setAdicionandoCarrinho(true)
+    try {
+      await adicionarProdutoAoCarrinho(produto.id_produto, quantidade)
+      // Redireciona para o carrinho após adicionar
+      navegar('/carrinho')
+    } catch (err) {
+      console.error("Erro ao comprar agora:", err)
     } finally {
       setAdicionandoCarrinho(false)
     }
@@ -366,8 +361,12 @@ const VisualizarProduto: React.FC = () => {
                       </>
                     )}
                   </button>
-                  <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
-                    Comprar Agora
+                  <button 
+                    onClick={comprarAgora}
+                    disabled={adicionandoCarrinho}
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {adicionandoCarrinho ? 'Processando...' : 'Comprar Agora'}
                   </button>
                 </div>
               </div>

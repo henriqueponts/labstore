@@ -5,29 +5,7 @@ import { useState, useEffect } from "react"
 import axios from "axios"
 import Layout from "../components/Layout"
 import { useNavigate } from "react-router-dom"
-import {
-  Package,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Truck,
-  Calendar,
-  CreditCard,
-  MapPin,
-  AlertTriangle,
-  RefreshCw,
-  Search,
-  Filter,
-  X,
-  User,
-  Mail,
-  Phone,
-  ChevronDown,
-  ChevronUp,
-  DollarSign,
-  FileText,
-  Bell,
-} from "lucide-react"
+import { Package, Clock, CheckCircle, XCircle, Truck, Calendar, CreditCard, MapPin, AlertTriangle, RefreshCw, Search, Filter, X, User, Mail, Phone, ChevronDown, ChevronUp, DollarSign, FileText, Bell } from 'lucide-react'
 import { useAlert } from "../components/Alert-container"
 
 interface ItemPedido {
@@ -61,6 +39,9 @@ interface Pedido {
   frete_valor?: number
   frete_prazo_dias?: number
   endereco_entrega?: string
+  codigo_rastreio?: string
+  motivo_cancelamento?: string
+  motivo_estorno?: string
   valor_total: number
   itens: ItemPedido[]
   solicitacao_estorno?: SolicitacaoEstorno | null
@@ -82,12 +63,24 @@ const GestaoPedidos: React.FC = () => {
   })
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
 
-  // Modal de cancelamento/estorno
+  // Modal de alteração de status
+  const [modalAlterarStatusAberto, setModalAlterarStatusAberto] = useState(false)
+  const [pedidoSelecionado, setPedidoSelecionado] = useState<number | null>(null)
+  const [statusAtualPedido, setStatusAtualPedido] = useState<string>("")
+  const [novoStatus, setNovoStatus] = useState("")
+  const [motivoCancelamento, setMotivoCancelamento] = useState("")
+  const [codigoRastreio, setCodigoRastreio] = useState("")
 
+  // Modal de estorno
   const [modalEstornoAberto, setModalEstornoAberto] = useState(false)
   const [solicitacaoEstornoSelecionada, setSolicitacaoEstornoSelecionada] = useState<number | null>(null)
   const [acaoEstorno, setAcaoEstorno] = useState<"aprovar" | "recusar" | null>(null)
   const [motivoRecusa, setMotivoRecusa] = useState("")
+
+  // Modal de estorno manual
+  const [modalEstornoManualAberto, setModalEstornoManualAberto] = useState(false)
+  const [pedidoParaEstorno, setPedidoParaEstorno] = useState<number | null>(null)
+  const [motivoEstornoManual, setMotivoEstornoManual] = useState("")
 
   const formatarPreco = (preco: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -119,7 +112,7 @@ const GestaoPedidos: React.FC = () => {
         icon: CheckCircle,
       },
       processando: {
-        label: "Processando",
+        label: "Em Preparação",
         color: "text-blue-600 bg-blue-50 border-blue-200",
         icon: RefreshCw,
       },
@@ -157,6 +150,30 @@ const GestaoPedidos: React.FC = () => {
         icon: Package,
       }
     )
+  }
+
+  const validarMudancaStatus = (statusAtual: string, novoStatus: string): { valido: boolean; mensagem?: string } => {
+    // Não pode alterar para o mesmo status
+    if (statusAtual === novoStatus) {
+      return { valido: false, mensagem: "O pedido já está com este status" }
+    }
+
+    // Não pode alterar pedidos já cancelados ou estornados
+    if (statusAtual === "cancelado" || statusAtual === "estornado") {
+      return { valido: false, mensagem: `Não é possível alterar o status de um pedido ${statusAtual}` }
+    }
+
+    // Não pode enviar um pedido que não está pago
+    if (novoStatus === "enviado" && !["pago", "processando"].includes(statusAtual)) {
+      return { valido: false, mensagem: "Apenas pedidos pagos ou em preparação podem ser enviados" }
+    }
+
+    // Não pode marcar como entregue se não foi enviado
+    if (novoStatus === "entregue" && statusAtual !== "enviado") {
+      return { valido: false, mensagem: "Apenas pedidos enviados podem ser marcados como entregues" }
+    }
+
+    return { valido: true }
   }
 
   const buscarPedidos = async (usarFiltros = false) => {
@@ -211,6 +228,120 @@ const GestaoPedidos: React.FC = () => {
   useEffect(() => {
     buscarPedidos()
   }, []) // Removed buscarPedidos from the dependency array
+
+  // Função para abrir modal de alteração de status
+  const abrirModalAlterarStatus = (idPedido: number, statusAtual: string) => {
+    setPedidoSelecionado(idPedido)
+    setStatusAtualPedido(statusAtual)
+    setNovoStatus(statusAtual)
+    setMotivoCancelamento("")
+    setCodigoRastreio("")
+    setModalAlterarStatusAberto(true)
+  }
+
+  // Função para alterar o status de um pedido
+  const alterarStatusPedido = async () => {
+    if (!pedidoSelecionado || !novoStatus) {
+      return
+    }
+
+    const validacao = validarMudancaStatus(statusAtualPedido, novoStatus)
+    if (!validacao.valido) {
+      showErro(validacao.mensagem || "Mudança de status inválida")
+      return
+    }
+
+    if ((novoStatus === "cancelado" || novoStatus === "estornado") && !motivoCancelamento.trim()) {
+      showErro("Por favor, informe o motivo")
+      return
+    }
+
+    if (novoStatus === "enviado" && !codigoRastreio.trim()) {
+      showErro("Por favor, informe o código de rastreio")
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("token")
+      await axios.put(
+        `http://localhost:3000/gestao/pedidos/${pedidoSelecionado}/status`,
+        {
+          novo_status: novoStatus,
+          motivo: motivoCancelamento.trim() || undefined,
+          codigo_rastreio: codigoRastreio.trim() || undefined,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      )
+
+      showSucesso("Status do pedido atualizado com sucesso!")
+      buscarPedidos()
+      setModalAlterarStatusAberto(false)
+      setPedidoSelecionado(null)
+      setStatusAtualPedido("")
+      setNovoStatus("")
+      setMotivoCancelamento("")
+      setCodigoRastreio("")
+    } catch (error) {
+      console.error("Erro ao alterar status:", error)
+      if (axios.isAxiosError(error)) {
+        showErro(error.response?.data?.message || "Erro ao alterar status do pedido")
+      } else {
+        showErro("Erro ao alterar status do pedido")
+      }
+    }
+  }
+
+  // Função para abrir modal de estorno manual
+  const abrirModalEstornoManual = (idPedido: number) => {
+    setPedidoParaEstorno(idPedido)
+    setMotivoEstornoManual("")
+    setModalEstornoManualAberto(true)
+  }
+
+  // Função para conceder estorno manual
+  const concederEstornoManual = async () => {
+    if (!pedidoParaEstorno) {
+      return
+    }
+
+    if (!motivoEstornoManual.trim()) {
+      showErro("Por favor, informe o motivo do estorno")
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("token")
+      await axios.put(
+        `http://localhost:3000/gestao/pedidos/${pedidoParaEstorno}/status`,
+        {
+          novo_status: "estornado",
+          motivo: motivoEstornoManual.trim(),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      )
+
+      showSucesso("Estorno concedido com sucesso!")
+      buscarPedidos()
+      setModalEstornoManualAberto(false)
+      setPedidoParaEstorno(null)
+      setMotivoEstornoManual("")
+    } catch (error) {
+      console.error("Erro ao conceder estorno:", error)
+      if (axios.isAxiosError(error)) {
+        showErro(error.response?.data?.message || "Erro ao conceder estorno")
+      } else {
+        showErro("Erro ao conceder estorno")
+      }
+    }
+  }
 
   const responderSolicitacaoEstorno = async (
     idSolicitacao: number,
@@ -572,6 +703,17 @@ const GestaoPedidos: React.FC = () => {
                             </div>
                           </div>
                         </div>
+                        {pedido.codigo_rastreio && (
+                          <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                            <div className="flex items-center space-x-2">
+                              <Truck size={16} className="text-purple-600" />
+                              <div>
+                                <div className="text-xs text-purple-600 font-medium">Código de Rastreio</div>
+                                <div className="font-bold text-purple-900">{pedido.codigo_rastreio}</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Itens do Pedido */}
@@ -640,6 +782,54 @@ const GestaoPedidos: React.FC = () => {
                             ))}
                           </div>
                         )}
+                      </div>
+
+                      {(pedido.motivo_cancelamento || pedido.motivo_estorno) && (
+                        <div className="p-6 border-b border-slate-200 bg-red-50/30">
+                          <h4 className="font-semibold text-slate-900 mb-3 flex items-center">
+                            <AlertTriangle size={18} className="mr-2 text-red-600" />
+                            Motivo {pedido.status === "cancelado" ? "do Cancelamento" : "do Estorno"}
+                          </h4>
+                          <div className="bg-white rounded-lg p-4 border border-red-200">
+                            <p className="text-sm text-slate-700">
+                              {pedido.motivo_cancelamento || pedido.motivo_estorno}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Ações do Pedido */}
+                      <div className="p-6 border-b border-slate-200 bg-slate-50/50">
+                        <h4 className="font-semibold text-slate-900 mb-3 flex items-center">
+                          <RefreshCw size={18} className="mr-2" />
+                          Ações do Pedido
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {pedido.status !== "cancelado" && pedido.status !== "estornado" && (
+                            <>
+                              <button
+                                onClick={() => abrirModalAlterarStatus(pedido.id_pedido, pedido.status)}
+                                className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow"
+                              >
+                                <RefreshCw size={16} className="mr-2" />
+                                Alterar Status
+                              </button>
+                              <button
+                                onClick={() => abrirModalEstornoManual(pedido.id_pedido)}
+                                className="flex items-center justify-center bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow"
+                              >
+                                <DollarSign size={16} className="mr-2" />
+                                Conceder Estorno
+                              </button>
+                            </>
+                          )}
+                          {(pedido.status === "cancelado" || pedido.status === "estornado") && (
+                            <div className="col-span-2 text-center text-slate-500 italic">
+                              Este pedido foi {pedido.status === "cancelado" ? "cancelado" : "estornado"} e não pode
+                              mais ser alterado
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Solicitação de Estorno */}
@@ -725,6 +915,166 @@ const GestaoPedidos: React.FC = () => {
         </div>
       )}
 
+      {/* Modal de Alteração de Status */}
+      {modalAlterarStatusAberto && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-slate-900">Alterar Status do Pedido</h3>
+              <button
+                onClick={() => {
+                  setModalAlterarStatusAberto(false)
+                  setPedidoSelecionado(null)
+                  setStatusAtualPedido("")
+                  setNovoStatus("")
+                  setMotivoCancelamento("")
+                  setCodigoRastreio("")
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">Status Atual</label>
+              <div className="px-4 py-2 bg-slate-100 rounded-lg text-slate-700 font-medium">
+                {getStatusInfo(statusAtualPedido).label}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">Novo Status</label>
+              <select
+                value={novoStatus}
+                onChange={(e) => setNovoStatus(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="aguardando_pagamento">Aguardando Pagamento</option>
+                <option value="pago">Pago</option>
+                <option value="processando">Em Preparação</option>
+                <option value="enviado">Enviado</option>
+                <option value="entregue">Entregue</option>
+                <option value="cancelado">Cancelado</option>
+                <option value="estornado">Estornado</option>
+                <option value="falha_pagamento">Falha no Pagamento</option>
+              </select>
+            </div>
+
+            {novoStatus === "enviado" && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Código de Rastreio <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={codigoRastreio}
+                  onChange={(e) => setCodigoRastreio(e.target.value)}
+                  placeholder="Digite o código de rastreio..."
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">Este código será exibido para o cliente rastrear o pedido</p>
+              </div>
+            )}
+
+            {(novoStatus === "cancelado" || novoStatus === "estornado") && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Motivo {novoStatus === "cancelado" ? "do Cancelamento" : "do Estorno"}
+                  <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={motivoCancelamento}
+                  onChange={(e) => setMotivoCancelamento(e.target.value)}
+                  placeholder={`Digite o motivo ${novoStatus === "cancelado" ? "do cancelamento" : "do estorno"}...`}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                />
+              </div>
+            )}
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setModalAlterarStatusAberto(false)
+                  setPedidoSelecionado(null)
+                  setStatusAtualPedido("")
+                  setNovoStatus("")
+                  setMotivoCancelamento("")
+                  setCodigoRastreio("")
+                }}
+                className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={alterarStatusPedido}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Estorno Manual */}
+      {modalEstornoManualAberto && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-slate-900">Conceder Estorno Manual</h3>
+              <button
+                onClick={() => {
+                  setModalEstornoManualAberto(false)
+                  setPedidoParaEstorno(null)
+                  setMotivoEstornoManual("")
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <p className="text-slate-600 mb-4">
+              Você está concedendo um estorno manual para este pedido. Esta ação mudará o status do pedido para
+              "Estornado".
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Motivo do Estorno <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={motivoEstornoManual}
+                onChange={(e) => setMotivoEstornoManual(e.target.value)}
+                placeholder="Digite o motivo do estorno..."
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[120px]"
+              />
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setModalEstornoManualAberto(false)
+                  setPedidoParaEstorno(null)
+                  setMotivoEstornoManual("")
+                }}
+                className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={concederEstornoManual}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow"
+              >
+                Confirmar Estorno
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Estorno (aprovar/recusar solicitação do cliente) */}
       {modalEstornoAberto && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">

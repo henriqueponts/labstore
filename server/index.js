@@ -20,6 +20,9 @@ import pedidoRoutes from "./routes/pedidoRoutes.js"
 import assistenciaRoutes from "./routes/assistenciaRoutes.js"
 import relatorioClienteRoutes from "./routes/relatorioClienteRoutes.js"
 import relatorioAssistenciaRoutes from "./routes/relatorioAssistenciaRoutes.js"
+import relatorioVendasRoutes from "./routes/relatorioVendasRoutes.js"
+import logsRoutes from "./routes/logsRoutes.js"
+
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -256,7 +259,9 @@ app.get("/", (req, res) => {
         "/lgpd/aceitar-termo",
         "/lgpd/verificar-consentimento/:clienteId",
         "/lgpd/relatorio-consentimentos",
+        "/lgpd/relatorio-consentimentos",
       ],
+      logs: ["/logs"],
     },
     status: "online",
     uploads: {
@@ -281,8 +286,9 @@ app.use("/pedido", pedidoRoutes)
 app.use("/api/carrossel", carrosselRoutes)
 app.use("/test", testRoutes)
 app.use("/relatorios/clientes", relatorioClienteRoutes)
-
-// <<< ADICIONE ESTA LINHA PARA REGISTRAR A ROTA DE ASSISTÊNCIA
+app.use("/relatorios/clientes", relatorioClienteRoutes)
+app.use("/relatorios/vendas", relatorioVendasRoutes)
+app.use("/logs", logsRoutes)
 app.use("/assistencia", assistenciaRoutes)
 app.use("/assistencia", relatorioAssistenciaRoutes)
 

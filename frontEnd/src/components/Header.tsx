@@ -21,6 +21,7 @@ import {
   Edit3,
   ShoppingBag,
   ImageIcon,
+  FileText
 } from "lucide-react"
 import { useCart } from "../context/CartContext"
 import axios from "axios"
@@ -422,9 +423,16 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                         <Users size={16} className="mr-1" />
                         Usuários
                       </a>
-                      <a href="#" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
+                      <a href="/relatorios" className="flex items-center text-purple-700 hover:text-purple-600 transition-colors">
                         <BarChart3 size={16} className="mr-1" />
                         Relatórios
+                      </a>
+                      <a
+                        href="/logs"
+                        className="flex items-center text-purple-700 hover:text-purple-600 transition-colors"
+                      >
+                        <FileText size={16} className="mr-1" />
+                        Logs
                       </a>
                       <a
                         href="/gestao/lgpd"
@@ -532,13 +540,19 @@ const Header: React.FC<HeaderProps> = ({ usuario, onLogout, searchTerm, onSearch
                       Usuários
                     </a>
                     <a
-                      href="#"
+                      href="/relatorios"
                       className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2"
                     >
                       <BarChart3 size={16} className="mr-2" />
                       Relatórios
                     </a>
-
+                    <a
+                      href="/logs"
+                      className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2"
+                    >
+                      <FileText size={16} className="mr-2" />
+                      Logs
+                    </a>
                     <a
                       href="/gestao/lgpd"
                       className="flex items-center text-purple-700 hover:text-purple-600 transition-colors py-2"

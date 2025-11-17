@@ -4,22 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Layout from "../components/Layout"
 import { useNavigate } from "react-router-dom"
-import {
-  Package,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Truck,
-  ArrowLeft,
-  Calendar,
-  CreditCard,
-  MapPin,
-  AlertTriangle,
-  RefreshCw,
-  ShoppingBag,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react"
+import { Package, Clock, CheckCircle, XCircle, Truck, ArrowLeft, Calendar, CreditCard, MapPin, AlertTriangle, RefreshCw, ShoppingBag, ChevronDown, ChevronUp } from 'lucide-react'
 import { useAlert } from "../components/Alert-container"
 
 interface ItemPedido {
@@ -48,6 +33,9 @@ interface Pedido {
   frete_valor?: number
   frete_prazo_dias?: number
   endereco_entrega?: string
+  codigo_rastreio?: string
+  motivo_cancelamento?: string
+  motivo_estorno?: string
   valor_total: number
   itens: ItemPedido[]
   solicitacao_estorno?: SolicitacaoEstorno
@@ -344,151 +332,221 @@ const MeusPedidos: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-25/50 to-blue-25/30">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="flex items-center space-x-3">
-                          <div className="bg-gradient-to-br from-green-100 to-emerald-100 p-2 rounded-xl">
-                            <Truck className="h-5 w-5 text-green-600" />
-                          </div>
-                          <div>
-                            <div className="text-sm text-slate-500 font-medium">Entrega</div>
-                            <div className="font-semibold text-slate-900">{pedido.frete_nome || "Não informado"}</div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3">
-                          <div className="bg-gradient-to-br from-blue-100 to-cyan-100 p-2 rounded-xl">
-                            <CreditCard className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <div className="text-sm text-slate-500 font-medium">Frete</div>
-                            <div className="font-semibold text-slate-900">
-                              {pedido.frete_valor ? formatarPreco(pedido.frete_valor) : "Grátis"}
+                      <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-25/50 to-blue-25/30">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-gradient-to-br from-green-100 to-emerald-100 p-2 rounded-xl">
+                              <Truck className="h-5 w-5 text-green-600" />
+                            </div>
+                            <div>
+                              <div className="text-sm text-slate-500 font-medium">Entrega</div>
+                              <div className="font-semibold text-slate-900">{pedido.frete_nome || "Não informado"}</div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="flex items-center space-x-3">
-                          <div className="bg-gradient-to-br from-purple-100 to-pink-100 p-2 rounded-xl">
-                            <MapPin className="h-5 w-5 text-purple-600" />
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-gradient-to-br from-blue-100 to-cyan-100 p-2 rounded-xl">
+                              <CreditCard className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="text-sm text-slate-500 font-medium">Frete</div>
+                              <div className="font-semibold text-slate-900">
+                                {pedido.frete_valor ? formatarPreco(pedido.frete_valor) : "Grátis"}
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="text-sm text-slate-500 font-medium">Endereço</div>
-                            <div className="font-semibold text-slate-900 text-sm">
-                              {pedido.endereco_entrega || "Não informado"}
+
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-gradient-to-br from-purple-100 to-pink-100 p-2 rounded-xl">
+                              <MapPin className="h-5 w-5 text-purple-600" />
+                            </div>
+                            <div>
+                              <div className="text-sm text-slate-500 font-medium">Endereço</div>
+                              <div className="font-semibold text-slate-900 text-sm">
+                                {pedido.endereco_entrega || "Não informado"}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
 
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-6">
-                        <h4 className="font-bold text-slate-900 text-lg">Itens ({pedido.itens.length})</h4>
-                        <button
-                          onClick={() => {
-                            const novosOcultos = new Set(pedidosOcultos)
-                            if (pedidosOcultos.has(pedido.id_pedido)) {
-                              novosOcultos.delete(pedido.id_pedido)
-                            } else {
-                              novosOcultos.add(pedido.id_pedido)
-                            }
-                            setPedidosOcultos(novosOcultos)
-                          }}
-                          className="flex items-center text-blue-600 hover:text-blue-800 text-sm font-semibold bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all duration-200"
-                        >
-                          {pedidosOcultos.has(pedido.id_pedido) ? (
-                            <>
-                              <ChevronDown size={16} className="mr-2" />
-                              Mostrar itens
-                            </>
-                          ) : (
-                            <>
-                              <ChevronUp size={16} className="mr-2" />
-                              Ocultar itens
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      {!pedidosOcultos.has(pedido.id_pedido) && (
-                        <div className="space-y-4 mb-6">
-                          {pedido.itens.map((item) => (
-                            <div
-                              key={item.id_produto}
-                              className="flex items-center space-x-4 p-4 bg-gradient-to-r from-slate-50/50 to-blue-50/30 rounded-xl border border-white/20"
-                            >
-                              <div className="w-16 h-16 bg-white rounded-xl overflow-hidden flex-shrink-0 border border-slate-200 shadow-sm">
-                                {item.imagem_principal ? (
-                                  <img
-                                    src={`http://localhost:3000/produtos${item.imagem_principal}`}
-                                    alt={item.nome_produto}
-                                    className="w-full h-full object-contain"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <Package className="h-6 w-6 text-slate-400" />
-                                  </div>
-                                )}
+                        {pedido.codigo_rastreio && (pedido.status === "enviado" || pedido.status === "entregue") && (
+                          <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className="bg-gradient-to-br from-purple-100 to-indigo-100 p-2 rounded-lg">
+                                  <Truck className="h-5 w-5 text-purple-600" />
+                                </div>
+                                <div>
+                                  <div className="text-sm text-purple-600 font-semibold">Código de Rastreio</div>
+                                  <div className="font-bold text-purple-900 text-lg">{pedido.codigo_rastreio}</div>
+                                </div>
                               </div>
-                              <div className="flex-grow">
-                                <h5 className="font-bold text-slate-900 mb-1">{item.nome_produto}</h5>
-                                <p className="text-sm text-slate-600 font-medium">
-                                  Quantidade: {item.quantidade} × {formatarPreco(item.preco_unitario)}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                                  {formatarPreco(item.subtotal)}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="border-t border-slate-200 pt-6">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center space-x-6">
-                            {podeEstornar && (
                               <button
-                                onClick={() => abrirModalEstorno(pedido.id_pedido)}
-                                className="flex items-center bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl font-medium transition-colors shadow-lg text-sm"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(pedido.codigo_rastreio || "")
+                                  showSucesso("Código copiado!")
+                                }}
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                               >
-                                <RefreshCw size={16} className="mr-2" />
-                                Solicitar Estorno
+                                Copiar
                               </button>
-                            )}
-
-                            {pedido.solicitacao_estorno && (
-                              <div className="flex items-center space-x-2">
-                                {pedido.solicitacao_estorno.status === "pendente" && (
-                                  <div className="flex items-center bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-xl text-sm font-medium">
-                                    <Clock size={16} className="mr-2" />
-                                    Estorno em análise
-                                  </div>
-                                )}
-                                {pedido.solicitacao_estorno.status === "aprovado" && (
-                                  <div className="flex items-center bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-xl text-sm font-medium">
-                                    <CheckCircle size={16} className="mr-2" />
-                                    Estorno aprovado
-                                  </div>
-                                )}
-                                {pedido.solicitacao_estorno.status === "recusado" && (
-                                  <div className="flex items-center bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-medium">
-                                    <XCircle size={16} className="mr-2" />
-                                    Estorno recusado
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                            </div>
+                            <p className="text-xs text-purple-600 mt-2">
+                              Use este código para rastrear seu pedido no site da transportadora
+                            </p>
                           </div>
-                          <div className="text-right bg-gradient-to-r from-slate-100 to-blue-100 px-6 py-4 rounded-xl">
-                            <div className="text-sm text-slate-500 font-medium">Total Pago</div>
-                            <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                              {formatarPreco(pedido.valor_total)}
+                        )}
+                      </div>
+
+                      <div className="p-6">
+                        <div className="flex items-center justify-between mb-6">
+                          <h4 className="font-bold text-slate-900 text-lg">Itens ({pedido.itens.length})</h4>
+                          <button
+                            onClick={() => {
+                              const novosOcultos = new Set(pedidosOcultos)
+                              if (pedidosOcultos.has(pedido.id_pedido)) {
+                                novosOcultos.delete(pedido.id_pedido)
+                              } else {
+                                novosOcultos.add(pedido.id_pedido)
+                              }
+                              setPedidosOcultos(novosOcultos)
+                            }}
+                            className="flex items-center text-blue-600 hover:text-blue-800 text-sm font-semibold bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all duration-200"
+                          >
+                            {pedidosOcultos.has(pedido.id_pedido) ? (
+                              <>
+                                <ChevronDown size={16} className="mr-2" />
+                                Mostrar itens
+                              </>
+                            ) : (
+                              <>
+                                <ChevronUp size={16} className="mr-2" />
+                                Ocultar itens
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {!pedidosOcultos.has(pedido.id_pedido) && (
+                          <div className="space-y-4 mb-6">
+                            {pedido.itens.map((item) => (
+                              <div
+                                key={item.id_produto}
+                                className="flex items-center space-x-4 p-4 bg-gradient-to-r from-slate-50/50 to-blue-50/30 rounded-xl border border-white/20"
+                              >
+                                <div className="w-16 h-16 bg-white rounded-xl overflow-hidden flex-shrink-0 border border-slate-200 shadow-sm">
+                                  {item.imagem_principal ? (
+                                    <img
+                                      src={`http://localhost:3000/produtos${item.imagem_principal}`}
+                                      alt={item.nome_produto}
+                                      className="w-full h-full object-contain"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <Package className="h-6 w-6 text-slate-400" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-grow">
+                                  <h5 className="font-bold text-slate-900 mb-1">{item.nome_produto}</h5>
+                                  <p className="text-sm text-slate-600 font-medium">
+                                    Quantidade: {item.quantidade} × {formatarPreco(item.preco_unitario)}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                    {formatarPreco(item.subtotal)}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {(pedido.motivo_cancelamento || pedido.motivo_estorno) && (
+                          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                            <h5 className="font-semibold text-red-900 mb-2 flex items-center">
+                              <AlertTriangle size={16} className="mr-2" />
+                              Motivo {pedido.status === "cancelado" ? "do Cancelamento" : "do Estorno"}
+                            </h5>
+                            <p className="text-sm text-red-700">
+                              {pedido.motivo_cancelamento || pedido.motivo_estorno}
+                            </p>
+                          </div>
+                        )}
+
+                        {pedido.solicitacao_estorno && (
+                          <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                            <h5 className="font-semibold text-orange-900 mb-3 flex items-center">
+                              <RefreshCw size={16} className="mr-2" />
+                              Solicitação de Estorno
+                            </h5>
+                            <div className="space-y-2 text-sm">
+                              <div>
+                                <span className="text-orange-600 font-medium">Status: </span>
+                                <span className="text-orange-900">
+                                  {pedido.solicitacao_estorno.status === "pendente" && "⏳ Aguardando análise"}
+                                  {pedido.solicitacao_estorno.status === "aprovado" && "✅ Aprovado"}
+                                  {pedido.solicitacao_estorno.status === "recusado" && "❌ Recusado"}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-orange-600 font-medium">Seu motivo: </span>
+                                <span className="text-orange-900">{pedido.solicitacao_estorno.motivo}</span>
+                              </div>
+                              {pedido.solicitacao_estorno.status === "recusado" &&
+                                pedido.solicitacao_estorno.motivo_recusa && (
+                                  <div className="mt-2 p-3 bg-red-100 border border-red-300 rounded-lg">
+                                    <span className="text-red-700 font-semibold">Motivo da recusa: </span>
+                                    <span className="text-red-800">{pedido.solicitacao_estorno.motivo_recusa}</span>
+                                  </div>
+                                )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="border-t border-slate-200 pt-6">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center space-x-6">
+                              {podeEstornar && (
+                                <button
+                                  onClick={() => abrirModalEstorno(pedido.id_pedido)}
+                                  className="flex items-center bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl font-medium transition-colors shadow-lg text-sm"
+                                >
+                                  <RefreshCw size={16} className="mr-2" />
+                                  Solicitar Estorno
+                                </button>
+                              )}
+
+                              {pedido.solicitacao_estorno && (
+                                <div className="flex items-center space-x-2">
+                                  {pedido.solicitacao_estorno.status === "pendente" && (
+                                    <div className="flex items-center bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-xl text-sm font-medium">
+                                      <Clock size={16} className="mr-2" />
+                                      Estorno em análise
+                                    </div>
+                                  )}
+                                  {pedido.solicitacao_estorno.status === "aprovado" && (
+                                    <div className="flex items-center bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-xl text-sm font-medium">
+                                      <CheckCircle size={16} className="mr-2" />
+                                      Estorno aprovado
+                                    </div>
+                                  )}
+                                  {pedido.solicitacao_estorno.status === "recusado" && (
+                                    <div className="flex items-center bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-medium">
+                                      <XCircle size={16} className="mr-2" />
+                                      Estorno recusado
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right bg-gradient-to-r from-slate-100 to-blue-100 px-6 py-4 rounded-xl">
+                              <div className="text-sm text-slate-500 font-medium">Total Pago</div>
+                              <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                {formatarPreco(pedido.valor_total)}
+                              </div>
                             </div>
                           </div>
                         </div>

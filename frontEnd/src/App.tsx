@@ -31,6 +31,10 @@ import DetalhesSolicitacao from "./pages/DetalhesSolicitacao.tsx"
 import RelatorioClientes from "./pages/RelatorioClientes.tsx"
 import RelatorioAssistencia from "./pages/RelatorioAssistencia.tsx"
 import GestaoPedidos from "./pages/GestaoPedidos.tsx"
+import CentralRelatorios from "./pages/CentralRelatorios.tsx"
+import RelatorioVendas from "./pages/RelatorioVendas.tsx"
+import LogsSistema from "./pages/LogsSistema.tsx"
+
 
 function App() {
   return (
@@ -83,8 +87,12 @@ function App() {
             <Route path="/acompanhar-solicitacoes/:id" element={<DetalhesSolicitacao />} />
 
             {/* Rotas Relatórios */}
+            <Route path="/relatorios" element={<CentralRelatorios />} />
             <Route path="/relatorios/clientes" element={<RelatorioClientes />} />
             <Route path="/relatorios/assistencias" element={<RelatorioAssistencia />} />
+            <Route path="/relatorios/vendas" element={<RelatorioVendas />} />
+
+            <Route path="/logs" element={<LogsSistema />} />
           </Routes>
         </BrowserRouter>
       </CartProvider>
